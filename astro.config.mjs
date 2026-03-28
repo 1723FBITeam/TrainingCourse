@@ -47,10 +47,10 @@ export default defineConfig({
         {
           label: 'Reference Sheets',
           items: [
-            { label: 'Code Map', link: '/deliverables/deliverable-code-map' },
-            { label: 'Trace Worksheet', link: '/deliverables/deliverable-trace-worksheet' },
-            { label: 'Glossary', link: '/deliverables/deliverable-glossary' },
-            { label: 'Code Reading Checklist', link: '/deliverables/deliverable-checklist' },
+            { label: 'Code Map', link: '/reference-sheets/code-map' },
+            { label: 'Trace Worksheet', link: '/reference-sheets/trace-worksheet' },
+            { label: 'Glossary', link: '/reference-sheets/glossary' },
+            { label: 'Code Reading Checklist', link: '/reference-sheets/checklist' },
           ],
         },
         {
