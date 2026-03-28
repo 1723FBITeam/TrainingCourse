@@ -4,7 +4,7 @@ import react from '@astrojs/react';
 
 export default defineConfig({
   site: 'https://1723FBITeam.github.io',
-  base: '/training-course',
+  base: '/TrainingCourse',
   integrations: [
     starlight({
       title: 'FRC Programming 1: Reading Our Robot Code',
