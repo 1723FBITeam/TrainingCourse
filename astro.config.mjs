@@ -45,7 +45,7 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Deliverables',
+          label: 'Reference Sheets',
           items: [
             { label: 'Code Map', link: '/deliverables/deliverable-code-map' },
             { label: 'Trace Worksheet', link: '/deliverables/deliverable-trace-worksheet' },

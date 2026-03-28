@@ -61,6 +61,20 @@ The `src/main/java/` part is a Java convention called the "source set." It tells
 
 ---
 
+<Quiz client:load
+  question="What is the key path where all your team's robot code lives?"
+  options={[
+    "build.gradle",
+    "src/main/java/frc/robot/",
+    "vendordeps/",
+    "src/main/deploy/"
+  ]}
+  correctIndex={1}
+  explanation="All robot code lives under src/main/java/frc/robot/. Everything outside that path is build configuration, library setup, or deploy files. This path follows the standard Java source set convention."
+/>
+
+---
+
 ## Inside `frc/robot/` — The Files That Matter
 
 Let's zoom into the folder where all the action happens. Open <GitHubLink client:load path={robotConfig.projectRoot} isFolder label="the robot code folder" /> on GitHub (or in your IDE) and you'll see something like this:
@@ -161,6 +175,18 @@ Commands tell the robot *what to do*. They use subsystems to make things happen.
 2. **Inside RobotContainer.java** — for inline commands defined right where buttons are bound
 
 Most FRC teams use a mix of both. Complex behaviors (like auto-shooting) get their own file. Simple one-liners (like "run the intake at 50%") are defined inline in RobotContainer.
+
+<Quiz client:load
+  question="A teammate wrote a complex command that coordinates three subsystems during autonomous. Where should that command class live?"
+  options={[
+    "Inside Constants.java",
+    "In the commands/ folder as its own file",
+    "Inline inside RobotContainer.java",
+    "In the subsystems/ folder"
+  ]}
+  correctIndex={1}
+  explanation="Complex commands that coordinate multiple subsystems get their own file in the commands/ folder. Inline commands in RobotContainer are best for simple one-liners. Constants.java is for configuration values, and the subsystems/ folder is for hardware control classes."
+/>
 
 ---
 

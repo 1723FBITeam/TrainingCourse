@@ -114,6 +114,18 @@ public void deployOut() {
 
 That's it. The subsystem provides the *capability* ("deploy the intake"), and commands decide *when* to use it.
 
+<Quiz client:load
+  question="Why does IntakeSubsystem get its CAN IDs from Constants instead of hardcoding numbers like `new TalonFX(31)`?"
+  options={[
+    "It's required by WPILib — hardcoded numbers won't compile",
+    "So you only need to change the number in one place if the wiring changes",
+    "Constants.java runs faster than hardcoded numbers",
+    "It makes the code look more professional"
+  ]}
+  correctIndex={1}
+  explanation="Using Constants means every CAN ID is defined in one place. If the electrical team rewires a motor to a different port, you change it once in Constants.java and every subsystem that uses it automatically gets the update. Hardcoding would mean hunting through every file to find and change the number."
+/>
+
 👉 See the full file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />
 
 ---
@@ -271,6 +283,18 @@ The relationship is simple:
 3. **CommandSwerveDrivetrain** extends the generated `TunerSwerveDrivetrain` class and adds command-based features
 
 Think of TunerConstants as the "blueprint" and CommandSwerveDrivetrain as the "finished product" that adds robot-specific behavior on top.
+
+<Quiz client:load
+  question="A teammate accidentally edited TunerConstants.java and changed a motor CAN ID. What happens next time someone runs the Tuner X calibration tool?"
+  options={[
+    "The tool will keep the teammate's changes",
+    "The tool will show a merge conflict",
+    "The teammate's changes will be overwritten by the tool's output",
+    "The robot code won't compile anymore"
+  ]}
+  correctIndex={2}
+  explanation="TunerConstants.java is auto-generated. Every time someone runs the Tuner X calibration tool, it regenerates the entire file from scratch, overwriting any manual edits. That's why the generated/ folder has a 'do not edit' warning — your changes won't survive."
+/>
 
 ---
 

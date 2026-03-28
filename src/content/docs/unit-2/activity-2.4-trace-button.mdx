@@ -251,7 +251,7 @@ Now it's your turn. Without looking at the trace above, try to answer these ques
 
 ## Step 6: Document Your Trace
 
-For your **Trace Worksheet** deliverable, write down the trace you just completed. Use this format for each step:
+For your **Trace Worksheet** reference sheet, write down the trace you just completed. Use this format for each step:
 
 | Step | File | Location | What Happens |
 |------|------|----------|-------------|
@@ -264,7 +264,7 @@ For your **Trace Worksheet** deliverable, write down the trace you just complete
 | 7 | RobotContainer.java | `RunCommand → runIntake(0.5)` | Starts rollers at 50% power (runs every 20ms) |
 | 8 | IntakeSubsystem.java | `runIntake(0.5)` method | Roller motors (CAN 31, 32) spin at 50% |
 
-Save this — you'll submit it as part of the Trace Worksheet deliverable.
+Save this — you'll submit it as part of the Trace Worksheet reference sheet.
 
 :::tip[Practice Makes Perfect]
 Now that you've traced the intake button, try tracing a different button on your own. The A button (jostle) is a good next challenge — it uses `whileTrue` instead of `toggleOnTrue`, and the command comes from a method inside IntakeSubsystem rather than being built inline in RobotContainer. See if you can follow the path!

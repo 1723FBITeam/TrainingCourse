@@ -86,6 +86,18 @@ private final CommandXboxController copilot = new CommandXboxController(1);
 
 `CommandXboxController` is a WPILib class that wraps a standard Xbox controller and gives you methods like `.x()`, `.y()`, `.a()`, `.b()` that return **Trigger** objects. Triggers are what let you bind buttons to commands.
 
+<Quiz client:load
+  question="Why does RobotContainer create two separate CommandXboxController objects on different USB ports?"
+  options={[
+    "One is a backup in case the other disconnects",
+    "One is for the driver (driving) and one is for the co-pilot (mechanisms/tuning)",
+    "WPILib requires at least two controllers to compile",
+    "One is for teleop and one is for autonomous"
+  ]}
+  correctIndex={1}
+  explanation="FRC teams typically have two operators: a driver who controls movement with one controller, and a co-pilot who controls mechanisms (shooting, climbing, tuning) with a second controller. Each controller is on a different USB port so the code can tell them apart."
+/>
+
 ---
 
 ## Section 3: Button Bindings — The Core Wiring
@@ -184,6 +196,18 @@ The turret's default command keeps it constantly tracking the target — even wh
 :::note[Why Default Commands Matter]
 Without a default command on the drivetrain, the robot would stop responding to the joystick whenever a driving command ended. Default commands ensure subsystems always have something useful to do when they're not busy with a button-triggered command.
 :::
+
+<Quiz client:load
+  question="The turret's default command constantly auto-aims at the target. What happens to this default command when the driver presses Y to start AutoShootCommand?"
+  options={[
+    "Both commands run at the same time on the turret",
+    "The default command is interrupted — AutoShootCommand takes over the turret",
+    "The default command keeps running and AutoShootCommand is rejected",
+    "The robot throws an error because of the conflict"
+  ]}
+  correctIndex={1}
+  explanation="When a new command requires a subsystem that's running a default command, the default command gets interrupted. AutoShootCommand requires the turret, so the default auto-aim stops and AutoShootCommand takes over. When the driver presses Y again to stop shooting, AutoShootCommand ends and the default auto-aim resumes automatically."
+/>
 
 ---
 

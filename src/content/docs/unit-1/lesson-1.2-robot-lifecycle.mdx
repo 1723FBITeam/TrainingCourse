@@ -104,6 +104,18 @@ That's it. One line of real code. `RobotBase.startRobot(Robot::new)` tells WPILi
 
 You will **never** edit this file. It's the same in every FRC project.
 
+<Quiz client:load
+  question="How many lines of real code does Main.java contain?"
+  options={[
+    "About 50 — it sets up logging and error handling",
+    "Just one — it calls RobotBase.startRobot(Robot::new)",
+    "About 20 — it creates the subsystems",
+    "Zero — it's auto-generated and empty"
+  ]}
+  correctIndex={1}
+  explanation="Main.java has exactly one meaningful line: RobotBase.startRobot(Robot::new). It tells WPILib to create a Robot object and start the lifecycle. You never edit this file — it's identical in every FRC project."
+/>
+
 ---
 
 ## Step 2: Robot.java — The Engine
@@ -280,6 +292,18 @@ public void teleopInit() {
 
 Why cancel the auto command? Because autonomous and teleop are different phases. If the auto routine is still running when the driver takes over, it would fight with the driver's joystick inputs. Cancelling it cleanly hands control to the driver.
 
+<Quiz client:load
+  question="What would happen if teleopInit() did NOT cancel the autonomous command?"
+  options={[
+    "Nothing — the auto command stops automatically",
+    "The auto command and driver joystick inputs would fight for control of the drivetrain",
+    "The robot would reboot",
+    "The Driver Station would show an error"
+  ]}
+  correctIndex={1}
+  explanation="If the auto command kept running into teleop, it would still be sending drive commands to the drivetrain. The driver's joystick commands would also try to control the drivetrain. Since two commands can't use the same subsystem, the command scheduler would have to pick one — leading to unpredictable behavior. That's why teleopInit() explicitly cancels it."
+/>
+
 :::note[Why Is teleopPeriodic() Empty?]
 You might expect teleop logic to go in `teleopPeriodic()`. But in command-based robot code, all the teleop behavior is handled by the CommandScheduler — default commands, button bindings, and triggers. The scheduler runs inside `robotPeriodic()`, so `teleopPeriodic()` doesn't need any code.
 :::
@@ -315,6 +339,21 @@ Power On
 ```
 
 The key takeaway: `robotPeriodic()` is **always** running. The mode-specific methods just set things up — the CommandScheduler inside `robotPeriodic()` does the actual work.
+
+<Checkpoint client:load
+  title="Checkpoint: Match Flow"
+  prompt="Walk through what happens during a typical FRC match from the robot's perspective. Name the lifecycle methods that run (in order) from the moment the match starts in autonomous through the end of teleop."
+>
+1. **autonomousInit()** — runs once when the match starts. Schedules the selected auto command.
+2. **autonomousPeriodic()** — runs every 20ms during auto (usually empty).
+3. **robotPeriodic()** — runs every 20ms throughout auto, executing the auto command via the CommandScheduler.
+4. **teleopInit()** — runs once when auto ends and teleop begins. Cancels any leftover auto command.
+5. **teleopPeriodic()** — runs every 20ms during teleop (usually empty).
+6. **robotPeriodic()** — continues running every 20ms throughout teleop, handling button triggers and commands.
+7. **disabledInit()** — runs once when the match ends and the robot is disabled.
+
+The key insight: `robotPeriodic()` runs the entire time, across all modes. The mode-specific init methods just set up or tear down commands.
+</Checkpoint>
 
 ---
 

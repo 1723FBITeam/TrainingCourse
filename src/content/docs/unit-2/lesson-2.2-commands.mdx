@@ -279,6 +279,18 @@ Let's break down the command types used here:
 
 The `toggleOnTrue` binding means: press X once to start the command, press X again to cancel it. When cancelled, the `finallyDo()` block runs the cleanup (stop rollers, retract intake).
 
+<Quiz client:load
+  question="In the intake toggle, why is RunCommand used for the rollers instead of InstantCommand?"
+  options={[
+    "RunCommand is faster than InstantCommand",
+    "InstantCommand can't control motors",
+    "RunCommand keeps running every 20ms (rollers need to keep spinning), while InstantCommand runs once and stops",
+    "RunCommand is required for toggleOnTrue bindings"
+  ]}
+  correctIndex={2}
+  explanation="InstantCommand runs once and finishes immediately — great for 'flip a switch' actions like deployOut(). But the rollers need to keep spinning continuously, so RunCommand is used because it calls runIntake(0.5) every 20ms and never finishes on its own. It keeps going until the driver presses X again to cancel."
+/>
+
 ### The Shoot Toggle (Y Button)
 
 The Y button uses the `AutoShootCommand` class we just studied:
