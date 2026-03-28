@@ -1,0 +1,253 @@
+---
+title: "Unit 4: Make a Small Change"
+description: "Modify a constant value and verify the project still compiles"
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this unit you will have:
+
+- Created a new Git branch for your change
+- Opened Constants.java and identified a safe constant to modify
+- Changed a constant value
+- Built the project and confirmed it compiles without errors
+- Committed your change with a clear, descriptive message
+
+This is your first real edit to the robot codebase. It's small on purpose — the goal is to build the muscle memory of the safe contribution workflow you learned in Lesson 6.
+
+:::tip[What You Need]
+- **WPILib VS Code** with the robot project open
+- The project building successfully (you verified this in Unit 1)
+- Git configured on your machine (from Lesson 0)
+:::
+
+---
+
+## Step 1: Create a Branch
+
+Never work directly on `main`. Create a branch so your change is isolated and easy to review (or revert).
+
+Open the VS Code terminal (**Terminal → New Terminal** or **Ctrl+`**) and run:
+
+```bash
+git checkout -b my-first-edit
+```
+
+This creates a new branch called `my-first-edit` and switches to it. You can name it whatever you like — `tweak-hood-max`, `test-constant-change`, or anything descriptive.
+
+Verify you're on the new branch:
+
+```bash
+git branch
+```
+
+You should see `* my-first-edit` (the asterisk marks your current branch).
+
+---
+
+## Step 2: Open Constants.java
+
+In the VS Code file explorer, navigate to:
+
+**src → main → java → frc → robot → Constants.java**
+
+Or use the quick open shortcut: press **Ctrl+P** (Windows/Linux) or **Cmd+P** (macOS), then type `Constants.java` and select it.
+
+You can also view the file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />
+
+---
+
+## Step 3: Find a Safe Constant to Change
+
+Scroll through Constants.java and look at the inner classes. Remember from Lesson 6: **CAN IDs are off-limits** (they match physical wiring), but **behavior values** like speeds, limits, and thresholds are safe to experiment with.
+
+Here's a good candidate inside `ShootingConstants`:
+
+```java title="Constants.java — ShootingConstants"
+// Hood servo travel limits (0.0 = flat, 1.0 = max angle up)
+public static final double HOOD_MIN = 0.0;
+public static final double HOOD_MAX = 0.85;
+```
+
+`HOOD_MAX` controls how far the hood servo can tilt upward. The current value is `0.85` (85% of full travel). This is a safe constant to change because:
+
+- It's a **behavior value**, not a hardware identity (not a CAN ID or motor inversion)
+- It only affects how far the hood tilts — it won't break anything
+- The servo physically can't go past 1.0, so any value between 0.0 and 1.0 is valid
+- It's easy to understand what the number means
+
+:::caution[Stay Away From CAN IDs]
+You'll see constants like `SHOOTER_LEFT_MOTOR = 21` and `INTAKE_LEFT_MOTOR = 31` in the same file. **Do not change these.** They must match the physical wiring on the robot. Changing a CAN ID in code without changing the wiring means the code talks to nothing — or worse, the wrong motor.
+:::
+
+---
+
+## Step 4: Make the Change
+
+Let's change `HOOD_MAX` from `0.85` to `0.80`. This slightly reduces the maximum hood angle — a small, safe tweak.
+
+Find this line in `ShootingConstants`:
+
+```java
+public static final double HOOD_MAX = 0.85;
+```
+
+Change it to:
+
+```java
+public static final double HOOD_MAX = 0.80;
+```
+
+Save the file (**Ctrl+S** or **Cmd+S**).
+
+That's it. One number changed. This is exactly the kind of edit you'll make dozens of times as you tune the robot during the season.
+
+:::tip[Pick Your Own Constant]
+You don't have to change `HOOD_MAX` specifically. If you see another behavior value that interests you — like `TRENCH_BUFFER` in `FieldConstants`, or `TRENCH_HOOD_THRESHOLD` — feel free to change that instead. The important thing is that it's a **number that controls behavior**, not a CAN ID or motor configuration.
+:::
+
+---
+
+## Step 5: Build the Project
+
+Now verify your change compiles. In the VS Code terminal, run:
+
+```bash
+./gradlew build
+```
+
+On Windows:
+
+```bash
+gradlew.bat build
+```
+
+Or use the WPILib Command Palette: **Ctrl+Shift+P** → **WPILib: Build Robot Code**.
+
+Watch the terminal output. You're looking for:
+
+```
+BUILD SUCCESSFUL in Xs
+```
+
+If you see **BUILD SUCCESSFUL**, your change is valid Java and the project compiles cleanly. Nice work!
+
+### If the Build Fails
+
+Don't panic. Common mistakes when editing constants:
+
+| Problem | What You'll See | Fix |
+|---------|----------------|-----|
+| Deleted a semicolon | `error: ';' expected` | Add the semicolon back at the end of the line |
+| Changed the type accidentally | `error: incompatible types` | Make sure the value is still a decimal number (e.g., `0.80`, not `"0.80"`) |
+| Deleted part of the line | Various syntax errors | Use **Ctrl+Z** to undo and try again |
+
+If you're stuck, undo everything with:
+
+```bash
+git checkout -- src/main/java/frc/robot/Constants.java
+```
+
+This resets the file to the last committed version. Then try the edit again.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Build Verification"
+  prompt="After changing a constant value in Constants.java, run the Gradle build. What was the result? Which constant did you change, and what did you change it to?"
+>
+Your build should end with **BUILD SUCCESSFUL**. If it did, you've just made your first successful code change to the robot project!
+
+If you changed `HOOD_MAX` as suggested, you changed it from `0.85` to `0.80`. This means the hood servo's maximum tilt angle is now slightly lower — about 5% less travel. On the real robot, this would make the shooter's highest-angle shots a bit flatter.
+
+The key takeaway: changing a constant value doesn't change the code structure at all. The same methods still call the same constant — it just has a different number now. That's what makes constant edits so safe.
+</Checkpoint>
+
+---
+
+## Step 6: Review Your Change
+
+Before committing, check exactly what you changed. Run:
+
+```bash
+git diff
+```
+
+You should see something like:
+
+```diff
+diff --git a/src/main/java/frc/robot/Constants.java b/src/main/java/frc/robot/Constants.java
+--- a/src/main/java/frc/robot/Constants.java
++++ b/src/main/java/frc/robot/Constants.java
+@@ -42,7 +42,7 @@
+-        public static final double HOOD_MAX = 0.85;
++        public static final double HOOD_MAX = 0.80;
+```
+
+This confirms:
+- You only changed **one line** in **one file**
+- The change is what you intended (the value went from `0.85` to `0.80`)
+- No accidental edits anywhere else
+
+Run through the self-review checklist from Lesson 6:
+
+1. ✅ **Does it build?** — Yes, you just verified that
+2. ✅ **Did I only change what I intended?** — `git diff` confirms one line changed
+3. ✅ **Is it safe?** — You changed a behavior value, not a CAN ID or motor config
+4. ✅ **Can I explain it?** — "I reduced the hood max angle from 0.85 to 0.80"
+5. ✅ **Is it easy to revert?** — One line change, trivial to undo
+
+---
+
+## Step 7: Commit Your Change
+
+Stage and commit with a descriptive message:
+
+```bash
+git add src/main/java/frc/robot/Constants.java
+git commit -m "Reduce hood max angle from 0.85 to 0.80 for testing"
+```
+
+Notice the commit message says **what** changed ("Reduce hood max angle") and **why** ("for testing"). This is the habit to build — future you (and your teammates) will thank you.
+
+If your team uses GitHub for code review, push the branch and open a pull request:
+
+```bash
+git push origin my-first-edit
+```
+
+Then go to your team's GitHub repository and create a pull request from `my-first-edit` into `main`. In the PR description, explain what you changed and why — even for a small change like this, the practice matters.
+
+:::tip[Revert Before Merging (Optional)]
+Since this was a practice exercise, you might not want to actually merge this change into `main`. That's fine! You can either close the pull request without merging, or change the value back to `0.85` in a follow-up commit. The point was the process, not the specific number.
+:::
+
+---
+
+## What You Just Did
+
+Take a moment to appreciate what happened here. You:
+
+1. Created a safe branch to work on
+2. Found a constant that was safe to modify
+3. Made a targeted, one-line change
+4. Built the project and confirmed it compiles
+5. Reviewed your change with `git diff`
+6. Committed with a clear message
+
+This is the exact same workflow you'll use for every contribution to the robot code — whether it's tweaking a speed value during practice or adding a new feature before competition. The only thing that changes is the size of the edit.
+
+---
+
+## What's Next?
+
+Ready for something bigger? In **Unit 5: Add a Simple Feature**, you'll create a brand new command that interacts with an existing subsystem. Same safe workflow, just a few more lines of code.

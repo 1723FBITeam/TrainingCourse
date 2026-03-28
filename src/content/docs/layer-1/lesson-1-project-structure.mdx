@@ -1,0 +1,261 @@
+---
+title: "Lesson 1: Project Structure"
+description: "Navigate the Java project structure and locate key robot code files"
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeReading } from '../../../components/CodeReading';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Describe the standard Java project folder structure used by FRC teams
+- Navigate from the project root to any robot code file
+- Explain the difference between entry point files and support files
+- Locate subsystems, commands, and constants in the project
+- Apply the Code Reading Framework to a file you haven't seen before
+
+:::tip[Before You Start]
+Make sure you've cloned the team's robot project from Lesson 0. If you haven't, go back and complete the **Guided Activity: Clone the Team's Robot Project** section first. You'll need the project on your computer to follow along.
+:::
+
+---
+
+## The Big Picture: How Java Projects Are Organized
+
+Every FRC robot project follows the same folder structure. This isn't random — it's a convention that every Java project uses, and once you learn it, you can navigate *any* team's code.
+
+Here's what the top level looks like:
+
+```
+2026code/
+├── src/
+│   └── main/
+│       ├── java/          ← All the Java source code lives here
+│       │   └── frc/
+│       │       └── robot/  ← YOUR robot code
+│       └── deploy/         ← Files deployed to the roboRIO (paths, configs)
+├── vendordeps/             ← Third-party library configs (CTRE, REV, etc.)
+├── build.gradle            ← Build script (like a recipe for compiling)
+└── ...
+```
+
+The key path to remember is:
+
+**`src/main/java/frc/robot/`** — this is where all your team's robot code lives.
+
+Everything outside that path is either build configuration, library setup, or deploy files. You'll rarely need to touch those.
+
+:::note[Why So Many Folders?]
+The `src/main/java/` part is a Java convention called the "source set." It tells the build tool (Gradle) where to find your code. The `frc/robot/` part is the Java **package** — it's like a namespace that keeps your code organized and avoids name collisions with other libraries.
+:::
+
+---
+
+## Inside `frc/robot/` — The Files That Matter
+
+Let's zoom into the folder where all the action happens. Open <GitHubLink client:load path={robotConfig.projectRoot} isFolder label="the robot code folder" /> on GitHub (or in your IDE) and you'll see something like this:
+
+```
+frc/robot/
+├── commands/                ← Command classes (robot behaviors)
+│   └── AutoShootCommand.java
+├── generated/               ← Auto-generated code (DO NOT EDIT)
+│   └── TunerConstants.java
+├── subsystems/              ← Subsystem classes (hardware control)
+│   ├── ClimberSubsystem.java
+│   ├── CommandSwerveDrivetrain.java
+│   ├── IntakeSubsystem.java
+│   ├── ShooterSubsystem.java
+│   └── TurretSubsystem.java
+├── Constants.java           ← All configuration values (CAN IDs, speeds, etc.)
+├── LimelightHelpers.java    ← Vision camera helper utilities
+├── Main.java                ← Program entry point (don't touch)
+├── Robot.java               ← Robot lifecycle manager
+├── RobotContainer.java      ← Wires everything together
+├── Telemetry.java           ← Dashboard/logging data publisher
+└── TrajectoryCalculations.java ← Math for shot trajectories
+```
+
+That's a lot of files! But they fall into clear categories. Let's break them down.
+
+---
+
+## Entry Point Files vs. Support Files
+
+Not all files are created equal. Some are **entry points** that the WPILib framework calls automatically, and others are **support files** that get used by those entry points.
+
+### Entry Point Files (The Core Four)
+
+These four files form the backbone of every FRC robot program:
+
+| File | Role | Do You Edit It? |
+|------|------|-----------------|
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.main}`} label="Main.java" /> | Starts the program — calls `RobotBase.startRobot()` | Almost never |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> | Manages the robot lifecycle (init, periodic, disabled) | Rarely |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> | Creates subsystems, binds buttons to commands | Often |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> | Stores all configuration values (CAN IDs, speeds, limits) | Often |
+
+Think of it this way:
+- **Main.java** is the ignition key — it starts the engine but you never modify the key itself
+- **Robot.java** is the engine — it runs the lifecycle but you rarely open the hood
+- **RobotContainer.java** is the dashboard — it's where you wire controls to actions
+- **Constants.java** is the settings panel — it's where you tune values
+
+### Support Files
+
+Everything else supports the core four:
+
+- **Subsystem files** (in `subsystems/`) — each one controls a physical mechanism on the robot
+- **Command files** (in `commands/`) — each one defines a behavior the robot can perform
+- **Helper files** (`Telemetry.java`, `LimelightHelpers.java`, `TrajectoryCalculations.java`) — utilities that other files use
+
+:::caution[Hands Off the Generated Folder]
+The `generated/` folder contains <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.generatedFiles[0].file}`} label="TunerConstants.java" /> — {robotConfig.generatedFiles[0].description}. If you edit this file, your changes will be overwritten the next time someone runs the tuning tool.
+:::
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Core Files"
+  prompt="Without looking back, name the four core files and describe each one's role in one sentence."
+>
+1. **Main.java** — Starts the robot program by calling `RobotBase.startRobot()`
+2. **Robot.java** — Manages the robot lifecycle (what happens during init, teleop, auto, disabled)
+3. **RobotContainer.java** — Creates all subsystems and binds controller buttons to commands
+4. **Constants.java** — Stores all configuration values like CAN IDs, motor speeds, and field measurements
+</Checkpoint>
+
+---
+
+## Locating Subsystems
+
+Subsystems are the building blocks of your robot. Each subsystem class controls one physical mechanism. They all live in the <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems`} isFolder label="subsystems/ folder" />.
+
+Your team's robot has {robotConfig.subsystems.length} subsystems:
+
+| Subsystem | What It Controls |
+|-----------|-----------------|
+{robotConfig.subsystems.map(s => `| <GitHubLink client:load path={\`${robotConfig.projectRoot}/${s.file}\`} label="${s.name}" /> | ${s.description} |`).join('\n')}
+
+:::tip[How to Spot a Subsystem]
+Every subsystem class extends `SubsystemBase` (or a similar base class). If you see `extends SubsystemBase` at the top of a file, you know it's a subsystem. The `CommandSwerveDrivetrain` is a special case — it extends a CTRE-provided swerve base class, but it's still a subsystem.
+:::
+
+---
+
+## Locating Commands
+
+Commands tell the robot *what to do*. They use subsystems to make things happen. Your team's commands live in two places:
+
+1. **The `commands/` folder** — for standalone command classes like <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name} />
+2. **Inside RobotContainer.java** — for inline commands defined right where buttons are bound
+
+Most FRC teams use a mix of both. Complex behaviors (like auto-shooting) get their own file. Simple one-liners (like "run the intake at 50%") are defined inline in RobotContainer.
+
+---
+
+## Locating Constants
+
+All the "magic numbers" in the robot code — CAN IDs, motor speeds, field positions — live in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />.
+
+Constants are organized into inner classes by system:
+
+- `ShootingConstants` — CAN IDs and settings for the shooter, turret, feeder
+- `IntakeConstants` — CAN IDs for intake rollers and deploy motors
+- `ClimberConstants` — CAN IDs for climb motors and elevator
+- `FieldConstants` — Field dimensions, zone boundaries, target positions
+
+For example, the intake left roller motor has CAN ID **{robotConfig.canIds.intakeLeft}** and the shooter left flywheel is CAN ID **{robotConfig.canIds.shooterLeft}**.
+
+:::note[Why Constants Matter]
+When you need to change a motor speed or swap a CAN ID after rewiring, you only change it in one place — Constants.java. Every subsystem reads from here, so the change propagates everywhere automatically.
+:::
+
+---
+
+<Quiz client:load
+  question="Where would you look to find the CAN ID for the turret motor?"
+  options={[
+    "TurretSubsystem.java",
+    "RobotContainer.java",
+    "Constants.java → ShootingConstants",
+    "generated/TunerConstants.java"
+  ]}
+  correctIndex={2}
+  explanation="All CAN IDs are stored in Constants.java, organized by system. The turret motor CAN ID lives in the ShootingConstants inner class. Subsystem files read from Constants — they don't define the IDs themselves."
+/>
+
+---
+
+## 🔍 Code Reading Exercise: Telemetry.java
+
+Time to practice the **Code Reading Framework** on a file you haven't studied yet. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/Telemetry.java`} label="Telemetry.java" /> on GitHub or in your IDE and answer the five questions below.
+
+Take a few minutes to read through the file before revealing the answers. Don't worry if you don't understand every line — focus on the big picture.
+
+<CodeReading client:load
+  targetFile="Telemetry.java"
+  answers={{
+    whatDoes: "Telemetry.java publishes robot data (position, speed, swerve module states) to NetworkTables and SmartDashboard so drivers and programmers can see what the robot is doing in real time. It also logs data to a file using SignalLogger.",
+    belongsTo: "It doesn't belong to a specific subsystem or command — it's a helper/utility class used by the drivetrain. RobotContainer or the drivetrain subsystem calls its telemeterize() method every loop cycle.",
+    methods: "It exposes one main public method: telemeterize(SwerveDriveState state), which takes the current swerve drive state and publishes all the data. The constructor Telemetry(double maxSpeed) sets up the NetworkTables publishers and Mechanism2d visualizations.",
+    dependsOn: "It depends on CTRE Phoenix 6 (SignalLogger, SwerveDriveState), WPILib math classes (Pose2d, ChassisSpeeds, SwerveModuleState), WPILib NetworkTables for publishing data, and WPILib SmartDashboard/Mechanism2d for visual telemetry.",
+    whenRuns: "The telemeterize() method runs every robot loop cycle (roughly every 20ms) during all modes — teleop, autonomous, and disabled. It's called continuously so the dashboard always shows current data."
+  }}
+/>
+
+:::tip[Code Reading Framework Recap]
+These five questions work on *any* file in the project:
+1. What does this file do?
+2. What subsystem or command does it belong to?
+3. What methods does it expose?
+4. What does it depend on?
+5. When does this code run?
+
+You'll use this framework throughout the course. By the end, you'll be able to pick up any file and quickly understand its role.
+:::
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Finding Your Way Around"
+  prompt="A teammate asks you to find the file that controls the intake rollers. Describe the exact path you'd navigate to, starting from the project root."
+>
+Starting from the project root:
+
+1. Open `src/main/java/frc/robot/subsystems/`
+2. Open `IntakeSubsystem.java`
+
+The full path is `src/main/java/frc/robot/subsystems/IntakeSubsystem.java`. You know it's in the `subsystems/` folder because the intake is a physical mechanism (hardware control = subsystem). The file name matches the class name — `IntakeSubsystem`.
+</Checkpoint>
+
+---
+
+## Quick Reference: Where to Find Things
+
+| I need to find... | Look in... |
+|---|---|
+| Any robot code file | `{robotConfig.projectRoot}/` |
+| A subsystem (hardware control) | `{robotConfig.projectRoot}/subsystems/` |
+| A command (robot behavior) | `{robotConfig.projectRoot}/commands/` or inline in `RobotContainer.java` |
+| CAN IDs and motor speeds | `{robotConfig.projectRoot}/{robotConfig.coreFiles.constants}` |
+| Button-to-command wiring | `{robotConfig.projectRoot}/{robotConfig.coreFiles.robotContainer}` |
+| Auto-generated swerve config | `{robotConfig.projectRoot}/generated/` (read only!) |
+
+---
+
+## What's Next?
+
+Now that you can navigate the project, it's time to understand *how the code runs*. In **Lesson 2: Robot Lifecycle**, you'll learn the sequence of methods that WPILib calls when the robot starts up, enters teleop, runs autonomous, and more.
+
+In **Unit 1: Open & Build**, you'll open the project in your IDE and run your first Gradle build to make sure everything compiles.

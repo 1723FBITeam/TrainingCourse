@@ -1,0 +1,172 @@
+---
+title: Instructor Setup Guide
+description: "How to adapt the FRC Programming 1 course for a new season, robot project, or team"
+prev: true
+next: true
+---
+
+import { robotConfig } from '../../config/robot-references';
+
+This guide is for mentors and lead programmers who need to adapt the course for a new season's robot. The course is designed so that all robot-specific content flows from a single configuration file — update that file and the lessons update with it.
+
+## How Robot References Work
+
+Every lesson in this course imports from a single TypeScript config file:
+
+```
+training-course/src/config/robot-references.ts
+```
+
+This file contains all robot-specific metadata: file paths, subsystem names, CAN IDs, button bindings, the GitHub repo URL, and season info. Lessons never hardcode these values — they import from `robotConfig` so you only need to update one place.
+
+The config has **no build-time dependency** on the robot project directory. It stores metadata only. The course and the robot code are completely separate projects.
+
+### `robot-references.ts` Field Reference
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `repoUrl` | `string` | Full GitHub URL to the robot repo (e.g., `https://github.com/your-org/2026code`). Used by the `GitHubLink` component to build clickable links to source files. |
+| `defaultBranch` | `string` | Branch name for GitHub links (usually `main`). |
+| `projectRoot` | `string` | Path from repo root to the robot package (e.g., `src/main/java/frc/robot`). |
+| `coreFiles` | `object` | Maps logical names (`main`, `robot`, `robotContainer`, `constants`) to filenames. |
+| `subsystems` | `array` | Each entry has `name`, `file` (relative to `projectRoot`), and `description`. |
+| `commands` | `array` | Same shape as subsystems — one entry per standalone command class. |
+| `generatedFiles` | `array` | Files students should read but not edit (e.g., TunerConstants.java). |
+| `bindings` | `object` | Controller button mappings with `button`, `controller`, and `type` fields. Used in trace exercises. |
+| `canIds` | `object` | CAN bus IDs for each motor/device. Referenced in the Constants lesson. |
+| `season` | `string` | Display name for the current season (e.g., `"{robotConfig.season}"`). |
+| `teamNumber` | `number` | Your FRC team number. Set to `0` if you don't want it displayed. |
+
+
+## Adapting for a New Season
+
+When your team starts a new season with a new robot project, follow this checklist to update the course.
+
+### Step 1: Update `robot-references.ts`
+
+Open `training-course/src/config/robot-references.ts` and update every field:
+
+1. **`repoUrl`** — Point to the new season's GitHub repository.
+2. **`defaultBranch`** — Confirm the branch name (usually `main`).
+3. **`projectRoot`** — Typically stays `src/main/java/frc/robot` unless your project structure changed.
+4. **`coreFiles`** — Usually unchanged (`Main.java`, `Robot.java`, `RobotContainer.java`, `Constants.java`), but verify the filenames match.
+5. **`subsystems`** — Replace with the new robot's subsystem classes. Update `name`, `file`, and `description` for each.
+6. **`commands`** — Replace with the new robot's standalone command classes.
+7. **`generatedFiles`** — Update if you use different generated files (e.g., a new swerve config tool).
+8. **`bindings`** — Update button assignments to match the new `RobotContainer` bindings.
+9. **`canIds`** — Update all CAN IDs to match the new robot's electrical layout.
+10. **`season`** — Set to the new season name (e.g., `"2027 REEFSCAPE"`).
+11. **`teamNumber`** — Set your team number.
+
+### Step 2: Review Inline Code Snippets
+
+Lessons embed Java code snippets directly in MDX as fenced code blocks. These are **static snapshots** — they don't auto-update from the config. Search for code blocks and verify they match the new robot code:
+
+```
+training-course/src/content/docs/layer-1/lesson-1-project-structure.mdx
+training-course/src/content/docs/layer-1/lesson-2-robot-lifecycle.mdx
+training-course/src/content/docs/layer-2/lesson-3-subsystems.mdx
+training-course/src/content/docs/layer-2/lesson-4-commands.mdx
+training-course/src/content/docs/layer-2/lesson-5-robotcontainer.mdx
+training-course/src/content/docs/layer-3/lesson-6-constants-safe-edits.mdx
+```
+
+:::caution[Inline snippets need manual updates]
+Any Java code shown inside ` ```java ` blocks is a copy-paste from the robot project. When the robot code changes, these snippets must be updated by hand. The `GitHubLink` components will update automatically once you change `repoUrl` and `defaultBranch`.
+:::
+
+### Step 3: Review Trace Exercises
+
+The trace exercises (Units 2, 3, and 6) and the Trace Worksheet deliverable walk through specific execution paths in the robot code. These reference particular methods, line numbers, and call sequences that will change with a new robot:
+
+```
+training-course/src/content/docs/layer-2/unit-2-trace-button.mdx
+training-course/src/content/docs/layer-2/unit-3-trace-sensor.mdx
+training-course/src/content/docs/layer-2/unit-6-autonomous.mdx
+training-course/src/content/docs/deliverables/deliverable-trace-worksheet.mdx
+```
+
+Update the `CodeTrace` component steps to reflect the new robot's actual execution paths.
+
+### Step 4: Update the Code Map Deliverable
+
+The Code Map deliverable lists every file in the robot project with a one-sentence description. Update it to match the new project's file structure:
+
+```
+training-course/src/content/docs/deliverables/deliverable-code-map.mdx
+```
+
+### Step 5: Update GitHub Pages Base Path
+
+If you deploy to a different repository name, update the `base` path in `astro.config.mjs`:
+
+```javascript
+// training-course/astro.config.mjs
+export default defineConfig({
+  site: 'https://your-org.github.io',
+  base: '/training-course',  // ← Change this to match your GitHub repo name
+  // ...
+});
+```
+
+The `site` field should be your GitHub organization's Pages domain (e.g., `https://your-org.github.io`). The `base` field should match the repository name where the course is hosted. If the course lives in a repo called `frc-training`, set `base: '/frc-training'`.
+
+### Step 6: Build and Verify
+
+After making changes, run a local build to catch any issues:
+
+```bash
+cd training-course
+npm install
+npm run build
+```
+
+Fix any build errors (usually broken imports or missing component references), then preview locally:
+
+```bash
+npx astro preview
+```
+
+Walk through a few lessons to confirm that GitHub links point to the right files and inline snippets match the new code.
+
+## New Season Checklist
+
+Use this checklist when adapting the course for a new robot project:
+
+- [ ] Updated `repoUrl` and `defaultBranch` in `robot-references.ts`
+- [ ] Updated `subsystems` array with new robot's subsystem classes
+- [ ] Updated `commands` array with new robot's command classes
+- [ ] Updated `generatedFiles` if swerve config or other generated files changed
+- [ ] Updated `bindings` to match new `RobotContainer` button assignments
+- [ ] Updated `canIds` to match new robot's electrical layout
+- [ ] Updated `season` and `teamNumber`
+- [ ] Reviewed and updated inline Java code snippets in all lesson files
+- [ ] Reviewed and updated `CodeTrace` steps in Units 2, 3, and 6
+- [ ] Reviewed and updated the Trace Worksheet deliverable
+- [ ] Reviewed and updated the Code Map deliverable
+- [ ] Updated `base` path in `astro.config.mjs` if the repo name changed
+- [ ] Ran `npm run build` successfully with no errors
+- [ ] Previewed the site and spot-checked GitHub links
+
+## Scope Boundaries
+
+This course covers **Programming 1: Reading Our Robot Code**. It intentionally stops short of several advanced topics to keep the focus on reading comprehension and safe first contributions.
+
+Topics deferred to later courses:
+
+| Topic | Deferred To |
+|-------|-------------|
+| Deep Java theory (generics, design patterns, streams) | Programming 2 |
+| PID tuning and control theory | Programming 3 |
+| Odometry and pose estimation math | Programming 3 |
+| Vision system implementation (Limelight, PhotonVision) | Programming 3 |
+| Full autonomous path planning development | Programming 3 |
+| Advanced command composition (decorators, proxies) | Programming 2 |
+| Unit testing robot code | Programming 4 |
+| Simulation and hardware-in-the-loop | Programming 4 |
+
+When a lesson touches on one of these topics, it briefly explains what it is and points students to the appropriate follow-up course rather than going deep.
+
+:::tip[Keep it focused]
+If you're tempted to add PID tuning or vision processing to this course — don't. Students need to be confident readers before they become confident writers. This course is about building that reading foundation.
+:::

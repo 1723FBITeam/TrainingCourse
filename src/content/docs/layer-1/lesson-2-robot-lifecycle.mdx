@@ -1,0 +1,375 @@
+---
+title: "Lesson 2: Robot Lifecycle"
+description: "Understand the robot execution flow and lifecycle methods"
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeTrace } from '../../../components/CodeTrace';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Describe the sequence of methods WPILib calls when the robot starts up
+- Explain what happens during `robotInit`, `teleopInit`, `teleopPeriodic`, `autonomousInit`, and `disabledInit`
+- Trace the startup flow from `Main.java` through `Robot.java` to `RobotContainer.java`
+- Identify which Core Files are responsible for each phase of the robot's life
+
+:::tip[Before You Start]
+Make sure you've completed **Lesson 1: Project Structure** so you know where the core files live. You'll be opening <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> and <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> during this lesson.
+:::
+
+---
+
+## What Is the Robot Lifecycle?
+
+When you flip the switch on your robot, the code doesn't just "run." WPILib calls a specific sequence of methods on your `Robot` class in a precise order. This sequence is called the **Robot Lifecycle**.
+
+Think of it like a play with acts:
+
+1. **Startup** — The robot boots up, creates everything it needs
+2. **Disabled** — The robot is on but not moving (waiting for the match to start)
+3. **Autonomous** — The robot drives itself for 15 seconds
+4. **Teleop** — A human driver takes control
+5. **Back to Disabled** — Match ends, robot stops
+
+Each act has an **init** method (runs once when entering that mode) and a **periodic** method (runs every 20 milliseconds while in that mode). That's 50 times per second!
+
+---
+
+## The Startup Sequence: From Power-On to Ready
+
+Let's trace exactly what happens when the robot code starts. This is the most important sequence to understand because it sets up *everything*.
+
+<CodeTrace client:load
+  title="Robot Startup Sequence"
+  startAction="Robot is powered on and code deploys"
+  steps={[
+    {
+      file: "Main.java",
+      location: "main() method",
+      description: "The JVM calls main(), which runs RobotBase.startRobot(Robot::new). This tells WPILib to create a new Robot instance and start the framework."
+    },
+    {
+      file: "Robot.java",
+      location: "Robot() constructor",
+      description: "The Robot constructor runs. It creates a new RobotContainer — this is where ALL the setup happens. Subsystems are created, buttons are bound, auto routines are registered."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "RobotContainer() constructor",
+      description: "Subsystems are instantiated (drivetrain, shooter, turret, intake, climber). Named commands are registered for PathPlanner. Controller buttons are mapped to commands. Default commands are set."
+    },
+    {
+      file: "Robot.java",
+      location: "robotPeriodic()",
+      description: "Once setup is complete, WPILib starts calling robotPeriodic() every 20ms. This runs the CommandScheduler, which checks triggers and executes active commands."
+    },
+    {
+      file: "Robot.java",
+      location: "disabledInit()",
+      description: "The robot starts in disabled mode. disabledInit() runs once — in our code, it configures the Limelight cameras for calibration while we wait for the match."
+    }
+  ]}
+  endResult="Robot is initialized, all subsystems ready, waiting in disabled mode for the match to start"
+/>
+
+Let's look at each piece in detail.
+
+---
+
+## Step 1: Main.java — The Ignition Key
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.main}`} label="Main.java" /> and you'll see the simplest file in the entire project:
+
+```java title="Main.java"
+public final class Main {
+  private Main() {}
+
+  public static void main(String... args) {
+    RobotBase.startRobot(Robot::new);
+  }
+}
+```
+
+That's it. One line of real code. `RobotBase.startRobot(Robot::new)` tells WPILib: "Create a `Robot` object and start running the lifecycle on it."
+
+You will **never** edit this file. It's the same in every FRC project.
+
+---
+
+## Step 2: Robot.java — The Engine
+
+<GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> is where the lifecycle lives. Your `Robot` class extends `TimedRobot`, which is a WPILib class that calls your methods at the right time.
+
+Here's the constructor — the first thing that runs:
+
+```java title="Robot.java — Constructor"
+public Robot() {
+    // Create the RobotContainer — this is where all the setup happens
+    m_robotContainer = new RobotContainer();
+    System.out.println(">>> Robot code started — build v31 <<<");
+}
+```
+
+The constructor does one critical thing: it creates a `RobotContainer`. That single line triggers a cascade of setup — every subsystem gets created, every button gets wired, every auto routine gets registered.
+
+:::note[Why RobotContainer?]
+You might wonder: why not put all the setup code directly in Robot.java? Separating it into RobotContainer keeps Robot.java clean and focused on the lifecycle. RobotContainer handles the "what" (subsystems, buttons, autos), while Robot.java handles the "when" (init, periodic, mode changes).
+:::
+
+---
+
+## Step 3: RobotContainer.java — The Wiring Diagram
+
+When `new RobotContainer()` runs, a lot happens inside the constructor of <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />. Here's the order:
+
+1. **Subsystems are created** — Each `new XxxSubsystem()` call creates a subsystem object that talks to real hardware (motors, sensors)
+2. **Named commands are registered** — PathPlanner auto routines can trigger commands by name (like "AutoShoot" or "Intake")
+3. **Auto chooser is set up** — A dropdown appears on the dashboard so the drive team can pick an auto routine
+4. **Controller buttons are mapped** — Each button on the Xbox controller is wired to a command (X = intake, Y = shoot, etc.)
+5. **Default commands are set** — These run whenever no other command is using a subsystem (like the turret always auto-aiming)
+
+Here's a simplified look at the subsystem creation:
+
+```java title="RobotContainer.java — Subsystem Creation"
+// Each subsystem represents a physical mechanism on the robot
+public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+private final TurretSubsystem turretSubsystem = new TurretSubsystem();
+private final ShooterSubsystem shooterSubsystem = new ShooterSubsystem();
+private final IntakeSubsystem intakeSubsystem = new IntakeSubsystem();
+private final ClimberSubsystem climber = new ClimberSubsystem();
+```
+
+And here's how a button gets wired to a command:
+
+```java title="RobotContainer.java — Button Binding Example"
+// X BUTTON — toggle intake on/off
+controller.x()
+    .toggleOnTrue(
+        new SequentialCommandGroup(
+            new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem),
+            new WaitCommand(0.3),
+            new InstantCommand(() -> intakeSubsystem.stopDeploy()),
+            new RunCommand(() -> intakeSubsystem.runIntake(0.5), intakeSubsystem)
+        )
+    );
+```
+
+Don't worry about understanding every detail of that binding yet — you'll dig into commands and bindings in Lessons 4 and 5. For now, just know that RobotContainer is where inputs (buttons) get connected to outputs (motor actions).
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Startup Sequence"
+  prompt="Put these events in the correct order: (A) Subsystems are created, (B) Main.java calls startRobot(), (C) robotPeriodic() starts running, (D) Robot constructor creates RobotContainer, (E) Controller buttons are mapped to commands"
+>
+The correct order is:
+
+1. **(B)** Main.java calls `RobotBase.startRobot(Robot::new)`
+2. **(D)** Robot constructor creates RobotContainer
+3. **(A)** Subsystems are created (inside RobotContainer constructor)
+4. **(E)** Controller buttons are mapped to commands (also inside RobotContainer constructor)
+5. **(C)** `robotPeriodic()` starts running every 20ms
+
+The key insight: steps A and E both happen *inside* step D. Creating the RobotContainer triggers all the subsystem and button setup.
+</Checkpoint>
+
+---
+
+## The Lifecycle Methods
+
+Once the robot is initialized, WPILib calls different methods depending on what mode the Driver Station is in. Here's the complete picture:
+
+### `robotPeriodic()` — The Heartbeat
+
+This method runs **every 20 milliseconds**, no matter what mode the robot is in — disabled, autonomous, teleop, or test. It's the robot's heartbeat.
+
+```java title="Robot.java — robotPeriodic()"
+@Override
+public void robotPeriodic() {
+    // The command scheduler runs all active commands and checks triggers
+    CommandScheduler.getInstance().run();
+    // Fuse Limelight vision data into our position estimate
+    updateVisionPoseEstimate();
+    // Clamp pose to field bounds
+    clampPoseToField();
+    // Update calibration dashboard values
+    m_robotContainer.updateCalibrationTelemetry();
+}
+```
+
+The most important line is `CommandScheduler.getInstance().run()`. This is the engine that makes the entire command-based framework work. Every 20ms it:
+- Checks all triggers (button presses, sensor thresholds)
+- Runs the `execute()` method of every active command
+- Runs the `periodic()` method of every subsystem
+- Cleans up commands that have finished
+
+:::caution[Don't Block robotPeriodic!]
+If your code takes longer than 20ms to run inside `robotPeriodic()`, the robot will start lagging. Never put `Thread.sleep()`, long loops, or blocking network calls here. Keep it fast!
+:::
+
+### `disabledInit()` and `disabledPeriodic()`
+
+When the robot is on but the Driver Station says "Disabled":
+
+- `disabledInit()` runs **once** when entering disabled mode
+- `disabledPeriodic()` runs every 20ms while disabled (in addition to `robotPeriodic()`)
+
+In our code, `disabledInit()` configures the Limelight cameras for calibration:
+
+```java title="Robot.java — disabledInit()"
+@Override
+public void disabledInit() {}
+```
+
+Our team's `disabledInit()` is empty — the Limelight setup happens in `disabledPeriodic()` instead, where it continuously seeds the camera IMUs with the Pigeon heading while we wait for the match.
+
+### `autonomousInit()` and `autonomousPeriodic()`
+
+When the match starts and the Driver Station switches to Autonomous:
+
+- `autonomousInit()` runs **once** — it grabs the selected auto routine and starts it
+- `autonomousPeriodic()` runs every 20ms during auto (usually empty because the CommandScheduler handles everything)
+
+```java title="Robot.java — autonomousInit()"
+@Override
+public void autonomousInit() {
+    // Configure Limelight cameras for best accuracy
+    LimelightHelpers.SetIMUMode("limelight-front", 4);
+    LimelightHelpers.SetIMUMode("limelight-back", 0);
+
+    // Get the selected auto routine from the dashboard chooser
+    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+
+    if (m_autonomousCommand != null) {
+        CommandScheduler.getInstance().schedule(m_autonomousCommand);
+    }
+}
+```
+
+Notice how `autonomousInit()` doesn't *run* the auto — it just *schedules* it. The CommandScheduler (running inside `robotPeriodic()`) actually executes the auto command step by step.
+
+### `teleopInit()` and `teleopPeriodic()`
+
+When the Driver Station switches to Teleop (driver control):
+
+- `teleopInit()` runs **once** — it cancels any leftover auto command
+- `teleopPeriodic()` runs every 20ms during teleop (usually empty)
+
+```java title="Robot.java — teleopInit()"
+@Override
+public void teleopInit() {
+    // Cancel auto command if it's still running when teleop starts
+    if (m_autonomousCommand != null) {
+        CommandScheduler.getInstance().cancel(m_autonomousCommand);
+    }
+    // Configure Limelight cameras
+    LimelightHelpers.SetIMUMode("limelight-front", 4);
+    LimelightHelpers.SetIMUMode("limelight-back", 0);
+}
+```
+
+Why cancel the auto command? Because autonomous and teleop are different phases. If the auto routine is still running when the driver takes over, it would fight with the driver's joystick inputs. Cancelling it cleanly hands control to the driver.
+
+:::note[Why Is teleopPeriodic() Empty?]
+You might expect teleop logic to go in `teleopPeriodic()`. But in command-based robot code, all the teleop behavior is handled by the CommandScheduler — default commands, button bindings, and triggers. The scheduler runs inside `robotPeriodic()`, so `teleopPeriodic()` doesn't need any code.
+:::
+
+---
+
+## The Full Lifecycle Flow
+
+Here's the complete picture of a typical FRC match:
+
+```
+Power On
+  └─→ Main.java: main() calls startRobot()
+       └─→ Robot constructor: creates RobotContainer
+            └─→ RobotContainer: creates subsystems, binds buttons, sets defaults
+  
+  ┌─── robotPeriodic() runs every 20ms (ALWAYS) ───┐
+  │  CommandScheduler.run()                          │
+  │  Vision updates                                  │
+  │  Telemetry updates                               │
+  └──────────────────────────────────────────────────┘
+
+  DISABLED ──→ disabledInit() once, disabledPeriodic() every 20ms
+     │
+     ▼
+  AUTONOMOUS ──→ autonomousInit() once (schedules auto command)
+     │            autonomousPeriodic() every 20ms
+     ▼
+  TELEOP ──→ teleopInit() once (cancels auto command)
+     │        teleopPeriodic() every 20ms
+     ▼
+  DISABLED ──→ disabledInit() again (match over)
+```
+
+The key takeaway: `robotPeriodic()` is **always** running. The mode-specific methods just set things up — the CommandScheduler inside `robotPeriodic()` does the actual work.
+
+---
+
+<Quiz client:load
+  question="Which method runs the CommandScheduler that executes all active commands?"
+  options={[
+    "teleopPeriodic()",
+    "robotPeriodic()",
+    "autonomousInit()",
+    "RobotContainer constructor"
+  ]}
+  correctIndex={1}
+  explanation="robotPeriodic() calls CommandScheduler.getInstance().run() every 20ms regardless of mode. This is the heartbeat that drives all command execution — in teleop, autonomous, and even disabled mode. The mode-specific methods (teleopInit, autonomousInit) just schedule or cancel commands."
+/>
+
+---
+
+## The Role of Each Core File in the Lifecycle
+
+Now that you understand the lifecycle, let's connect it back to the four Core Files:
+
+| Core File | Lifecycle Role |
+|-----------|---------------|
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.main}`} label="Main.java" /> | Triggers the lifecycle by calling `startRobot()` — runs once, never again |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> | Owns the lifecycle methods (`robotPeriodic`, `teleopInit`, `autonomousInit`, etc.) — WPILib calls these automatically |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> | Sets up everything during `robotInit` (via the constructor) — subsystems, bindings, autos. Also provides `getAutonomousCommand()` for auto mode |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> | Provides configuration values that subsystems read during initialization — CAN IDs, speeds, field measurements |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Lifecycle Methods"
+  prompt="For each scenario, name the lifecycle method that runs: (1) The match switches from auto to teleop. (2) The robot needs to check if a button was pressed. (3) The robot code first starts up. (4) The match ends and the robot is disabled."
+>
+1. **teleopInit()** — runs once when the Driver Station switches to teleop mode. It cancels any leftover auto command.
+2. **robotPeriodic()** — the CommandScheduler inside `robotPeriodic()` checks all triggers (including button presses) every 20ms.
+3. **Robot() constructor** — when the code first starts, the Robot constructor runs and creates the RobotContainer, which sets up everything.
+4. **disabledInit()** — runs once when the robot enters disabled mode (match over or e-stop).
+</Checkpoint>
+
+---
+
+## Why This Matters
+
+Understanding the lifecycle is the foundation for everything else in this course:
+
+- **Lesson 3 (Subsystems)** — You'll see how subsystems are created during initialization and how their `periodic()` methods run every loop
+- **Lesson 4 (Commands)** — You'll learn how commands get scheduled and executed by the CommandScheduler
+- **Lesson 5 (RobotContainer)** — You'll trace button presses from the controller through the binding to the command to the motor output
+- **Unit 2 (Trace a Button)** — You'll follow the complete path from a button press to a motor spinning
+
+Every time you read robot code, ask yourself: *"When does this code run?"* The answer is always one of the lifecycle methods you learned today.
+
+---
+
+## What's Next?
+
+In **Unit 1: Open & Build**, you'll open the robot project in your IDE and run your first Gradle build. Then in **Lesson 3: Subsystems**, you'll dive into the subsystem files and learn how they control real hardware.

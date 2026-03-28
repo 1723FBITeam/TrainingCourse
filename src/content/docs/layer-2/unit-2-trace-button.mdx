@@ -1,0 +1,279 @@
+---
+title: "Unit 2: Trace a Button Press"
+description: "Trace the X button intake from controller press to motor output"
+sidebar:
+  order: 4
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeTrace } from '../../../components/CodeTrace';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this unit you will have:
+
+- Traced the complete execution path from the X button press to intake motor output
+- Identified every file and method involved in the intake sequence
+- Documented your trace using the step-by-step format from Lesson 5
+- Understood how `toggleOnTrue`, `SequentialCommandGroup`, and `InstantCommand` work together
+
+This is your **first assignment**. You'll follow the code from the driver's controller all the way to spinning motors — the same skill you'll use every time you need to understand what a button does.
+
+:::tip[Before You Start]
+Make sure you've completed **Lesson 5: RobotContainer & Bindings**. You saw a full trace of the Y button (shoot) there. Now you'll do the same thing yourself for the X button (intake). Have the robot project open in your IDE so you can follow along in the actual code.
+:::
+
+---
+
+## The Assignment
+
+> **Trace what happens when the driver presses the X button on the controller.**
+
+Your job is to follow the execution path step by step:
+1. Where does the button press get detected?
+2. What command does it trigger?
+3. What subsystem methods get called?
+4. What motors actually move?
+
+Open these two files in your IDE — you'll be jumping between them:
+
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} startLine={242} endLine={261} label="RobotContainer.java — X button binding (lines 242–261)" />
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />
+
+---
+
+## Step 1: Find the Button Binding
+
+Open `RobotContainer.java` and search for `controller.x()`. You should find it around line 242. This is where the X button is wired to a command:
+
+```java title="RobotContainer.java — X button binding"
+controller.x()
+    .toggleOnTrue(
+        new SequentialCommandGroup(
+            new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem),
+            new WaitCommand(0.3),
+            new InstantCommand(() -> intakeSubsystem.stopDeploy()),
+            new RunCommand(() -> intakeSubsystem.runIntake(0.5), intakeSubsystem)
+        ).finallyDo(() -> {
+            intakeSubsystem.stopIntake();
+            intakeSubsystem.deployIn();
+        })
+        .andThen(new WaitCommand(0.3))
+        .andThen(new InstantCommand(() -> intakeSubsystem.stopDeploy()))
+    );
+```
+
+Let's break this down piece by piece.
+
+### What does `toggleOnTrue` mean?
+
+Remember from Lesson 5: `toggleOnTrue` means the button acts like a light switch. Press X once → the command starts. Press X again → the command is cancelled (and cleanup runs). The driver doesn't have to hold the button.
+
+### What is a `SequentialCommandGroup`?
+
+A `SequentialCommandGroup` runs a list of commands **one after another**, in order. Each command in the list must finish before the next one starts. Think of it like a recipe — you do step 1, then step 2, then step 3.
+
+The exception is the last command in this group: `RunCommand`. A `RunCommand` runs **forever** (every 20ms) until something cancels it. That's what keeps the rollers spinning until the driver presses X again.
+
+---
+
+## Step 2: Trace Each Command in the Sequence
+
+Now let's walk through what happens in order when the driver presses X.
+
+### Phase 1: Deploy Out
+
+```java
+new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem)
+```
+
+An `InstantCommand` runs once and finishes immediately. This one calls `deployOut()` on the intake subsystem. Open `IntakeSubsystem.java` and find the `deployOut()` method (around line 110):
+
+```java title="IntakeSubsystem.java — deployOut()"
+public void deployOut() {
+    intakeLeftActivator.set(DEPLOY_SPEED);   // 0.15 = 15% power
+    intakeRightActivator.set(DEPLOY_SPEED);
+}
+```
+
+Both deploy motors (TalonFXS, CAN IDs {robotConfig.canIds.deployLeft} and {robotConfig.canIds.deployRight}) start spinning at 15% power, swinging the intake outward so the rollers can reach the ground.
+
+### Phase 2: Wait
+
+```java
+new WaitCommand(0.3)
+```
+
+The sequence pauses for 0.3 seconds. This gives the deploy mechanism time to swing out before the rollers start. Without this wait, the rollers would spin before the intake is in position.
+
+### Phase 3: Stop Deploy Motors
+
+```java
+new InstantCommand(() -> intakeSubsystem.stopDeploy())
+```
+
+After the 0.3-second wait, the deploy motors stop. Find `stopDeploy()` in `IntakeSubsystem.java` (around line 124):
+
+```java title="IntakeSubsystem.java — stopDeploy()"
+public void stopDeploy() {
+    intakeLeftActivator.stopMotor();
+    intakeRightActivator.stopMotor();
+}
+```
+
+The intake is now deployed and the deploy motors are off. The mechanism stays in position because the motors are configured in Coast mode and gravity holds it.
+
+### Phase 4: Run Rollers (Continuous)
+
+```java
+new RunCommand(() -> intakeSubsystem.runIntake(0.5), intakeSubsystem)
+```
+
+A `RunCommand` calls its lambda **every 20ms** until cancelled. This one calls `runIntake(0.5)` — find it in `IntakeSubsystem.java` (around line 99):
+
+```java title="IntakeSubsystem.java — runIntake()"
+public void runIntake(double speed) {
+    intakeLeftMotor.set(speed);    // 50% power
+    intakeRightMotor.set(speed);
+}
+```
+
+Both roller motors (TalonFX, CAN IDs {robotConfig.canIds.intakeLeft} and {robotConfig.canIds.intakeRight}) spin at 50% power, pulling game pieces into the robot. This keeps running until the driver presses X again.
+
+---
+
+## Step 3: What Happens When X Is Pressed Again?
+
+When the driver presses X a second time, `toggleOnTrue` cancels the running command. The `finallyDo` block runs as cleanup:
+
+```java title="RobotContainer.java — Cleanup on cancel"
+.finallyDo(() -> {
+    intakeSubsystem.stopIntake();
+    intakeSubsystem.deployIn();
+})
+.andThen(new WaitCommand(0.3))
+.andThen(new InstantCommand(() -> intakeSubsystem.stopDeploy()))
+```
+
+Here's the cancel sequence:
+1. `stopIntake()` — rollers stop spinning
+2. `deployIn()` — deploy motors reverse, pulling the intake back into the robot frame
+3. Wait 0.3 seconds for the retract to finish
+4. `stopDeploy()` — deploy motors stop
+
+The intake is now fully retracted and everything is off. Clean and tidy.
+
+---
+
+## Step 4: See the Complete Trace
+
+Here's the full trace from button press to motor output, all in one view:
+
+<CodeTrace client:load
+  title="Intake Button Trace: X Button → IntakeSubsystem"
+  startAction="Driver presses X button on the controller"
+  steps={[
+    {
+      file: "RobotContainer.java",
+      location: "line 242 — controller.x().toggleOnTrue(...)",
+      description: "X button trigger fires. toggleOnTrue starts the SequentialCommandGroup. The command scheduler begins running the sequence."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "line 246 — InstantCommand → intakeSubsystem.deployOut()",
+      description: "First command in the sequence. Calls deployOut() on the intake subsystem to swing the intake outward."
+    },
+    {
+      file: "IntakeSubsystem.java",
+      location: "line 110 — deployOut() method",
+      description: "Sets both deploy TalonFXS motors (CAN IDs 33, 34) to DEPLOY_SPEED (0.15 = 15% power). The intake swings out toward the ground."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "line 247 — WaitCommand(0.3)",
+      description: "Pauses the sequence for 0.3 seconds to let the deploy mechanism finish swinging out."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "line 248 — InstantCommand → intakeSubsystem.stopDeploy()",
+      description: "Stops the deploy motors. The intake is now in position and held by gravity."
+    },
+    {
+      file: "IntakeSubsystem.java",
+      location: "line 124 — stopDeploy() method",
+      description: "Calls stopMotor() on both deploy TalonFXS motors. They stop spinning but the intake stays deployed."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "line 249 — RunCommand → intakeSubsystem.runIntake(0.5)",
+      description: "Starts the roller motors at 50% power. This RunCommand repeats every 20ms until the driver presses X again."
+    },
+    {
+      file: "IntakeSubsystem.java",
+      location: "line 99 — runIntake(0.5) method",
+      description: "Sets both roller TalonFX motors (CAN IDs 31, 32) to 0.5 (50% power). The rollers spin inward, pulling game pieces into the robot."
+    }
+  ]}
+  endResult="Intake is deployed and rollers spin at 50% power, pulling game pieces into the robot"
+/>
+
+:::note[Count the Files]
+The entire intake sequence only touches **two files**: `RobotContainer.java` (where the binding and command sequence live) and `IntakeSubsystem.java` (where the actual motor control methods live). That's the subsystem/command pattern in action — RobotContainer orchestrates, the subsystem does the work.
+:::
+
+---
+
+## Step 5: Verify Your Understanding
+
+Now it's your turn. Without looking at the trace above, try to answer these questions. Then check your answers.
+
+<Checkpoint client:load
+  title="Checkpoint: Trace Verification"
+  prompt="Answer these questions from memory, then reveal the answers to check your work: (1) What binding type does the X button use? (2) What is the first motor action that happens after pressing X? (3) Why is there a WaitCommand(0.3) in the middle of the sequence? (4) What method keeps the rollers spinning continuously? (5) What happens when X is pressed a second time?"
+>
+1. **`toggleOnTrue`** — press once to start, press again to stop (like a light switch).
+
+2. **`deployOut()`** is called first — the deploy motors swing the intake outward at 15% power so the rollers can reach the ground.
+
+3. **The WaitCommand gives the deploy mechanism 0.3 seconds to finish swinging out** before the rollers start. Without it, the rollers would spin before the intake is in position to grab anything.
+
+4. **`RunCommand(() -> intakeSubsystem.runIntake(0.5))`** — a RunCommand calls its lambda every 20ms, so `runIntake(0.5)` keeps getting called to maintain 50% roller speed.
+
+5. **The command is cancelled.** The `finallyDo` block runs: `stopIntake()` stops the rollers, `deployIn()` retracts the intake, then after 0.3 seconds `stopDeploy()` stops the deploy motors. Everything is off and retracted.
+</Checkpoint>
+
+---
+
+## Step 6: Document Your Trace
+
+For your **Trace Worksheet** deliverable, write down the trace you just completed. Use this format for each step:
+
+| Step | File | Location | What Happens |
+|------|------|----------|-------------|
+| 1 | RobotContainer.java | `controller.x().toggleOnTrue(...)` | X button trigger fires, starts SequentialCommandGroup |
+| 2 | RobotContainer.java | `InstantCommand → deployOut()` | Calls deployOut() on IntakeSubsystem |
+| 3 | IntakeSubsystem.java | `deployOut()` method | Deploy motors set to 15% power, intake swings out |
+| 4 | RobotContainer.java | `WaitCommand(0.3)` | Waits 0.3s for deploy to finish |
+| 5 | RobotContainer.java | `InstantCommand → stopDeploy()` | Stops deploy motors |
+| 6 | IntakeSubsystem.java | `stopDeploy()` method | Deploy motors stopped, intake held by gravity |
+| 7 | RobotContainer.java | `RunCommand → runIntake(0.5)` | Starts rollers at 50% power (runs every 20ms) |
+| 8 | IntakeSubsystem.java | `runIntake(0.5)` method | Roller motors (CAN 31, 32) spin at 50% |
+
+Save this — you'll submit it as part of the Trace Worksheet deliverable.
+
+:::tip[Practice Makes Perfect]
+Now that you've traced the intake button, try tracing a different button on your own. The A button (jostle) is a good next challenge — it uses `whileTrue` instead of `toggleOnTrue`, and the command comes from a method inside IntakeSubsystem rather than being built inline in RobotContainer. See if you can follow the path!
+:::
+
+---
+
+## What's Next?
+
+You've completed your first code trace — from the X button on the controller all the way through to spinning intake motors. This is the core skill of reading robot code: following the execution path from input to output.
+
+In **Unit 3: Trace a Sensor**, you'll trace in the other direction — from a sensor reading back through the code to see how the robot uses that data to make decisions.

@@ -1,0 +1,91 @@
+---
+title: "Deliverable: Trace Worksheet"
+description: "Guided trace exercise template for following execution from a driver action through the code to a motor output."
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { robotConfig } from '../../../config/robot-references';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { CodeTrace } from '../../../components/CodeTrace';
+
+## 📝 Trace Worksheet
+
+A **Trace Worksheet** follows the execution path from a driver action (like pressing a button) all the way through the code to a motor output. This is the core skill of code reading — understanding *what happens* when something triggers.
+
+### Example: Intake Button Trace (Completed)
+
+Here is a completed trace to use as a reference:
+
+<CodeTrace
+  client:load
+  title="Intake Button Trace — Example"
+  startAction={`Driver presses ${robotConfig.bindings.intake.button} button on ${robotConfig.bindings.intake.controller} controller`}
+  steps={[
+    { file: robotConfig.coreFiles.robotContainer, location: `controller.${robotConfig.bindings.intake.button.toLowerCase()}().${robotConfig.bindings.intake.type}(...)`, description: "Button trigger fires, starting the SequentialCommandGroup" },
+    { file: robotConfig.coreFiles.robotContainer, location: "InstantCommand → intakeSubsystem.deployOut()", description: "Deploy motors swing intake outward" },
+    { file: robotConfig.subsystems[0].file.split('/').pop() ?? '', location: "deployOut() method", description: "Left and right deploy motors set to DEPLOY_SPEED" },
+    { file: robotConfig.coreFiles.robotContainer, location: "WaitCommand(0.3)", description: "Wait 0.3 seconds for deploy to finish" },
+    { file: robotConfig.coreFiles.robotContainer, location: "RunCommand → intakeSubsystem.runIntake(0.5)", description: "Roller motors start spinning at 50% to grab notes" },
+    { file: robotConfig.subsystems[0].file.split('/').pop() ?? '', location: "runIntake(speed) method", description: "Left and right roller motors set to the given speed" },
+  ]}
+  endResult="Intake rollers spin at 50% power, pulling notes into the robot"
+/>
+
+---
+
+### Your Turn: Trace Exercise 1
+
+Trace what happens when the driver presses the **{robotConfig.bindings.shoot.button}** button. Fill in each step below.
+
+**Files to reference:**
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + '.java'} />
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[1].file}`} label={robotConfig.subsystems[1].name + '.java'} />
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[2].file}`} label={robotConfig.subsystems[2].name + '.java'} />
+
+<CodeTrace
+  client:load
+  title="Shoot Button Trace — Fill In"
+  startAction={`Driver presses ${robotConfig.bindings.shoot.button} button on ${robotConfig.bindings.shoot.controller} controller`}
+  steps={[
+    { file: robotConfig.coreFiles.robotContainer, location: "______________________", description: "What binding triggers? What command starts?" },
+    { file: "______________________", location: "______________________", description: "What does the command do first?" },
+    { file: "______________________", location: "______________________", description: "What subsystem method is called?" },
+    { file: "______________________", location: "______________________", description: "What motor output results?" },
+  ]}
+  endResult="Fill in: What is the final result?"
+/>
+
+---
+
+### Your Turn: Trace Exercise 2
+
+Pick any other button binding from <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and trace it yourself.
+
+<CodeTrace
+  client:load
+  title="Custom Trace — Your Choice"
+  startAction="Driver presses ______ button on ______ controller"
+  steps={[
+    { file: "______________________", location: "______________________", description: "______________________" },
+    { file: "______________________", location: "______________________", description: "______________________" },
+    { file: "______________________", location: "______________________", description: "______________________" },
+    { file: "______________________", location: "______________________", description: "______________________" },
+  ]}
+  endResult="Fill in: What is the final result?"
+/>
+
+---
+
+### Tips for Tracing
+
+:::tip[How to Trace]
+1. **Start at the trigger** — Find the button binding in `RobotContainer.java`
+2. **Follow the command** — What command does the binding create or schedule?
+3. **Enter the subsystem** — What subsystem method does the command call?
+4. **Find the motor** — What motor or actuator does the subsystem method control?
+5. **Record the output** — What physically happens on the robot?
+:::

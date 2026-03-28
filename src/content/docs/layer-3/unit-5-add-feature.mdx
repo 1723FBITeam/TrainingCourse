@@ -1,0 +1,355 @@
+---
+title: "Unit 5: Add a Simple Feature"
+description: "Create a new command that interacts with an existing subsystem"
+sidebar:
+  order: 3
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this unit you will have:
+
+- Created a brand new Java command file from scratch
+- Written a command class with all four lifecycle methods
+- Registered the command as a named command in RobotContainer
+- Built the project and confirmed everything compiles
+
+You're writing real robot code now. The command is small — it only calls methods that already exist on a subsystem — but the process is exactly how every new feature starts on the team.
+
+:::tip[What You Need]
+- **WPILib VS Code** with the robot project open and building (verified in Unit 1)
+- Git configured and a working branch (you practiced this in Unit 4)
+- Familiarity with commands and subsystems (Lessons 3–5)
+:::
+
+---
+
+## What We're Building
+
+We're going to create a **SpinUpCommand** — a command that spins the shooter flywheels to a preset speed and holds them there until the command is cancelled.
+
+Why this command?
+
+- It uses **existing methods** on ShooterSubsystem — no new hardware control needed
+- It follows the exact same pattern as AutoShootCommand (which you studied in Lesson 4)
+- It's useful in practice: pre-spinning the flywheels saves time before a shot
+
+Here's what the command will do:
+
+1. **initialize** → Start spinning the flywheels at 25 RPS
+2. **execute** → Nothing extra needed (the motor controller holds the speed automatically)
+3. **end** → Stop the flywheels
+4. **isFinished** → Always returns `false` (runs until cancelled)
+
+Take a look at the subsystem methods we'll call:
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> — specifically `runFlywheelsRPS()` and `stopFlywheels()`
+
+---
+
+## Step 1: Create a Branch
+
+Just like Unit 4, start with a clean branch:
+
+```bash
+git checkout main
+git pull
+git checkout -b add-spinup-command
+```
+
+---
+
+## Step 2: Create the Command File
+
+In the VS Code file explorer, navigate to:
+
+**src → main → java → frc → robot → commands**
+
+You'll see <GitHubLink client:load path={`${robotConfig.projectRoot}/commands/AutoShootCommand.java`} label="AutoShootCommand.java" /> already there. Your new file will live right next to it.
+
+Right-click the `commands` folder → **New File** → name it:
+
+```
+SpinUpCommand.java
+```
+
+:::caution[File Name Matters]
+The file name must match the class name exactly (including capitalization). Java requires this — `SpinUpCommand.java` contains `public class SpinUpCommand`.
+:::
+
+---
+
+## Step 3: Write the Command
+
+Copy this code into your new `SpinUpCommand.java` file. Read through the comments — they explain every piece:
+
+```java title="commands/SpinUpCommand.java"
+package frc.robot.commands;
+
+import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.subsystems.ShooterSubsystem;
+
+/**
+ * SpinUpCommand — spins the shooter flywheels to a preset speed.
+ *
+ * This is useful for pre-spinning before a shot. The flywheels
+ * use closed-loop velocity control, so the motor controller
+ * automatically maintains the target speed once we set it.
+ *
+ * Runs until cancelled (isFinished always returns false).
+ */
+public class SpinUpCommand extends Command {
+
+    private final ShooterSubsystem shooter;
+
+    // Target flywheel speed in Rotations Per Second
+    // 25 RPS ≈ 1500 RPM — a moderate warm-up speed
+    private static final double SPINUP_RPS = 25.0;
+
+    /**
+     * Creates a new SpinUpCommand.
+     * @param shooter The ShooterSubsystem this command will control
+     */
+    public SpinUpCommand(ShooterSubsystem shooter) {
+        this.shooter = shooter;
+        // Tell the scheduler that this command uses the shooter subsystem.
+        // This prevents two commands from controlling the shooter at once.
+        addRequirements(shooter);
+    }
+
+    /** Called once when the command starts running. */
+    @Override
+    public void initialize() {
+        // Start the flywheels at our target speed
+        shooter.runFlywheelsRPS(SPINUP_RPS);
+    }
+
+    /** Called every 20ms while the command is running. */
+    @Override
+    public void execute() {
+        // Nothing to do here — the motor controller's built-in PID
+        // loop maintains the target speed automatically.
+        // In a more advanced command, you might update the speed
+        // based on distance or other sensor data.
+    }
+
+    /** Called once when the command ends (cancelled or interrupted). */
+    @Override
+    public void end(boolean interrupted) {
+        // Always stop the flywheels when the command ends.
+        // The "interrupted" parameter tells us WHY it ended:
+        //   false = ended normally (isFinished returned true)
+        //   true  = another command took over the shooter
+        shooter.stopFlywheels();
+    }
+
+    /** Returns true when the command should end on its own. */
+    @Override
+    public boolean isFinished() {
+        // Return false = run forever until cancelled.
+        // This lets the driver toggle it on/off with a button.
+        return false;
+    }
+}
+```
+
+Save the file (**Ctrl+S** or **Cmd+S**).
+
+---
+
+## Step 4: Understand What You Just Wrote
+
+Let's break down the key parts before moving on.
+
+### The Constructor
+
+```java
+public SpinUpCommand(ShooterSubsystem shooter) {
+    this.shooter = shooter;
+    addRequirements(shooter);
+}
+```
+
+The constructor takes a `ShooterSubsystem` as a parameter. This is called **dependency injection** — the command doesn't create the subsystem, it receives it. RobotContainer creates the subsystem and passes it in when it creates the command.
+
+`addRequirements(shooter)` is critical. It tells the command scheduler "this command needs exclusive access to the shooter." If another command that also requires the shooter starts running, the scheduler will cancel this one first. This prevents two commands from fighting over the same motors.
+
+### The Four Lifecycle Methods
+
+Every command has the same four methods. Here's when each one runs:
+
+| Method | When It Runs | Our SpinUpCommand |
+|--------|-------------|-------------------|
+| `initialize()` | Once, when the command first starts | Starts the flywheels |
+| `execute()` | Every 20ms while running | Does nothing (motor PID handles it) |
+| `end(interrupted)` | Once, when the command stops | Stops the flywheels |
+| `isFinished()` | Every 20ms, checked after execute | Returns `false` (runs forever) |
+
+Compare this to AutoShootCommand — it has the same four methods, just with more complex logic in `execute()` (aiming the turret, checking distance, deciding when to feed).
+
+<AnswerReveal client:load label="Why is execute() empty?">
+The flywheels use **closed-loop velocity control**. When we call `runFlywheelsRPS(25.0)` in `initialize()`, the motor controller's internal PID loop (running at 1000Hz on the motor itself) continuously adjusts voltage to maintain 25 RPS. We don't need to do anything in `execute()` because the hardware handles speed maintenance automatically.
+
+If we were using open-loop control (just setting a voltage), we'd need to call `runFlywheelsRPS()` every loop in `execute()` to keep the command active. But closed-loop is smarter — set it once and the motor does the rest.
+</AnswerReveal>
+
+---
+
+## Step 5: Register as a Named Command
+
+Named commands let PathPlanner autonomous routines trigger your command by name. Even if you don't plan to use SpinUpCommand in auto right now, registering it is good practice.
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and find the section where named commands are registered. Look for lines like:
+
+```java title="RobotContainer.java — Named Commands section"
+NamedCommands.registerCommand("AutoShoot", ...);
+NamedCommands.registerCommand("StopShooter", ...);
+```
+
+Add your new command right after the existing registrations:
+
+```java title="RobotContainer.java — Add this line"
+NamedCommands.registerCommand("SpinUp",
+    new SpinUpCommand(shooterSubsystem));
+```
+
+You'll also need to add the import at the top of RobotContainer.java, near the existing command import:
+
+```java title="RobotContainer.java — Add this import"
+import frc.robot.commands.SpinUpCommand;
+```
+
+:::tip[Finding the Right Spot]
+Use **Ctrl+F** (or **Cmd+F**) and search for `NamedCommands.registerCommand` to jump straight to the registration section. Add your line after the last existing `registerCommand` call.
+
+For the import, search for `import frc.robot.commands` — you'll see the AutoShootCommand import. Add yours on the next line.
+:::
+
+Save RobotContainer.java.
+
+---
+
+## Step 6: Build the Project
+
+Time for the moment of truth. In the terminal:
+
+```bash
+./gradlew build
+```
+
+Or on Windows:
+
+```bash
+gradlew.bat build
+```
+
+You're looking for **BUILD SUCCESSFUL**.
+
+### Common Build Errors
+
+If the build fails, check these first:
+
+| Error Message | Likely Cause | Fix |
+|--------------|-------------|-----|
+| `cannot find symbol: class SpinUpCommand` | Missing import in RobotContainer | Add the `import frc.robot.commands.SpinUpCommand;` line |
+| `cannot find symbol: variable shooterSubsystem` | Typo in the variable name | Check RobotContainer — the field is called `shooterSubsystem` (camelCase) |
+| `package frc.robot.commands does not exist` | Wrong package declaration in SpinUpCommand.java | First line should be `package frc.robot.commands;` |
+| `class SpinUpCommand is public, should be declared in a file named SpinUpCommand.java` | File name doesn't match class name | Rename the file to exactly `SpinUpCommand.java` |
+| `';' expected` or other syntax errors | Missing semicolon or bracket | Compare your code carefully against the example above |
+
+If you're stuck, undo your RobotContainer changes and try again:
+
+```bash
+git checkout -- src/main/java/frc/robot/RobotContainer.java
+```
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Build Verification"
+  prompt="After creating SpinUpCommand.java and registering it in RobotContainer, run the Gradle build. Did it succeed? How many files did you create, and how many did you modify?"
+>
+Your build should end with **BUILD SUCCESSFUL**.
+
+You **created** 1 new file: `commands/SpinUpCommand.java`
+
+You **modified** 1 existing file: `RobotContainer.java` (added an import and a named command registration)
+
+That's it — two files touched, one of them brand new. If the build succeeded, your command is syntactically correct and properly integrated into the project. The compiler verified that `ShooterSubsystem` has the methods you're calling (`runFlywheelsRPS` and `stopFlywheels`) and that the constructor signature matches how you're creating it in RobotContainer.
+</Checkpoint>
+
+---
+
+## Step 7: Review and Commit
+
+Check your changes:
+
+```bash
+git diff
+```
+
+This shows the RobotContainer modifications. To also see the new file:
+
+```bash
+git status
+```
+
+You should see:
+- `modified: src/main/java/frc/robot/RobotContainer.java`
+- `Untracked files: src/main/java/frc/robot/commands/SpinUpCommand.java`
+
+Run through the self-review checklist from Lesson 6:
+
+1. ✅ **Does it build?** — Yes
+2. ✅ **Did I only change what I intended?** — One new file, one modified file
+3. ✅ **Is it safe?** — The command only calls existing subsystem methods
+4. ✅ **Can I explain it?** — "I created a command that spins the flywheels to 25 RPS"
+5. ✅ **Is it easy to revert?** — Delete the file and remove two lines from RobotContainer
+
+Stage, commit, and push:
+
+```bash
+git add src/main/java/frc/robot/commands/SpinUpCommand.java
+git add src/main/java/frc/robot/RobotContainer.java
+git commit -m "Add SpinUpCommand to pre-spin shooter flywheels at 25 RPS"
+git push origin add-spinup-command
+```
+
+Then open a pull request on GitHub for your team to review.
+
+---
+
+## Going Further (Optional)
+
+Once you're comfortable with this pattern, here are ways to extend SpinUpCommand without touching any new hardware:
+
+- **Make the speed configurable** — Change the constructor to accept a `double targetRPS` parameter instead of using a constant. Then you could create `new SpinUpCommand(shooterSubsystem, 30.0)` for different speeds.
+- **Add a dashboard readout** — Print the current flywheel speed in `execute()` using `SmartDashboard.putNumber()` so you can watch it spin up on Shuffleboard.
+- **Add a ready indicator** — Call `shooter.isReadyToShoot()` in `execute()` and publish the result to the dashboard so the driver knows when flywheels are at speed.
+
+These are all safe modifications — they only use existing subsystem methods and don't add new motor control.
+
+---
+
+## What You Just Did
+
+You created a new command from scratch, following the same pattern used by every command in the robot project:
+
+1. Extend `Command`
+2. Accept subsystems in the constructor and call `addRequirements()`
+3. Implement the four lifecycle methods: `initialize`, `execute`, `end`, `isFinished`
+4. Register it in RobotContainer so the rest of the system can use it
+
+This is the foundation of every feature you'll ever add to the robot. The complexity grows — AutoShootCommand coordinates three subsystems and uses sensor data — but the structure is always the same four methods.
+
+---
+
+## What's Next?
+
+You've completed all three layers of the course. Head to the **Deliverables** section to finish your Code Map, Trace Worksheet, Glossary, and Code Reading Checklist. These are your reference materials for the rest of the season.

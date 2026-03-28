@@ -1,0 +1,342 @@
+---
+title: "Unit 6: Understanding Autonomous"
+description: "Learn how autonomous routines work with PathPlanner"
+sidebar:
+  order: 6
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this unit you will have:
+
+- Understood what autonomous mode is and why it matters in FRC matches
+- Learned how PathPlanner organizes paths and autos as JSON files
+- Read through the actual auto routines deployed on our robot
+- Traced how named commands connect PathPlanner autos to real robot code
+- Understood how the auto chooser lets the drive team pick a routine before a match
+
+:::tip[Before You Start]
+Make sure you've completed **Lesson 5: RobotContainer & Bindings** — it introduces named commands and the auto chooser at a high level. This unit goes deeper into the actual auto files and how PathPlanner puts everything together. Have the robot project open in your IDE.
+:::
+
+---
+
+## What Is Autonomous Mode?
+
+Every FRC match starts with a **15-second autonomous period**. During this time, no human touches the controls — the robot drives itself using pre-programmed routines. After autonomous ends, the drivers take over for the teleop period.
+
+A good autonomous routine can score points before the other alliance even touches their controllers. That's a huge competitive advantage, which is why teams spend so much time getting auto right.
+
+Our robot uses **PathPlanner** to create and run autonomous routines. PathPlanner is a tool that lets you visually design paths on a field map, then generates JSON files that the robot follows at runtime.
+
+---
+
+## How PathPlanner Organizes Files
+
+PathPlanner stores everything in the deploy folder so the files get uploaded to the roboRIO along with the robot code. Browse the folder structure:
+
+<GitHubLink client:load path="src/main/deploy/pathplanner" isFolder label="deploy/pathplanner/" />
+
+```
+src/main/deploy/pathplanner/
+├── settings.json          ← Robot dimensions, max speed, motor config
+├── navgrid.json           ← Field obstacle map for pathfinding
+├── paths/                 ← Individual path segments
+│   ├── Default Path.path
+│   ├── Left depot path.path
+│   ├── Middle Depot.path
+│   ├── Over Bump Right.path
+│   ├── Right Continue.path
+│   └── Right Sswipe.path
+└── autos/                 ← Complete autonomous routines
+    ├── Default Auto.auto
+    ├── Depot.auto
+    ├── Left Depot.auto
+    ├── Passer Right.auto
+    └── Right Swipe.auto
+```
+
+There are two key concepts here:
+
+1. **Paths** (`paths/` folder) — A path is a single driving segment: "drive from point A to point B along this curve." Each `.path` file defines waypoints, velocities, and constraints for one segment of movement.
+
+2. **Autos** (`autos/` folder) — An auto is a complete routine that chains together paths and commands. Think of it as a recipe: "follow this path, then shoot, then follow another path, then intake." Each `.auto` file is a JSON command sequence.
+
+:::note[Paths vs. Autos]
+A **path** is like a single road on a map. An **auto** is the full set of driving directions that tells you which roads to take and what to do at each stop. One auto can use multiple paths, and the same path can be reused in different autos.
+:::
+
+---
+
+## Reading an Auto File
+
+Let's look at the simplest auto routine on our robot — **Default Auto**:
+
+<GitHubLink client:load path="src/main/deploy/pathplanner/autos/Default Auto.auto" label="Default Auto.auto" />
+
+```json title="Default Auto.auto"
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": { "pathName": "Default Path" }
+        },
+        {
+          "type": "named",
+          "data": { "name": "AutoShoot" }
+        }
+      ]
+    }
+  },
+  "resetOdom": true
+}
+```
+
+This auto does two things in sequence:
+1. **Follow "Default Path"** — drive along the path defined in `paths/Default Path.path`
+2. **Run "AutoShoot"** — trigger the named command registered in RobotContainer
+
+That's it. Drive somewhere, then shoot. The `"resetOdom": true` means the robot resets its position estimate to the path's starting point when auto begins — so it knows exactly where it is on the field.
+
+---
+
+## Named Commands: The Bridge Between PathPlanner and Java
+
+When PathPlanner sees `"type": "named"` with `"name": "AutoShoot"`, it looks up a command that was registered in Java code. This registration happens in RobotContainer's constructor:
+
+<GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} startLine={163} endLine={196} label="RobotContainer.java — Named commands (around lines 163–196)" />
+
+```java title="RobotContainer.java — Named commands for PathPlanner"
+// AutoShoot — aims turret at hub, spins flywheels, feeds when ready.
+NamedCommands.registerCommand("AutoShoot",
+    new AutoShootCommand(turretSubsystem, shooterSubsystem,
+        drivetrain, this::getAllianceHub, () -> false, true));
+
+// StopShooter — kills flywheels, feeder, indexer, and flattens hood.
+NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> {
+    shooterSubsystem.stopAll();
+    shooterSubsystem.setHoodPosition(0.0);
+}, shooterSubsystem));
+
+// Intake — deploy intake and run rollers to collect balls.
+NamedCommands.registerCommand("Intake", Commands.run(() -> {
+    intakeSubsystem.deployOut();
+    intakeSubsystem.runIntake(0.35);
+}, intakeSubsystem));
+
+// StopIntake — retract intake and stop rollers.
+NamedCommands.registerCommand("StopIntake", Commands.run(() -> {
+    intakeSubsystem.stopIntake();
+    intakeSubsystem.deployIn();
+}, intakeSubsystem));
+```
+
+Each `NamedCommands.registerCommand()` call maps a string name to a real Java command. When PathPlanner's auto routine says "run AutoShoot," the command scheduler finds the registered `AutoShootCommand` and executes it — the same command that uses the turret, shooter, and drivetrain subsystems you've already studied.
+
+:::caution[Name Matching Is Exact]
+The string in the `.auto` file must **exactly** match the string in `NamedCommands.registerCommand()`. If the auto says `"AutoShoot"` but the code registers `"autoShoot"` (lowercase 'a'), the command won't be found and nothing will happen during that step. Always double-check spelling and capitalization.
+:::
+
+---
+
+## Our Auto Routines
+
+Let's walk through each auto routine on the robot. Open the autos folder to follow along:
+
+<GitHubLink client:load path="src/main/deploy/pathplanner/autos" isFolder label="deploy/pathplanner/autos/" />
+
+### Default Auto
+
+The simplest routine — follow one path, then shoot.
+
+| Step | Type | Action |
+|------|------|--------|
+| 1 | path | Follow "Default Path" |
+| 2 | named | Run "AutoShoot" |
+
+### Depot
+
+A more complex routine that scores, drives to collect, and scores again:
+
+<GitHubLink client:load path="src/main/deploy/pathplanner/autos/Depot.auto" label="Depot.auto" />
+
+| Step | Type | Action |
+|------|------|--------|
+| 1 | path | Follow "Default Path" |
+| 2 | deadline | Run "AutoShoot" with a 3-second time limit |
+| 3 | path | Follow "Middle Depot" to collect area |
+| 4 | named | Run "Intake" to pick up a game piece |
+| 5 | named | Run "AutoShoot" again |
+
+The `deadline` command type is interesting — it runs "AutoShoot" but kills it after 3 seconds if it hasn't finished. This prevents the robot from getting stuck trying to shoot forever and missing the rest of the auto.
+
+### Left Depot
+
+<GitHubLink client:load path="src/main/deploy/pathplanner/autos/Left Depot.auto" label="Left Depot.auto" />
+
+| Step | Type | Action |
+|------|------|--------|
+| 1 | race | "AutoShoot" vs. 3-second wait (whichever finishes first) |
+| 2 | named | "StopShooter" — shut down shooter motors |
+| 3 | path | Follow "Left depot path" |
+| 4 | parallel | Run "Intake" and "AutoShoot" at the same time |
+
+This auto uses a `race` instead of a `deadline` — both run simultaneously and the group ends when the *first* one finishes. The final step runs intake and shooting in `parallel`, meaning the robot tries to pick up and shoot at the same time.
+
+### Passer Right
+
+<GitHubLink client:load path="src/main/deploy/pathplanner/autos/Passer Right.auto" label="Passer Right.auto" />
+
+The simplest auto — just follow one path with no shooting:
+
+| Step | Type | Action |
+|------|------|--------|
+| 1 | path | Follow "Over Bump Right" |
+
+This is a positioning auto — it just moves the robot to a strategic location without scoring.
+
+### Right Swipe
+
+<GitHubLink client:load path="src/main/deploy/pathplanner/autos/Right Swipe.auto" label="Right Swipe.auto" />
+
+The most complex auto on the robot:
+
+| Step | Type | Action |
+|------|------|--------|
+| 1 | race | "AutoShoot" vs. 3-second wait |
+| 2 | named | "StopShooter" |
+| 3 | path | Follow "Right Sswipe" |
+| 4 | race | "AutoShoot" vs. 3-second wait |
+| 5 | named | "StopShooter" |
+| 6 | path | Follow "Right Continue" |
+| 7 | parallel | "Intake" + "AutoShoot" simultaneously |
+
+This routine shoots, drives right, shoots again, continues driving, then intakes and shoots a third time. It uses multiple paths chained together with shooting between each segment.
+
+---
+
+## Command Types in Auto Files
+
+You've now seen four different command types that PathPlanner uses to compose auto routines:
+
+| Type | What It Does | Example |
+|------|-------------|---------|
+| `sequential` | Run commands one after another | The top-level wrapper for most autos |
+| `path` | Follow a pre-planned driving path | `"pathName": "Default Path"` |
+| `named` | Run a registered Java command by name | `"name": "AutoShoot"` |
+| `wait` | Pause for a set time | `"waitTime": 3.0` (3 seconds) |
+| `parallel` | Run multiple commands at the same time (ends when **all** finish) | Intake + AutoShoot together |
+| `race` | Run multiple commands at the same time (ends when **first** finishes) | AutoShoot vs. 3-second timeout |
+| `deadline` | Run multiple commands, end when the **first** command finishes | AutoShoot with time limit |
+
+These are the same command composition patterns you learned about in Lesson 4 (sequential, parallel, race, deadline) — PathPlanner just uses them in JSON format instead of Java code.
+
+---
+
+## How the Auto Chooser Works
+
+The drive team needs to pick which auto routine to run before each match. Here's how that works end-to-end:
+
+**1. Build time:** PathPlanner auto files are saved in `deploy/pathplanner/autos/`.
+
+**2. Robot startup:** In RobotContainer's constructor, `AutoBuilder.buildAutoChooser()` scans the autos folder and creates a dropdown menu:
+
+```java title="RobotContainer.java — Auto chooser"
+autoChooser = AutoBuilder.buildAutoChooser("Tests");
+SmartDashboard.putData("Auto Mode", autoChooser);
+```
+
+The `"Tests"` parameter sets the default selection. The dropdown appears on the Shuffleboard/SmartDashboard with all available autos listed.
+
+**3. Before the match:** The drive team selects an auto from the dropdown on the dashboard. They can change their selection right up until the match starts.
+
+**4. Autonomous starts:** Robot.java's `autonomousInit()` grabs the selected auto and schedules it:
+
+<GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} startLine={118} endLine={131} label="Robot.java — autonomousInit() (around line 118)" />
+
+```java title="Robot.java — autonomousInit()"
+@Override
+public void autonomousInit() {
+    LimelightHelpers.SetIMUMode("limelight-front", 4);
+    LimelightHelpers.SetIMUMode("limelight-back", 0);
+
+    m_autonomousCommand = m_robotContainer.getAutonomousCommand();
+
+    if (m_autonomousCommand != null) {
+        CommandScheduler.getInstance().schedule(m_autonomousCommand);
+    }
+}
+```
+
+The `getAutonomousCommand()` method returns whatever the drive team selected, and the command scheduler runs it. The vision cameras are also configured for optimal accuracy during auto (that's what the `SetIMUMode` calls do).
+
+**5. During auto:** The command scheduler executes the auto routine step by step — following paths, running named commands, and composing them with sequential/parallel/race/deadline groups. The vision pose estimation you traced in Unit 3 runs continuously to keep the robot's position accurate.
+
+---
+
+## The Full Picture
+
+Here's how all the pieces connect:
+
+```
+PathPlanner GUI                    Robot Code
+─────────────                      ──────────
+Design paths visually    →    paths/*.path files (JSON waypoints)
+Compose auto routines    →    autos/*.auto files (JSON command sequences)
+                                    │
+                                    ▼
+                              AutoBuilder.buildAutoChooser()
+                                    │
+                                    ▼
+                              Dashboard dropdown (drive team picks)
+                                    │
+                                    ▼
+                              autonomousInit() → schedule selected auto
+                                    │
+                                    ▼
+                              CommandScheduler runs the routine:
+                                ├── "path" → follow waypoints
+                                ├── "named" → look up registered command
+                                │     ├── "AutoShoot" → AutoShootCommand
+                                │     ├── "Intake" → deploy + run rollers
+                                │     ├── "StopShooter" → stop all
+                                │     └── "StopIntake" → retract + stop
+                                ├── "wait" → pause N seconds
+                                └── "parallel"/"race"/"deadline" → compose
+```
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Autonomous Understanding"
+  prompt="Answer these questions without scrolling back, then check your answers: (1) What is the difference between a path and an auto in PathPlanner? (2) How does a named command in an auto file connect to actual Java code? (3) What does the 'race' command type do differently from 'parallel'? (4) Where does the drive team select which auto to run? (5) What method in Robot.java starts the autonomous routine?"
+>
+1. A **path** is a single driving segment (point A to point B). An **auto** is a complete routine that chains paths together with commands like shooting and intaking.
+
+2. The auto file references a command by string name (e.g., `"AutoShoot"`). In RobotContainer, `NamedCommands.registerCommand("AutoShoot", ...)` maps that string to a real Java command object. The names must match exactly.
+
+3. **`parallel`** runs all commands and waits for **all** of them to finish. **`race`** runs all commands but ends as soon as the **first** one finishes — useful for timeouts.
+
+4. On the **Shuffleboard/SmartDashboard** dashboard. `AutoBuilder.buildAutoChooser()` creates a dropdown menu that the drive team uses before the match.
+
+5. **`autonomousInit()`** in Robot.java calls `m_robotContainer.getAutonomousCommand()` to get the selected auto, then schedules it with the CommandScheduler.
+</Checkpoint>
+
+---
+
+## What's Next?
+
+You now understand how autonomous mode works from top to bottom — from PathPlanner's JSON files through named commands to the actual subsystem code. You've read every auto routine on the robot and can explain what each one does.
+
+In **Layer 3**, you'll start making safe changes to the robot code. First up: **Lesson 6: Constants & Safe Edits**, where you'll learn which values are safe to modify and how to test your changes without breaking anything.

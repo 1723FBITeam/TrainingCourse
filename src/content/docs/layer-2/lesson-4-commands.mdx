@@ -1,0 +1,526 @@
+---
+title: "Lesson 4: Commands"
+description: "Understand how commands define robot behaviors using subsystems"
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what a command is and how it relates to subsystems
+- Describe the four lifecycle methods every command has
+- Read through `AutoShootCommand` and explain what each section does
+- Identify inline commands in `RobotContainer` and explain how they work
+- Understand command groups and how they combine simple commands into complex behaviors
+
+:::tip[Before You Start]
+Make sure you've completed **Lesson 3: Subsystems** first. Commands *use* subsystems — they call the public methods you learned about in the last lesson. If you don't know what a subsystem is yet, go back and read Lesson 3.
+:::
+
+---
+
+## The Mental Model: Command = Instruction
+
+In Lesson 3 you learned that **subsystems are capabilities** — they answer "what can the robot do?" Now it's time for the other half:
+
+> **A command is an instruction that tells one or more subsystems what to do and when to do it.**
+
+Think of it like a restaurant kitchen:
+- **Subsystems** are the kitchen stations — the grill, the fryer, the prep counter. Each station has equipment and knows how to use it.
+- **Commands** are the orders — "make a burger," "fry the onion rings," "plate the meal." An order tells the stations what to do, in what sequence, and when to stop.
+
+Without commands, subsystems just sit there doing nothing. Without subsystems, commands have nothing to control. They work together.
+
+---
+
+## The Command Lifecycle
+
+Every command in WPILib follows the same four-method lifecycle. When the command scheduler runs a command, it calls these methods in order:
+
+| Method | When It Runs | What It Does |
+|--------|-------------|-------------|
+| `initialize()` | Once, when the command first starts | Set up initial state — reset timers, zero out variables |
+| `execute()` | Every ~20ms while the command is running | Do the actual work — move motors, check sensors, make decisions |
+| `isFinished()` | After every `execute()` call | Return `true` to end the command, `false` to keep going |
+| `end(interrupted)` | Once, when the command stops | Clean up — stop motors, reset state. The `interrupted` parameter tells you if the command was cancelled early |
+
+Here's the flow as a timeline:
+
+```
+Command starts
+    │
+    ▼
+initialize()          ← runs once
+    │
+    ▼
+┌─► execute()         ← runs every 20ms
+│   │
+│   ▼
+│   isFinished()?
+│   │
+│   ├── false ────────┘  (loop back to execute)
+│   │
+│   └── true
+│       │
+│       ▼
+│   end(false)        ← normal finish
+│
+│   OR if cancelled:
+│   end(true)         ← interrupted
+```
+
+:::note[20ms = 50 Times Per Second]
+The robot's main loop runs at 50Hz — that means `execute()` gets called 50 times every second. That's fast enough to smoothly control motors and respond to sensor changes in real time.
+:::
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Command Lifecycle"
+  prompt="A command spins a motor for 2 seconds, then stops. Which lifecycle method would contain the timer check? Which method would stop the motor?"
+>
+- **`isFinished()`** would check if 2 seconds have passed and return `true` when the time is up.
+- **`end(interrupted)`** would stop the motor. This is the right place for cleanup because `end()` runs whether the command finishes normally OR gets cancelled early. If you stopped the motor in `isFinished()`, it wouldn't stop if the command was interrupted!
+
+A common pattern: `initialize()` starts a timer, `execute()` runs the motor, `isFinished()` checks the timer, and `end()` stops the motor.
+</Checkpoint>
+
+---
+
+## Walking Through AutoShootCommand
+
+Now let's read a real command from your robot project. <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label="AutoShootCommand.java" /> is the "smart shoot" command that coordinates the turret, flywheels, and feeder to score a note. Open it up and follow along.
+
+### What does AutoShootCommand do?
+
+{robotConfig.commands[0].description}. It runs continuously (never finishes on its own) and handles everything:
+
+1. **Aims the turret** at the target, compensating for robot movement
+2. **Calculates distance** to the target
+3. **Sets hood angle and flywheel speed** based on that distance
+4. **Feeds the note** once the turret is aimed AND flywheels are at speed
+
+### The constructor — declaring dependencies
+
+Look at the constructor first:
+
+```java title="AutoShootCommand.java — Constructor"
+public AutoShootCommand(TurretSubsystem turret, ShooterSubsystem shooter,
+                        CommandSwerveDrivetrain drivetrain, Supplier<Pose2d> targetSupplier,
+                        Supplier<Boolean> trajectoryPassingSupplier, boolean allianceZoneOnly) {
+    this.turret = turret;
+    this.shooter = shooter;
+    this.drivetrain = drivetrain;
+    this.targetSupplier = targetSupplier;
+    this.trajectoryPassingSupplier = trajectoryPassingSupplier;
+    this.allianceZoneOnly = allianceZoneOnly;
+    addRequirements(turret, shooter);
+}
+```
+
+Two important things to notice:
+
+1. **The subsystems are passed in as parameters** — the command doesn't create them. This is called *dependency injection*. RobotContainer creates the subsystems and hands them to the command.
+
+2. **`addRequirements(turret, shooter)`** — this tells the command scheduler "I need exclusive access to the turret and shooter." If another command tries to use the turret while AutoShootCommand is running, the scheduler will cancel one of them. This prevents two commands from fighting over the same motor.
+
+:::note[Why Not Require the Drivetrain?]
+AutoShootCommand reads the drivetrain's position but doesn't control it — the driver still steers while shooting. Since it only *reads* from the drivetrain (no motor commands), it doesn't need to require it. Requirements are only for subsystems the command *controls*.
+:::
+
+### initialize() — resetting state
+
+```java title="AutoShootCommand.java — initialize()"
+@Override
+public void initialize() {
+    feeding = false;
+    readyTimestamp = 0.0;
+    targetPose = targetSupplier.get();
+}
+```
+
+Simple and clean. Reset the feeding flag, clear the timer, and grab the current target position. This runs once when the driver presses the Y button.
+
+### execute() — the main loop
+
+The `execute()` method is where all the action happens. It runs every 20ms and follows a clear step-by-step sequence:
+
+```java title="AutoShootCommand.java — execute() overview"
+@Override
+public void execute() {
+    // Step 1: Update target (changes as robot crosses field zones)
+    targetPose = targetSupplier.get();
+
+    // Step 2: Aim the turret with velocity compensation
+    turret.aimAtPose(robotPose, targetPose, fieldSpeeds);
+
+    // Step 3: Calculate distance to target
+    double distance = robotPose.getTranslation().getDistance(compensatedTarget);
+
+    // Step 4: Set hood angle and flywheel speed based on distance
+    shooter.autoAim(distance);
+
+    // Step 5: When aimed AND flywheels ready, feed the note
+    if (aimed && flywheelsReady && /* other safety checks */) {
+        shooter.runFeeder(0.85);
+    }
+}
+```
+
+Notice how the command **coordinates multiple subsystems**. It calls methods on both `turret` (aiming) and `shooter` (flywheels, feeder, hood) every single loop. That's the power of commands — they orchestrate complex behaviors across subsystems.
+
+### The feed delay — a clever safety pattern
+
+AutoShootCommand doesn't feed the note the instant everything looks ready. It waits 0.3 seconds first:
+
+```java title="AutoShootCommand.java — Feed delay"
+private static final double FEED_DELAY = 0.3;
+
+// In execute():
+if (aimed && flywheelsReady && !turretResetting && !inTrench && allowedToShoot) {
+    if (readyTimestamp == 0.0) {
+        readyTimestamp = Timer.getFPGATimestamp();
+    }
+    if (Timer.getFPGATimestamp() - readyTimestamp >= FEED_DELAY) {
+        shooter.runFeeder(0.85);  // Fire!
+        feeding = true;
+    }
+} else {
+    readyTimestamp = 0.0;  // Reset timer if conditions change
+}
+```
+
+Why? Because the "ready" check might briefly flicker `true` before the flywheels are truly stable. The delay ensures we only feed when everything has been consistently ready for 0.3 seconds. This is a common pattern in FRC — **debouncing** a condition before acting on it.
+
+### isFinished() — runs forever
+
+```java title="AutoShootCommand.java — isFinished()"
+@Override
+public boolean isFinished() {
+    return false;
+}
+```
+
+This command never finishes on its own. It runs until the driver presses Y again (toggle off) or until autonomous ends. The `toggleOnTrue` binding in RobotContainer handles the toggle behavior.
+
+### end() — cleanup
+
+```java title="AutoShootCommand.java — end()"
+@Override
+public void end(boolean interrupted) {
+    turret.stop();
+    shooter.stopAll();
+    shooter.setHoodPosition(0.0);  // Flatten hood when not shooting
+}
+```
+
+When the command ends (for any reason), it stops everything and flattens the hood. This is critical — without `end()`, the flywheels would keep spinning after you stop shooting!
+
+<Quiz client:load
+  question="Why does AutoShootCommand call addRequirements(turret, shooter) but NOT addRequirements(drivetrain)?"
+  options={[
+    "The drivetrain is broken and can't be used",
+    "AutoShootCommand only reads from the drivetrain — it doesn't control its motors",
+    "The drivetrain doesn't have any motors",
+    "You can only require two subsystems at a time"
+  ]}
+  correctIndex={1}
+  explanation="AutoShootCommand reads the drivetrain's position and velocity to calculate aiming, but it never sends motor commands to the drivetrain. The driver still controls driving while shooting. You only need to 'require' subsystems that your command controls — this prevents two commands from sending conflicting motor commands to the same hardware."
+/>
+
+---
+
+## Inline Commands in RobotContainer
+
+Not every command needs its own file. For simpler behaviors, WPILib provides **inline command factories** that let you create commands right inside <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />. Let's look at the most important ones.
+
+### The Intake Toggle (X Button)
+
+This is the most complex inline command in the project. When the driver presses X, it deploys the intake, runs the rollers, and handles retraction when toggled off:
+
+```java title="RobotContainer.java — X button intake toggle"
+controller.x()
+    .toggleOnTrue(
+        // Phase 1: Deploy out, wait, stop deploy, then run rollers
+        new SequentialCommandGroup(
+            new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem),
+            new WaitCommand(0.3),
+            new InstantCommand(() -> intakeSubsystem.stopDeploy()),
+            new RunCommand(() -> intakeSubsystem.runIntake(0.5), intakeSubsystem)
+        ).finallyDo(() -> {
+            // When cancelled: stop rollers and start retracting
+            intakeSubsystem.stopIntake();
+            intakeSubsystem.deployIn();
+        })
+        // Phase 2: After cancel, give deploy motor 0.3s to retract, then stop
+        .andThen(new WaitCommand(0.3))
+        .andThen(new InstantCommand(() -> intakeSubsystem.stopDeploy()))
+    );
+```
+
+Let's break down the command types used here:
+
+| Command Type | What It Does |
+|-------------|-------------|
+| `InstantCommand` | Runs a single action once and immediately finishes — like flipping a switch |
+| `WaitCommand` | Does nothing for a specified number of seconds, then finishes |
+| `RunCommand` | Runs an action every 20ms and **never finishes** — keeps going until cancelled |
+| `SequentialCommandGroup` | Runs commands one after another, in order |
+
+The `toggleOnTrue` binding means: press X once to start the command, press X again to cancel it. When cancelled, the `finallyDo()` block runs the cleanup (stop rollers, retract intake).
+
+### The Shoot Toggle (Y Button)
+
+The Y button uses the `AutoShootCommand` class we just studied:
+
+```java title="RobotContainer.java — Y button shoot toggle"
+controller.y()
+    .toggleOnTrue(new AutoShootCommand(
+        turretSubsystem, shooterSubsystem, drivetrain,
+        this::getSmartTarget, this::isTrajectoryPassingEnabled, false));
+```
+
+Notice how RobotContainer passes the subsystems and configuration to the command. The `this::getSmartTarget` syntax is a **method reference** — it passes the `getSmartTarget()` method itself so AutoShootCommand can call it every loop to get the latest target.
+
+### Named Commands for Autonomous
+
+RobotContainer also registers **named commands** that PathPlanner autonomous routines can trigger:
+
+```java title="RobotContainer.java — Named commands for auto"
+NamedCommands.registerCommand("AutoShoot",
+    new AutoShootCommand(turretSubsystem, shooterSubsystem, drivetrain,
+        this::getAllianceHub, () -> false, true));
+
+NamedCommands.registerCommand("Intake", Commands.run(() -> {
+    intakeSubsystem.deployOut();
+    intakeSubsystem.runIntake(0.35);
+}, intakeSubsystem));
+
+NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> {
+    shooterSubsystem.stopAll();
+    shooterSubsystem.setHoodPosition(0.0);
+}, shooterSubsystem));
+```
+
+These are the same subsystem methods you learned about in Lesson 3, just wrapped in commands and given names that PathPlanner can reference. `Commands.run()` creates a `RunCommand` (runs every 20ms), and `Commands.runOnce()` creates an `InstantCommand` (runs once).
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Inline Commands"
+  prompt="Look at the X button intake toggle in RobotContainer. What happens in this exact order when the driver presses X? List the sequence of actions."
+>
+When the driver presses X, this sequence runs:
+
+1. **`deployOut()`** — the deploy motors swing the intake outward (InstantCommand, runs once)
+2. **Wait 0.3 seconds** — gives the deploy mechanism time to fully extend (WaitCommand)
+3. **`stopDeploy()`** — stops the deploy motors since the intake is now out (InstantCommand)
+4. **`runIntake(0.5)`** — rollers start spinning at 50% to grab notes (RunCommand, runs continuously)
+
+When the driver presses X again (toggle off), the cleanup runs:
+
+5. **`stopIntake()`** — rollers stop spinning
+6. **`deployIn()`** — deploy motors retract the intake
+7. **Wait 0.3 seconds** — gives the mechanism time to retract
+8. **`stopDeploy()`** — stops the deploy motors
+
+The `SequentialCommandGroup` ensures steps 1–4 happen in order, and `finallyDo()` ensures the cleanup always runs when the command ends.
+</Checkpoint>
+
+---
+
+## Command Groups: Combining Commands
+
+You've already seen `SequentialCommandGroup` in the intake toggle. WPILib provides several ways to combine commands into more complex behaviors:
+
+### SequentialCommandGroup — One After Another
+
+Commands run in order. The next command starts only after the previous one finishes.
+
+```
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│ Deploy   │───►│ Wait 0.3s│───►│ Run      │
+│ Out      │    │          │    │ Rollers  │
+└──────────┘    └──────────┘    └──────────┘
+```
+
+This is what the intake toggle uses — deploy first, wait, then run rollers.
+
+### ParallelCommandGroup — All At Once
+
+All commands start at the same time. The group finishes when **all** commands have finished.
+
+```
+┌──────────────────┐
+│ Aim Turret       │──┐
+└──────────────────┘  │
+                      ├──► Group finishes when ALL are done
+┌──────────────────┐  │
+│ Spin Flywheels   │──┘
+└──────────────────┘
+```
+
+Use this when you want multiple things happening simultaneously — like aiming the turret while spinning up the flywheels.
+
+### ParallelRaceGroup — First One Wins
+
+All commands start at the same time. The group finishes when **any one** command finishes, and the rest are cancelled.
+
+```
+┌──────────────────┐
+│ Run Intake       │──┐
+└──────────────────┘  │
+                      ├──► Group finishes when FIRST one ends
+┌──────────────────┐  │
+│ Wait 3 seconds   │──┘
+└──────────────────┘
+```
+
+This is useful for timeouts — "run the intake, but stop after 3 seconds no matter what."
+
+### Chaining with `.andThen()` and `.alongWith()`
+
+Instead of creating group objects, you can chain commands with methods:
+
+```java
+// Sequential: do A, then B
+commandA.andThen(commandB)
+
+// Parallel: do A and B at the same time
+commandA.alongWith(commandB)
+```
+
+The intake toggle uses `.andThen()` to chain the retraction sequence after the main command ends.
+
+<Quiz client:load
+  question="You want the robot to deploy the intake AND spin up the flywheels at the same time, then feed the note after both are ready. Which combination would you use?"
+  options={[
+    "SequentialCommandGroup for everything",
+    "ParallelCommandGroup(deploy, spinUp).andThen(feed)",
+    "ParallelRaceGroup(deploy, spinUp, feed)",
+    "Three separate commands with no grouping"
+  ]}
+  correctIndex={1}
+  explanation="ParallelCommandGroup runs deploy and spin-up at the same time, and waits for BOTH to finish. Then .andThen(feed) runs the feed command after both are ready. A SequentialCommandGroup would do them one at a time (slower). A ParallelRaceGroup would stop everything when the first one finishes (wrong behavior). And separate commands with no grouping wouldn't coordinate the timing."
+/>
+
+---
+
+## Default Commands — What Happens When Nothing Else Is Running
+
+Every subsystem can have a **default command** — a command that runs whenever no other command is using that subsystem. RobotContainer sets these up:
+
+```java title="RobotContainer.java — Default commands"
+// Turret default: always auto-aim at the smart target
+turretSubsystem.setDefaultCommand(new RunCommand(
+    () -> turretSubsystem.aimAtPose(drivetrain.getState().Pose, getSmartTarget(),
+                drivetrain.getState().Speeds),
+    turretSubsystem));
+
+// Drivetrain default: drive using joystick input
+drivetrain.setDefaultCommand(
+    drivetrain.applyRequest(() -> drive
+        .withVelocityX(/* joystick input */)
+        .withVelocityY(/* joystick input */)
+        .withRotationalRate(/* joystick input */)));
+```
+
+The turret's default command keeps it constantly aimed at the target — even when the driver isn't shooting. The drivetrain's default command reads the joystick and drives. These run in the background, all the time, unless a higher-priority command takes over.
+
+:::note[Why Default Commands Matter]
+Without a default command, the drivetrain would stop responding to the joystick whenever a driving command ended. Default commands ensure subsystems always have something useful to do.
+:::
+
+---
+
+## How Commands and Subsystems Work Together — The Big Picture
+
+Let's zoom out and see how everything connects:
+
+1. **Subsystems** declare hardware and expose methods (`runIntake()`, `aimAtPose()`, etc.)
+2. **Commands** call those methods in a structured lifecycle (`initialize` → `execute` → `isFinished` → `end`)
+3. **RobotContainer** creates both subsystems and commands, then wires buttons to commands
+4. **The Command Scheduler** runs the whole show — it calls `execute()` on active commands every 20ms and manages which command gets each subsystem
+
+```
+Driver presses Y button
+    │
+    ▼
+RobotContainer: controller.y().toggleOnTrue(AutoShootCommand)
+    │
+    ▼
+Command Scheduler starts AutoShootCommand
+    │
+    ▼
+AutoShootCommand.initialize() — reset state
+    │
+    ▼
+Every 20ms: AutoShootCommand.execute()
+    ├── turret.aimAtPose()        ← calls TurretSubsystem method
+    ├── shooter.autoAim()         ← calls ShooterSubsystem method
+    └── shooter.runFeeder()       ← calls ShooterSubsystem method
+    │
+    ▼
+Driver presses Y again → command cancelled
+    │
+    ▼
+AutoShootCommand.end(true) — stop turret, stop shooter, flatten hood
+```
+
+---
+
+## 🛠️ Try It: Modify a Named Command
+
+This is the first lesson where you get to write code! Here's a small, safe modification to try.
+
+Look at the "StopShooter" named command in RobotContainer:
+
+```java title="RobotContainer.java — StopShooter named command"
+NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> {
+    shooterSubsystem.stopAll();
+    shooterSubsystem.setHoodPosition(0.0);
+}, shooterSubsystem));
+```
+
+**Your task:** Add a `System.out.println()` statement so you can see in the console when this command runs during autonomous. Add it right before `stopAll()`:
+
+```java
+System.out.println(">>> AUTO: Stopping shooter <<<");
+```
+
+This is a safe change — it only adds a log message and doesn't affect any motor behavior. After making the change, build the project to make sure it compiles. You'll learn more about safe edits like this in Lesson 6.
+
+:::caution[Modifications Only]
+In this course, code writing activities are limited to modifying existing code or creating simple new commands. We're not rewriting subsystems or changing motor configurations — that's for Programming 2.
+:::
+
+---
+
+## Quick Reference: Command Types
+
+| Type | Behavior | Example Use |
+|------|----------|-------------|
+| `InstantCommand` | Runs once, finishes immediately | Toggle a flag, set a motor speed |
+| `RunCommand` | Runs every 20ms, never finishes | Joystick driving, continuous intake |
+| `WaitCommand` | Waits N seconds, then finishes | Delays between actions |
+| `SequentialCommandGroup` | Runs commands in order | Deploy → wait → run rollers |
+| `ParallelCommandGroup` | Runs commands simultaneously, finishes when all done | Aim + spin up flywheels |
+| `ParallelRaceGroup` | Runs commands simultaneously, finishes when first one done | Run intake with a timeout |
+| Custom command class | Full lifecycle control | `AutoShootCommand` |
+
+---
+
+## What's Next?
+
+You now understand both halves of the robot's architecture: **subsystems** (capabilities) and **commands** (instructions). In **Lesson 5: RobotContainer and Bindings**, you'll see how RobotContainer ties everything together — creating subsystems, wiring buttons to commands, and setting up autonomous routines. You'll also trace the complete path from a button press to a motor output.
+

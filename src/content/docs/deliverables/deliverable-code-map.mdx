@@ -1,0 +1,77 @@
+---
+title: "Deliverable: Code Map"
+description: "One-page visual reference showing the Robot_Project file and folder structure with a one-sentence description of each file's role."
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { robotConfig } from '../../../config/robot-references';
+import { GitHubLink } from '../../../components/GitHubLink';
+
+## 🗺️ Code Map
+
+A **Code Map** is a one-page visual reference that shows every important file in the robot project and what it does. Use this as a quick-reference sheet when navigating the codebase.
+
+### Robot Project Structure
+
+Browse the full project on GitHub: <GitHubLink client:load path={robotConfig.projectRoot} isFolder label="frc/robot/" />
+
+
+```
+frc/robot/
+├── Main.java                  — Entry point; starts the robot program
+├── Robot.java                 — Handles the robot lifecycle (init, periodic, teleop, auto)
+├── RobotContainer.java        — Wires subsystems to controller buttons and selects autos
+├── Constants.java             — Stores configuration values (CAN IDs, speeds, limits)
+├── LimelightHelpers.java      — Utility methods for Limelight vision camera
+├── Telemetry.java             — Sends data to the driver dashboard
+├── TrajectoryCalculations.java — Math for shooting trajectory
+│
+├── subsystems/
+│   ├── IntakeSubsystem.java           — Picks up game pieces with rollers and deploy mechanism
+│   ├── ShooterSubsystem.java          — Launches notes with dual flywheels, feeder, and hood
+│   ├── TurretSubsystem.java           — Rotates the shooter left/right to aim
+│   ├── ClimberSubsystem.java          — Handles endgame climbing with elevator and servos
+│   └── CommandSwerveDrivetrain.java   — Swerve drive for omnidirectional movement
+│
+├── commands/
+│   └── AutoShootCommand.java  — Coordinates turret aiming, spin-up, and note feeding
+│
+└── generated/
+    └── TunerConstants.java    — Auto-generated swerve config from CTRE Tuner X (read-only!)
+```
+
+### Core Files
+
+| File | Role |
+|------|------|
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.main}`} label="Main.java" /> | Entry point — calls `RobotBase.startRobot()` to launch the robot program |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> | Manages the robot lifecycle: `robotInit`, `teleopPeriodic`, `autonomousInit`, etc. |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> | Creates subsystems, binds controller buttons to commands, selects autonomous routines |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> | Central location for configuration values: CAN IDs, motor speeds, and limits |
+
+### Subsystems
+
+| Subsystem | File | What It Controls |
+|-----------|------|-----------------|
+| {robotConfig.subsystems[0].name} | <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label={robotConfig.subsystems[0].name + '.java'} /> | {robotConfig.subsystems[0].description} |
+| {robotConfig.subsystems[1].name} | <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[1].file}`} label={robotConfig.subsystems[1].name + '.java'} /> | {robotConfig.subsystems[1].description} |
+| {robotConfig.subsystems[2].name} | <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[2].file}`} label={robotConfig.subsystems[2].name + '.java'} /> | {robotConfig.subsystems[2].description} |
+| {robotConfig.subsystems[3].name} | <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[3].file}`} label={robotConfig.subsystems[3].name + '.java'} /> | {robotConfig.subsystems[3].description} |
+| {robotConfig.subsystems[4].name} | <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[4].file}`} label={robotConfig.subsystems[4].name + '.java'} /> | {robotConfig.subsystems[4].description} |
+
+### Commands
+
+| Command | File | What It Does |
+|---------|------|-------------|
+| {robotConfig.commands[0].name} | <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + '.java'} /> | {robotConfig.commands[0].description} |
+
+:::caution[Read-Only Files]
+The `generated/` folder contains <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.generatedFiles[0].file}`} label="TunerConstants.java" /> — {robotConfig.generatedFiles[0].description}.
+:::
+
+### ✏️ Your Task
+
+Print or copy this page and keep it next to your computer as a quick reference. When you need to find a file, check the map first!

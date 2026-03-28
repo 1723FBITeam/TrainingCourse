@@ -1,0 +1,41 @@
+---
+title: "Deliverable: Glossary"
+description: "Beginner glossary of key FRC programming terms with definitions for all 11 required terms."
+sidebar:
+  order: 3
+prev: true
+next: true
+---
+
+import { robotConfig } from '../../../config/robot-references';
+import { GitHubLink } from '../../../components/GitHubLink';
+
+## 📖 Beginner Glossary
+
+This glossary covers the key terms you need to know when reading FRC robot code. Use it as a quick reference while working through lessons and units.
+
+| # | Term | Definition |
+|---|------|-----------|
+| 1 | **Subsystem** | A Java class extending `SubsystemBase` that represents a physical robot mechanism. Each subsystem controls specific hardware (motors, sensors). Examples in our project: {robotConfig.subsystems.map(s => s.name).join(', ')}. |
+| 2 | **Command** | A Java class or inline definition that describes a specific robot behavior. Commands use one or more subsystems to perform actions. Example: {robotConfig.commands[0].name} coordinates aiming and shooting. |
+| 3 | **CommandScheduler** | The WPILib engine that manages which commands are running each loop cycle. It checks triggers, starts/stops commands, and calls subsystem `periodic()` methods automatically. |
+| 4 | **Trigger** | A condition (usually a button press) that causes a command to start, stop, or toggle. Configured in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> using methods like `.onTrue()`, `.toggleOnTrue()`, and `.whileTrue()`. |
+| 5 | **Default Command** | A command that runs on a subsystem whenever no other command is using that subsystem. Set with `subsystem.setDefaultCommand(...)`. The drive command is a common default command. |
+| 6 | **Periodic** | A method that runs repeatedly every ~20 ms (50 times per second) during a specific robot mode. Examples: `teleopPeriodic()`, `autonomousPeriodic()`. The CommandScheduler runs inside the periodic loop. |
+| 7 | **Teleop** | The driver-controlled period of an FRC match (typically 2 minutes 15 seconds). During teleop, the driver uses controllers to operate the robot through button bindings and joystick inputs. |
+| 8 | **Autonomous** | The first 15 seconds of an FRC match where the robot operates without driver input. The robot follows pre-programmed routines (often using PathPlanner paths) selected in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />. |
+| 9 | **Constants** | Fixed configuration values stored in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />. Includes motor speeds, CAN IDs, PID gains, and physical measurements. Changing constants is the safest type of code edit. |
+| 10 | **CAN ID** | A unique number assigned to each motor controller and sensor on the robot's CAN bus network. Our robot uses CAN IDs like {robotConfig.canIds.shooterLeft} (shooter left), {robotConfig.canIds.intakeLeft} (intake left), and {robotConfig.canIds.climbLeft} (climber left). Defined in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />. |
+| 11 | **Swerve Drive** | A drivetrain where each wheel can independently rotate and change direction, allowing the robot to move in any direction while facing any direction. Our project uses CTRE's swerve implementation in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[4].file}`} label="CommandSwerveDrivetrain.java" /> with configuration in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.generatedFiles[0].file}`} label="TunerConstants.java" />. |
+
+---
+
+### ✏️ Your Task
+
+1. Read through each definition above
+2. For any term you don't fully understand, find an example in the actual robot code using the GitHub links
+3. Try writing each definition in your own words — if you can explain it without looking, you know it!
+
+:::tip[Study Tip]
+The best way to learn these terms is to see them in action. As you work through the lessons, come back to this glossary and connect each term to a specific line of code you've read.
+:::

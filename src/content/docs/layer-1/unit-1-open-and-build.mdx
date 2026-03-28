@@ -1,0 +1,187 @@
+---
+title: "Unit 1: Open & Build the Project"
+description: "Open the robot project in your IDE and run your first build"
+sidebar:
+  order: 3
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this unit you will have:
+
+- Opened the team's Robot_Project in WPILib VS Code
+- Located the key files you learned about in Lesson 1
+- Run a Gradle build and confirmed it completes without errors
+
+This is your first hands-on interaction with the real codebase. No code changes — just open, explore, and build.
+
+:::tip[What You Need]
+- **WPILib VS Code** installed on your computer (comes with the WPILib installer)
+- The team's robot project cloned to your machine (you did this in Lesson 0)
+- An internet connection for the first build (Gradle downloads dependencies)
+:::
+
+---
+
+## Step 1: Open the Project in WPILib VS Code
+
+WPILib ships its own version of VS Code with all the FRC extensions pre-installed. Always use this version for robot code — not regular VS Code.
+
+1. Launch **WPILib VS Code** from your Start Menu (Windows) or Applications folder (macOS)
+2. Go to **File → Open Folder…**
+3. Navigate to where you cloned the robot project and select the `2026code/` folder
+4. Click **Open** (or **Select Folder** on Windows)
+
+:::caution[Open the Right Folder]
+Make sure you open the `2026code/` folder itself — not a parent folder that *contains* it. VS Code needs to see `build.gradle` at the top level to recognize this as a Gradle project. If you see `build.gradle` in the file explorer sidebar, you're in the right place.
+:::
+
+After opening, VS Code may show a notification asking to import the Gradle project. Click **Yes** or **Import** if prompted. This lets the Java extension understand the project structure.
+
+---
+
+## Step 2: Verify the Project Structure
+
+Use the VS Code file explorer (the sidebar on the left) to confirm you can see the project files. Expand the folders and check that the structure matches what you learned in Lesson 1:
+
+```
+2026code/
+├── src/
+│   └── main/
+│       ├── java/frc/robot/    ← Robot code lives here
+│       └── deploy/            ← PathPlanner paths and configs
+├── vendordeps/                ← Third-party library configs
+├── build.gradle               ← Gradle build script
+├── gradlew / gradlew.bat      ← Gradle wrapper scripts
+└── ...
+```
+
+Now navigate to the robot code folder. In the file explorer, expand:
+
+**src → main → java → frc → robot**
+
+You should see the core files you learned about:
+
+- `{robotConfig.coreFiles.main}` — program entry point
+- `{robotConfig.coreFiles.robot}` — lifecycle manager
+- `{robotConfig.coreFiles.robotContainer}` — wires subsystems to controls
+- `{robotConfig.coreFiles.constants}` — configuration values
+
+And the subfolders:
+
+- `subsystems/` — one file per physical mechanism ({robotConfig.subsystems.length} subsystems)
+- `commands/` — standalone command classes
+- `generated/` — auto-generated swerve config (don't edit!)
+
+:::note[Can't Find the Files?]
+If the `src/main/java/frc/robot/` path doesn't appear, double-check that you opened the correct folder. The `2026code/` folder should be the workspace root — you should see `build.gradle` at the top level of the explorer, not nested inside another folder.
+:::
+
+---
+
+## Step 3: Open a Core File
+
+Let's make sure VS Code can actually read the Java files. Click on <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> in the file explorer to open it.
+
+You should see Java code with syntax highlighting (keywords in different colors). If the file opens as plain text with no colors, the Java extension may not be loaded yet — give it a minute and try again.
+
+Don't worry about understanding every line right now. You covered the lifecycle in Lesson 2. The point here is just to confirm the IDE is working.
+
+---
+
+## Step 4: Run a Gradle Build
+
+This is the big moment — let's compile the entire project and make sure everything works.
+
+### Option A: Using the WPILib Command Palette (Recommended)
+
+1. Press **Ctrl+Shift+P** (Windows/Linux) or **Cmd+Shift+P** (macOS) to open the Command Palette
+2. Type **WPILib: Build Robot Code**
+3. Select it from the dropdown and press Enter
+
+A terminal panel will open at the bottom of VS Code showing the build progress.
+
+### Option B: Using the Terminal Directly
+
+1. Open the VS Code terminal: **Terminal → New Terminal** (or press **Ctrl+`**)
+2. Make sure you're in the `2026code/` directory
+3. Run the build command:
+
+```bash
+./gradlew build
+```
+
+On Windows, use:
+
+```bash
+gradlew.bat build
+```
+
+:::tip[First Build Takes a While]
+The very first build downloads all the WPILib libraries, CTRE Phoenix, REV, and other dependencies. This can take several minutes depending on your internet speed. Subsequent builds are much faster because Gradle caches the downloads.
+:::
+
+---
+
+## Step 5: Read the Build Output
+
+Watch the terminal output as the build runs. You'll see Gradle downloading dependencies, compiling Java files, and running checks.
+
+### What Success Looks Like
+
+A successful build ends with:
+
+```
+BUILD SUCCESSFUL in Xs
+```
+
+The `X` is the number of seconds it took. If you see this, congratulations — the project compiles and you're ready to go!
+
+### What Failure Looks Like
+
+If something goes wrong, you'll see:
+
+```
+BUILD FAILED
+```
+
+along with error messages above it. Common first-build issues:
+
+| Problem | Fix |
+|---------|-----|
+| "Could not resolve dependencies" | Check your internet connection. Gradle needs to download libraries. |
+| "JAVA_HOME is not set" | Make sure you're using WPILib VS Code, not regular VS Code. The WPILib version sets JAVA_HOME automatically. |
+| "Could not determine java version" | Reinstall the WPILib suite — it includes the correct JDK (Java 17). |
+| Compilation errors in Java files | This shouldn't happen on a fresh clone. Try `./gradlew clean build` to start fresh. If errors persist, ask a mentor. |
+
+:::caution[Don't Panic on Warnings]
+You may see yellow warning messages during the build — these are usually deprecation notices or lint warnings. As long as the build ends with **BUILD SUCCESSFUL**, warnings are fine. Only red **errors** prevent the build from completing.
+:::
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Build Verification"
+  prompt="Run the Gradle build and confirm it succeeds. What message appears at the end of a successful build? Where in VS Code did you see the build output?"
+>
+A successful build ends with **BUILD SUCCESSFUL in Xs** (where X is the time in seconds).
+
+The build output appears in the **Terminal** panel at the bottom of VS Code. If you used the WPILib Command Palette, it opened a terminal automatically. If you ran the command manually, you typed it in the integrated terminal.
+
+If your build failed, check the troubleshooting table above. The most common issue on a first build is a missing internet connection (Gradle needs to download dependencies). If you're stuck, ask a teammate or mentor for help.
+</Checkpoint>
+
+---
+
+## What's Next?
+
+You've confirmed that the project opens and builds cleanly. This is your baseline — from now on, whenever you make changes in later units, you'll run this same build to verify nothing broke.
+
+Next up in **Layer 2**, you'll start reading the actual robot code. **Lesson 3: Subsystems** walks through the subsystem classes that control the robot's physical mechanisms.

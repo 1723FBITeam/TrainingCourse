@@ -1,0 +1,65 @@
+---
+title: "Deliverable: Code Reading Checklist"
+description: "Apply the five Code Reading Framework questions to at least three files from the robot project."
+sidebar:
+  order: 4
+prev: true
+next: true
+---
+
+import { robotConfig } from '../../../config/robot-references';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { CodeReading } from '../../../components/CodeReading';
+
+## ✅ Code Reading Checklist
+
+The **Code Reading Framework** is a set of five questions you can ask about *any* file in the robot project. By the end of this course, you should be able to answer all five questions for any file you open.
+
+### The Five Questions
+
+1. **What does this file do?**
+2. **What subsystem or command does it belong to?**
+3. **What methods does it expose?**
+4. **What does it depend on?**
+5. **When does this code run?**
+
+---
+
+### File 1: {robotConfig.subsystems[0].name}
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label={robotConfig.subsystems[0].name + '.java'} /> and answer the five questions.
+
+<CodeReading client:load targetFile={robotConfig.subsystems[0].name + '.java'} />
+
+---
+
+### File 2: {robotConfig.commands[0].name}
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + '.java'} /> and answer the five questions.
+
+<CodeReading client:load targetFile={robotConfig.commands[0].name + '.java'} />
+
+---
+
+### File 3: RobotContainer
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and answer the five questions.
+
+<CodeReading client:load targetFile="RobotContainer.java" />
+
+---
+
+### Bonus: Pick Your Own File
+
+Choose any file from the <GitHubLink client:load path={robotConfig.projectRoot} isFolder label="robot project" /> that you haven't analyzed yet and apply the framework.
+
+<CodeReading client:load targetFile="(your choice).java" />
+
+---
+
+:::tip[How to Use This Checklist]
+1. Open each file using the GitHub link above
+2. Read through the file — don't worry about understanding every line
+3. Answer each of the five questions in your own words
+4. If you get stuck, revisit the lesson that covers that file type (Lesson 3 for subsystems, Lesson 4 for commands, Lesson 5 for RobotContainer)
+:::

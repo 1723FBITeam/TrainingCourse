@@ -1,0 +1,358 @@
+---
+title: "Lesson 3: Subsystems"
+description: "Learn what subsystems are and how they control robot hardware"
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeReading } from '../../../components/CodeReading';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what a subsystem is and why robots are organized this way
+- Identify the subsystems in your team's robot project
+- Read a subsystem file and understand its structure
+- Explain what the `generated/` folder is and why you shouldn't edit it
+- Apply the Code Reading Framework to a subsystem you haven't studied yet
+
+:::tip[Before You Start]
+Make sure you've completed **Lesson 2: Robot Lifecycle** so you understand how the robot starts up and runs its periodic loop. Subsystems plug directly into that lifecycle — their `periodic()` method gets called every loop cycle.
+:::
+
+---
+
+## The Mental Model: Subsystem = Physical Capability
+
+Here's the single most important idea in this lesson:
+
+> **A subsystem represents a physical capability of the robot — it's the code that controls real hardware.**
+
+Think about your robot as a collection of things it can *do*:
+- It can **drive** around the field
+- It can **pick up** game pieces from the ground
+- It can **shoot** game pieces at a target
+- It can **aim** the shooter left and right
+- It can **climb** during endgame
+
+Each of those capabilities gets its own subsystem class. The subsystem "owns" the motors, sensors, and servos for that mechanism and provides methods that other code can call to make things happen.
+
+:::note[Why Not One Giant File?]
+Imagine if all the motor control code for driving, shooting, intaking, aiming, and climbing was in a single file. It would be thousands of lines long and impossible to work on as a team. Subsystems split the robot into manageable pieces — one person can work on the shooter while another works on the intake, and they won't step on each other's code.
+:::
+
+---
+
+## Your Robot's Subsystems
+
+Your team's robot has **{robotConfig.subsystems.length} subsystems**, each in its own file inside the <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems`} isFolder label="subsystems/ folder" />:
+
+| Subsystem | What It Controls |
+|-----------|-----------------|
+{robotConfig.subsystems.map(s => `| <GitHubLink client:load path={\`${robotConfig.projectRoot}/${s.file}\`} label="${s.name}" /> | ${s.description} |`).join('\n')}
+
+Let's walk through each one so you know what's inside.
+
+---
+
+## IntakeSubsystem — Picking Up Game Pieces
+
+The <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem" /> is a great first subsystem to read because it's relatively simple. Open it up and follow along.
+
+### What hardware does it control?
+
+The intake has two sets of motors:
+
+- **Roller motors** (2× TalonFX) — spin to grab notes off the ground
+- **Deploy motors** (2× TalonFXS) — swing the intake outward so the rollers can reach the floor
+
+```java title="IntakeSubsystem.java — Motor declarations"
+// Roller motors — spin to grab notes off the ground
+private final TalonFX intakeLeftMotor =
+    new TalonFX(Constants.IntakeConstants.INTAKE_LEFT_MOTOR, Constants.kCANivoreBus);
+private final TalonFX intakeRightMotor =
+    new TalonFX(Constants.IntakeConstants.INTAKE_RIGHT_MOTOR, Constants.kCANivoreBus);
+
+// Deploy motors — swing the intake out/in (TalonFXS drives smaller Minion motors)
+private final TalonFXS intakeLeftActivator =
+    new TalonFXS(Constants.IntakeConstants.DEPLOY_LEFT_MOTOR, Constants.kCANivoreBus);
+private final TalonFXS intakeRightActivator =
+    new TalonFXS(Constants.IntakeConstants.DEPLOY_RIGHT_MOTOR, Constants.kCANivoreBus);
+```
+
+Notice how every motor gets its CAN ID from `Constants` — the subsystem never hardcodes a number. This is the pattern you'll see in every subsystem.
+
+### What methods does it expose?
+
+The intake provides simple methods that commands can call:
+
+| Method | What It Does |
+|--------|-------------|
+| `runIntake(speed)` | Spin the rollers at a given speed (-1.0 to 1.0) |
+| `stopIntake()` | Stop the rollers |
+| `deployOut()` | Swing the intake outward to reach the ground |
+| `deployIn()` | Swing the intake back into the robot frame |
+| `stopDeploy()` | Stop the deploy motors |
+| `jostleCommand()` | Returns a command that shakes the intake to unstick balls |
+
+Here's what `deployOut()` looks like — it's just two lines:
+
+```java title="IntakeSubsystem.java — deployOut()"
+public void deployOut() {
+    intakeLeftActivator.set(DEPLOY_SPEED);
+    intakeRightActivator.set(DEPLOY_SPEED);
+}
+```
+
+That's it. The subsystem provides the *capability* ("deploy the intake"), and commands decide *when* to use it.
+
+👉 See the full file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />
+
+---
+
+## ShooterSubsystem — Launching Game Pieces
+
+The <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem" /> is more complex — it controls everything needed to score:
+
+- **Two flywheel motors** — spin up to launch the note
+- **A feeder motor** — pushes the note into the flywheels
+- **An indexer motor** — queues notes before feeding
+- **A hood servo** — adjusts the launch angle up/down
+
+### Closed-Loop Velocity Control
+
+The flywheels use something called **closed-loop velocity control**. Instead of saying "run at 50% power," we tell the motor "spin at 30 rotations per second" and the motor controller automatically adjusts voltage to maintain that speed — even as the battery drains during a match.
+
+```java title="ShooterSubsystem.java — Flywheel velocity control"
+// VelocityVoltage tells the motor "maintain this speed (in rotations per second)"
+private final VelocityVoltage flywheelVelocity = new VelocityVoltage(0)
+    .withEnableFOC(false);
+
+public void runFlywheelsRPS(double rps) {
+    double adjustedRPS = rps + rpsOffset;
+    if (adjustedRPS < 0) adjustedRPS = 0;
+    targetRPS = adjustedRPS;
+    leftShooterMotor.setControl(flywheelVelocity.withVelocity(adjustedRPS));
+    rightShooterMotor.setControl(flywheelVelocity.withVelocity(adjustedRPS));
+}
+```
+
+### Auto-Aim with Interpolation Tables
+
+The shooter can automatically set the right hood angle and flywheel speed based on distance to the target. It uses **interpolation tables** — lookup tables where you give a distance and get back a value. Between known data points, it estimates the right value.
+
+```java title="ShooterSubsystem.java — Interpolation tables"
+// Hood table: distance → servo position (0.0 = flat, 1.0 = max angle up)
+hoodTable.put(1.3, 0.13);
+hoodTable.put(2.1, 0.21);
+hoodTable.put(3.0, 0.30);
+hoodTable.put(3.8, 0.38);
+hoodTable.put(4.7, 0.47);
+```
+
+:::note[Don't Worry About the Math]
+You don't need to understand PID tuning or interpolation math right now. The key takeaway is that the subsystem *encapsulates* all that complexity. Other code just calls `autoAim(distance)` and the subsystem handles the rest.
+:::
+
+👉 See the full file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" />
+
+---
+
+## TurretSubsystem — Aiming Left and Right
+
+The <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/TurretSubsystem.java`} label="TurretSubsystem" /> rotates the shooter to aim at the target. It sits on top of the robot and can spin over 360 degrees total.
+
+The turret uses **Motion Magic position control** — you tell the motor "go to this angle" and it generates a smooth motion profile to get there without skipping gear teeth.
+
+Key things to notice when reading this file:
+
+- The turret has a **gear ratio** of 11.515:1 (11.515 motor rotations = 1 turret rotation)
+- It has **asymmetric limits** — it can go +420° one way but only -245° the other way
+- It has a **reset mode** for when it needs to wrap around 360° to reach a target
+- The `aimAtPose()` method handles velocity compensation so shots land accurately even while driving
+
+:::caution[Advanced Code Ahead]
+TurretSubsystem is the most complex subsystem in the project. Don't worry if you don't understand the math — focus on the *structure*: it declares hardware, configures it in the constructor, and exposes methods like `aimAtPose()`, `rotate()`, and `stop()`.
+:::
+
+👉 See the full file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/TurretSubsystem.java`} label="TurretSubsystem.java" />
+
+---
+
+## ClimberSubsystem — Endgame Climbing
+
+The <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ClimberSubsystem.java`} label="ClimberSubsystem" /> handles endgame climbing with:
+
+- **An elevator motor** — extends/retracts a lift mechanism
+- **Servos** — lock/unlock the climbing hooks and gearbox
+
+This subsystem is interesting because some of its hardware isn't wired yet — you'll see commented-out code for the climb motors. That's normal in FRC! Teams often write code before the hardware is ready so they can test as soon as it's built.
+
+```java title="ClimberSubsystem.java — Commented-out hardware"
+// Climb motors — pull the robot up
+// private final TalonFX leftClimbMotor = new TalonFX(Constants.ClimberConstants.CLIMB_LEFT_MOTOR);
+// private final TalonFX rightClimbMotor = new TalonFX(Constants.ClimberConstants.CLIMB_RIGHT_MOTOR);
+```
+
+The elevator uses **PID position control** to move to specific heights, and the subsystem includes a "level-and-return" cycle for testing.
+
+👉 See the full file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ClimberSubsystem.java`} label="ClimberSubsystem.java" />
+
+---
+
+## CommandSwerveDrivetrain — Driving
+
+The <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain" /> is the swerve drive system that lets the robot move in any direction. It's different from the other subsystems in a few ways:
+
+1. **It extends a CTRE base class** instead of `SubsystemBase` — but it still implements the `Subsystem` interface, so the command scheduler treats it the same way
+2. **Most of its configuration comes from a generated file** (more on that below)
+3. **It integrates with PathPlanner** for autonomous path following
+
+```java title="CommandSwerveDrivetrain.java — Class declaration"
+public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
+```
+
+The drivetrain's `periodic()` method handles setting the operator perspective based on alliance color — so "forward" on the joystick always means "toward the opposing alliance wall," regardless of which side you're on.
+
+👉 See the full file on GitHub: <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" />
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Subsystem Basics"
+  prompt="Answer these three questions: (1) What does every subsystem 'own'? (2) How do other parts of the code use a subsystem? (3) Which subsystem would you look at to understand how the robot picks up game pieces?"
+>
+1. **Every subsystem owns the hardware (motors, sensors, servos) for one physical mechanism.** It declares them as private fields and configures them in the constructor.
+
+2. **Other code uses a subsystem by calling its public methods.** For example, a command calls `intakeSubsystem.runIntake(0.5)` to spin the rollers. The subsystem provides the capability, and commands decide when to use it.
+
+3. **IntakeSubsystem** — it controls the roller motors that grab notes and the deploy motors that swing the intake out to reach the ground.
+</Checkpoint>
+
+---
+
+## The `generated/` Folder and TunerConstants.java
+
+You may have noticed a folder called <GitHubLink client:load path={`${robotConfig.projectRoot}/generated`} isFolder label="generated/" /> inside the robot code. It contains one file: <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.generatedFiles[0].file}`} label="TunerConstants.java" />.
+
+This file is **auto-generated by CTRE's Tuner X tool**. It contains all the swerve drive configuration:
+
+- Motor CAN IDs for all four swerve modules (drive + steer motors)
+- Encoder IDs and offsets for each module
+- PID gains for steering and driving
+- Physical measurements (wheel radius, gear ratios, module positions)
+- The `createDrivetrain()` factory method that builds the `CommandSwerveDrivetrain`
+
+```java title="TunerConstants.java — Module configuration (example)"
+// Front Left
+private static final int kFrontLeftDriveMotorId = 1;
+private static final int kFrontLeftSteerMotorId = 2;
+private static final int kFrontLeftEncoderId = 3;
+private static final Angle kFrontLeftEncoderOffset = Rotations.of(-0.4228515625);
+```
+
+:::danger[Do Not Edit This File]
+{robotConfig.generatedFiles[0].description}. If you change values here, they'll be overwritten the next time someone runs the Tuner X calibration tool. If you need to understand the swerve configuration, read this file — but make your changes elsewhere.
+:::
+
+### How TunerConstants connects to CommandSwerveDrivetrain
+
+The relationship is simple:
+1. **TunerConstants** defines all the hardware configuration and provides a `createDrivetrain()` method
+2. **RobotContainer** calls `TunerConstants.createDrivetrain()` to create the drivetrain subsystem
+3. **CommandSwerveDrivetrain** extends the generated `TunerSwerveDrivetrain` class and adds command-based features
+
+Think of TunerConstants as the "blueprint" and CommandSwerveDrivetrain as the "finished product" that adds robot-specific behavior on top.
+
+---
+
+## The Subsystem Pattern: What They All Have in Common
+
+Now that you've seen all five subsystems, let's identify the pattern. Every subsystem follows the same structure:
+
+### 1. Hardware declarations (top of the file)
+Motors, sensors, and servos are declared as `private final` fields. They're created in the field declarations or constructor using CAN IDs from `Constants`.
+
+### 2. Constructor (configures hardware)
+The constructor sets up motor configurations — things like direction (inverted or not), neutral mode (brake vs coast), and PID gains.
+
+### 3. Public methods (the capabilities)
+These are the actions the subsystem can perform. Commands call these methods. Examples: `runIntake()`, `deployOut()`, `runFlywheelsRPS()`, `aimAtPose()`.
+
+### 4. `periodic()` method (runs every loop)
+This method is called automatically every ~20ms by the command scheduler. Subsystems use it for telemetry (publishing data to the dashboard) and safety checks.
+
+<Quiz client:load
+  question="What is the periodic() method used for in most subsystems?"
+  options={[
+    "Starting and stopping motors",
+    "Creating new commands",
+    "Publishing telemetry data to the dashboard and running safety checks",
+    "Reading controller button inputs"
+  ]}
+  correctIndex={2}
+  explanation="The periodic() method runs every ~20ms automatically. Most subsystems use it to publish sensor data and motor states to the dashboard (telemetry) and to run safety checks. Motor control happens in the public methods that commands call — not in periodic()."
+/>
+
+---
+
+## 🔍 Code Reading Exercise: ShooterSubsystem.java
+
+Time to practice the **Code Reading Framework** on a subsystem. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> on GitHub or in your IDE and answer the five questions below.
+
+Take your time reading through the file. Focus on the structure — the hardware declarations at the top, the constructor in the middle, and the public methods. Don't worry about understanding every line of the math.
+
+<CodeReading client:load
+  targetFile="ShooterSubsystem.java"
+  answers={{
+    whatDoes: "ShooterSubsystem controls everything needed to score a note: two flywheel motors for launching, a feeder motor for pushing notes into the flywheels, an indexer motor for queuing notes, and a hood servo for adjusting the launch angle. It can auto-aim based on distance using interpolation tables.",
+    belongsTo: "It IS a subsystem — it extends SubsystemBase. It's used by AutoShootCommand and inline commands in RobotContainer that handle shooting sequences.",
+    methods: "Key public methods: runFlywheelsRPS(rps), stopFlywheels(), runFeeder(speed), stopFeeder(), runIndexer(speed), stopIndexer(), stopAll(), autoAim(distance), setHoodPosition(pos), isReadyToShoot(), nudgePowerUp(), nudgePowerDown(). It also has passAutoAim() for physics-based lob shots.",
+    dependsOn: "It depends on Constants (for CAN IDs and hood limits), TrajectoryCalculations (for physics-based passing shots), CTRE Phoenix 6 (TalonFX motors, VelocityVoltage control), WPILib (Servo, SubsystemBase, MathUtil, NetworkTables), and an InterpolatingDoubleTreeMap for distance-based auto-aim.",
+    whenRuns: "The periodic() method runs every ~20ms during all robot modes. It handles trench safety (forcing the hood flat in trench zones) and publishes telemetry at ~10Hz. The public methods run whenever a command calls them — typically during teleop or autonomous."
+  }}
+/>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Subsystem Structure"
+  prompt="Look at any subsystem file in the project. Can you identify these four parts? (1) Hardware declarations, (2) Constructor with configuration, (3) Public methods, (4) periodic() method. Pick one subsystem and list one example of each."
+>
+Here's an example using **IntakeSubsystem**:
+
+1. **Hardware declarations** — `private final TalonFX intakeLeftMotor` and `private final TalonFXS intakeLeftActivator` (roller and deploy motors)
+2. **Constructor** — Configures TalonFXS motors with `MotorArrangementValue.Minion_JST` and sets roller motors to opposite directions so they both pull inward
+3. **Public methods** — `runIntake(speed)`, `deployOut()`, `deployIn()`, `stopIntake()`, `jostleCommand()`
+4. **periodic()** — Publishes deploy motor positions to NetworkTables at ~10Hz for dashboard monitoring
+
+Every subsystem in the project follows this same four-part structure.
+</Checkpoint>
+
+---
+
+## Quick Reference: Subsystem Summary
+
+| Subsystem | Hardware | Key Methods | Control Type |
+|-----------|----------|-------------|-------------|
+| IntakeSubsystem | 2 rollers + 2 deploy motors | `runIntake()`, `deployOut()` | Open-loop (duty cycle) |
+| ShooterSubsystem | 2 flywheels + feeder + indexer + hood servo | `runFlywheelsRPS()`, `autoAim()` | Closed-loop velocity |
+| TurretSubsystem | 1 turret motor | `aimAtPose()`, `rotate()` | Motion Magic position |
+| ClimberSubsystem | 1 elevator motor + servos | `elevatorUp()`, `toggleGearboxLock()` | PID position |
+| CommandSwerveDrivetrain | 8 swerve motors (4 drive + 4 steer) | `applyRequest()` | CTRE Swerve API |
+
+---
+
+## What's Next?
+
+Now that you understand what subsystems are and how they control hardware, it's time to learn about **commands** — the code that tells subsystems *when* and *how* to act. In **Lesson 4: Commands**, you'll see how `AutoShootCommand` coordinates the turret, flywheels, and feeder to score a note.
+
+Remember: **subsystems = capabilities**, **commands = instructions**. Subsystems answer "what can the robot do?" and commands answer "when should it do it?"

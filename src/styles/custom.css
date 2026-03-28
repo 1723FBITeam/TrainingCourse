@@ -1,0 +1,353 @@
+/* ============================================
+   FRC Training Course — Custom Theme Overrides
+   ============================================ */
+
+/* ------------------------------------------
+   1. Accent Color Override
+   Vibrant teal/blue-green that's energetic
+   and team-friendly for high school students.
+   ------------------------------------------ */
+:root {
+  --sl-color-accent-low: #0e3a4a;
+  --sl-color-accent: #0ea5e9;
+  --sl-color-accent-high: #bae6fd;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #cff2fe;
+  --sl-color-accent: #0284c7;
+  --sl-color-accent-high: #0c4a6e;
+}
+
+/* ------------------------------------------
+   2. Typography — Student-Friendly Hierarchy
+   ------------------------------------------ */
+:root {
+  --sl-font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  --sl-text-body: 1.05rem;
+  --sl-line-height: 1.7;
+}
+
+.sl-markdown-content h2 {
+  margin-top: 2.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--sl-color-accent);
+}
+
+.sl-markdown-content h3 {
+  margin-top: 1.8rem;
+  color: var(--sl-color-accent-high);
+}
+
+/* ------------------------------------------
+   3. Quiz Component
+   ------------------------------------------ */
+.quiz-container {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 2px solid var(--sl-color-accent);
+  border-radius: 0.75rem;
+  background: var(--sl-color-bg-nav);
+}
+
+.quiz-container .quiz-question {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.quiz-container .quiz-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.65rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1.5px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--sl-color-text);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.quiz-container .quiz-option:hover:not(:disabled) {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent-low);
+}
+
+.quiz-container .quiz-option.correct {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.quiz-container .quiz-option.incorrect {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.quiz-container .quiz-explanation {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--sl-color-accent);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: var(--sl-color-accent-low);
+  font-size: 0.95rem;
+}
+
+/* ------------------------------------------
+   4. AnswerReveal Component
+   ------------------------------------------ */
+.answer-reveal {
+  margin: 1rem 0;
+}
+
+.answer-reveal .reveal-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border: 1.5px solid var(--sl-color-accent);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--sl-color-accent);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.answer-reveal .reveal-toggle:hover {
+  background: var(--sl-color-accent-low);
+}
+
+.answer-reveal .reveal-toggle .chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.answer-reveal .reveal-toggle .chevron.open {
+  transform: rotate(90deg);
+}
+
+.answer-reveal .reveal-content {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+}
+
+.answer-reveal .reveal-content.visible {
+  max-height: 80rem;
+  opacity: 1;
+  padding-top: 0.75rem;
+}
+
+/* ------------------------------------------
+   5. Checkpoint Component
+   ------------------------------------------ */
+.checkpoint-card {
+  margin: 2rem 0;
+  padding: 1.25rem 1.5rem;
+  border: 2px solid #f59e0b;
+  border-left-width: 5px;
+  border-radius: 0.75rem;
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.checkpoint-card .checkpoint-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--sl-color-text);
+}
+
+.checkpoint-card .checkpoint-prompt {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------
+   6. CodeTrace Component
+   ------------------------------------------ */
+.code-trace {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 1.5px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  background: var(--sl-color-bg-nav);
+}
+
+.code-trace .trace-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.code-trace .trace-start,
+.code-trace .trace-end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.code-trace .trace-start {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+  border: 1px solid #22c55e;
+}
+
+.code-trace .trace-end {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid #3b82f6;
+}
+
+.code-trace .trace-steps {
+  position: relative;
+  margin: 0.75rem 0 0.75rem 1.25rem;
+  padding-left: 1.5rem;
+  border-left: 2px dashed var(--sl-color-gray-4);
+}
+
+.code-trace .trace-step {
+  position: relative;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  border: 1px solid var(--sl-color-gray-5);
+}
+
+.code-trace .trace-step::before {
+  content: attr(data-step);
+  position: absolute;
+  left: -2.35rem;
+  top: 0.55rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--sl-color-accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.code-trace .trace-step .step-file {
+  font-family: var(--sl-font-mono, monospace);
+  font-size: 0.85rem;
+  color: var(--sl-color-accent);
+}
+
+.code-trace .trace-step .step-location {
+  font-size: 0.85rem;
+  color: var(--sl-color-gray-3);
+}
+
+.code-trace .trace-step .step-description {
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+}
+
+/* ------------------------------------------
+   7. CodeReading Component
+   ------------------------------------------ */
+.code-reading {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 2px solid var(--sl-color-accent);
+  border-radius: 0.75rem;
+  background: var(--sl-color-bg-nav);
+}
+
+.code-reading .code-reading-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.code-reading .code-reading-question {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--sl-color-accent);
+  font-size: 0.95rem;
+}
+
+/* ------------------------------------------
+   8. GitHubLink Component
+   ------------------------------------------ */
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--sl-color-accent);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed var(--sl-color-accent);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.github-link:hover {
+  color: var(--sl-color-accent-high);
+  border-bottom-style: solid;
+}
+
+.github-link .github-icon {
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+}
+
+.github-link-fallback {
+  font-family: var(--sl-font-mono, monospace);
+  font-size: 0.9em;
+  color: var(--sl-color-gray-3);
+  cursor: default;
+}
+
+/* ------------------------------------------
+   9. Responsive — Narrow Screens
+   ------------------------------------------ */
+@media (max-width: 50rem) {
+  .quiz-container,
+  .checkpoint-card,
+  .code-trace,
+  .code-reading {
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+
+  .quiz-container .quiz-option {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .code-trace .trace-steps {
+    margin-left: 0.75rem;
+    padding-left: 1.25rem;
+  }
+
+  .code-trace .trace-step::before {
+    left: -2rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 0.7rem;
+  }
+
+  .code-trace .trace-start,
+  .code-trace .trace-end {
+    flex-direction: column;
+    text-align: center;
+  }
+}

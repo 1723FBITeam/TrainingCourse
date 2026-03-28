@@ -1,0 +1,581 @@
+---
+title: "Lesson 0: Git & GitHub Fundamentals"
+description: "Learn Git and GitHub basics for FRC team collaboration"
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what Git is and why your FRC team uses it
+- Install and configure Git on your computer
+- Use the core Git commands: `clone`, `status`, `add`, `commit`, `push`, `pull`
+- Navigate GitHub repositories, branches, and pull requests
+- Follow the team collaboration workflow: branch → commit → push → PR → merge
+- Resolve a simple merge conflict
+
+:::tip[Before You Start]
+This lesson is recommended before Lesson 1, but it is **not** a hard requirement. If you already use Git and GitHub comfortably, feel free to skim the checkpoints and move on. If Git is new to you, work through every section — it will make the rest of the course much smoother.
+:::
+
+---
+
+## What Is Git and Why Do FRC Teams Use It?
+
+Imagine your team is building robot code. Three students are working on different parts — one on the intake, one on the shooter, one on autonomous routines. Without version control, you'd be emailing ZIP files back and forth, overwriting each other's work, and losing track of what changed.
+
+**Git** is a version control system that tracks every change to every file in your project. It keeps a complete history so you can:
+
+- **See what changed** — who edited what, when, and why
+- **Work in parallel** — multiple people edit different files at the same time without conflicts
+- **Undo mistakes** — roll back to any previous version if something breaks
+- **Review before merging** — teammates can look at your changes before they go into the main code
+
+**GitHub** is a website that hosts your Git repositories online. It adds collaboration features like pull requests (code review), issue tracking, and a web interface for browsing code.
+
+:::note[Real-World FRC Example]
+Your team's robot project lives in a GitHub repository. During build season, multiple students push code changes every day. Without Git, one person's intake fix could accidentally erase another person's shooter tuning. Git prevents that.
+:::
+
+---
+
+## Installing and Configuring Git
+
+### Step 1: Install Git
+
+
+**Windows:** Download the installer from [git-scm.com](https://git-scm.com/downloads) and run it. Accept the default options — they work fine for FRC development.
+
+**macOS:** Open Terminal and run:
+
+```bash title="Terminal"
+git --version
+```
+
+If Git isn't installed, macOS will prompt you to install the Xcode Command Line Tools. Follow the prompts.
+
+**Linux (Ubuntu/Debian):**
+
+```bash title="Terminal"
+sudo apt update && sudo apt install git
+```
+
+### Step 2: Verify the Installation
+
+Open a terminal (Command Prompt, PowerShell, or Terminal on Mac) and run:
+
+```bash title="Terminal"
+git --version
+```
+
+You should see something like `git version 2.43.0`. The exact number doesn't matter — any recent version works.
+
+### Step 3: Configure Your Identity
+
+Git tags every commit with your name and email. Set these once:
+
+```bash title="Terminal"
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+:::tip
+Use the same email you use for your GitHub account. This links your commits to your GitHub profile.
+:::
+
+Verify your config:
+
+```bash title="Terminal"
+git config --global --list
+```
+
+You should see your `user.name` and `user.email` in the output.
+
+---
+
+## Basic Git Workflow Commands
+
+These six commands cover 90% of what you'll do with Git on your FRC team. Let's walk through each one.
+
+### `git clone` — Download a Repository
+
+Cloning creates a local copy of a remote repository on your computer.
+
+```bash title="Terminal"
+git clone https://github.com/your-org/Robot_Project.git
+```
+
+This downloads all the files *and* the full history into a new folder called `Robot_Project/`.
+
+### `git status` — Check What's Changed
+
+After editing files, `git status` shows you what's been modified, what's staged for commit, and what's untracked.
+
+```bash title="Terminal"
+git status
+```
+
+Example output:
+
+```
+On branch main
+Changes not staged for commit:
+  modified:   src/main/java/frc/robot/Constants.java
+
+Untracked files:
+  src/main/java/frc/robot/commands/NewCommand.java
+```
+
+This tells you `Constants.java` was edited and `NewCommand.java` is a brand-new file Git doesn't know about yet.
+
+### `git add` — Stage Changes
+
+Staging tells Git "I want to include these changes in my next commit."
+
+```bash title="Terminal"
+# Stage a specific file
+git add src/main/java/frc/robot/Constants.java
+
+# Stage everything that changed
+git add .
+```
+
+:::caution
+`git add .` stages *everything*. Make sure you haven't accidentally modified files you didn't intend to change. Always run `git status` first.
+:::
+
+### `git commit` — Save a Snapshot
+
+A commit is a saved snapshot of your staged changes, with a message describing what you did.
+
+```bash title="Terminal"
+git commit -m "Increase shooter flywheel speed from 0.7 to 0.85"
+```
+
+Good commit messages are short and specific. They answer: **what changed and why?**
+
+| ✅ Good Messages | ❌ Bad Messages |
+|---|---|
+| "Fix intake deploy speed constant" | "fixed stuff" |
+| "Add dashboard output for shooter RPM" | "changes" |
+| "Increase auto wait time to 0.5s" | "update" |
+
+### `git push` — Upload to GitHub
+
+Push sends your local commits to the remote repository on GitHub so your teammates can see them.
+
+```bash title="Terminal"
+git push
+```
+
+If you're on a new branch, Git will tell you to set the upstream:
+
+```bash title="Terminal"
+git push --set-upstream origin my-branch-name
+```
+
+### `git pull` — Download Teammates' Changes
+
+Pull fetches the latest commits from GitHub and merges them into your local copy.
+
+```bash title="Terminal"
+git pull
+```
+
+:::tip[Golden Rule]
+Always `git pull` before you start working. This ensures you have the latest code and reduces merge conflicts.
+:::
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint 1: Basic Git Commands"
+  prompt="You just edited Constants.java to change a motor speed. Write the three Git commands (in order) to stage, commit, and push your change."
+>
+The three commands are:
+
+1. `git add src/main/java/frc/robot/Constants.java`
+2. `git commit -m "Change motor speed in Constants"`
+3. `git push`
+
+You could also use `git add .` in step 1 to stage all changes, but naming the specific file is safer when you only want to commit one change.
+</Checkpoint>
+
+<Quiz client:load
+  question="What does `git status` show you?"
+  options={[
+    "The list of all branches",
+    "Which files have been modified, staged, or are untracked",
+    "The commit history",
+    "Your Git username and email"
+  ]}
+  correctIndex={1}
+  explanation="`git status` shows the current state of your working directory — which files are modified, which are staged for commit, and which are new (untracked). Use `git log` for history and `git branch` for branches."
+/>
+
+---
+
+## GitHub Fundamentals
+
+Now that you know the basic Git commands, let's look at how GitHub adds collaboration on top of Git.
+
+### Repositories
+
+A **repository** (or "repo") is a project stored on GitHub. It contains all the files, folders, and the complete Git history. Your team's robot code lives in a repository.
+
+When you visit a repo on GitHub, you'll see:
+- **Code tab** — browse all files and folders
+- **Commits** — the history of every change
+- **Branches** — parallel versions of the code
+- **Pull requests** — proposed changes waiting for review
+- **Issues** — bug reports and feature requests
+
+### Branches
+
+A **branch** is a parallel copy of the code where you can make changes without affecting the main version.
+
+- The **main** branch (sometimes called `master`) is the "official" version of the code
+- You create a new branch to work on a feature or fix
+- When your work is ready, you merge it back into main
+
+```bash title="Terminal — Create and switch to a new branch"
+git checkout -b fix-intake-speed
+```
+
+This creates a branch called `fix-intake-speed` and switches to it. Any commits you make now only exist on this branch until you merge.
+
+To see all branches:
+
+```bash title="Terminal"
+git branch
+```
+
+To switch between branches:
+
+```bash title="Terminal"
+git checkout main
+```
+
+### Pull Requests
+
+A **pull request** (PR) is how you propose merging your branch into main. It's the team's chance to review your code before it goes live.
+
+A pull request shows:
+- What files changed
+- A line-by-line diff of every change
+- A place for teammates to leave comments and suggestions
+- A merge button (used after approval)
+
+:::note[Why Pull Requests Matter for FRC]
+During build season, a bad code change can waste hours of testing time. Pull requests let a mentor or experienced student review changes before they reach the robot. It's a safety net.
+:::
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint 2: GitHub & Branching"
+  prompt="Explain in your own words: why do FRC teams use branches instead of committing directly to main?"
+>
+Branches let team members work on different features at the same time without breaking the main code. If someone's intake changes have a bug, it doesn't affect the main branch that the robot runs. Changes only reach main after they've been reviewed in a pull request. This keeps the "official" code stable and working.
+</Checkpoint>
+
+<Quiz client:load
+  question="What is a pull request?"
+  options={[
+    "A command that downloads code from GitHub",
+    "A request to delete a branch",
+    "A proposal to merge changes from one branch into another, with code review",
+    "A way to undo a commit"
+  ]}
+  correctIndex={2}
+  explanation="A pull request (PR) proposes merging your branch's changes into another branch (usually main). It shows the diff, allows teammates to review and comment, and provides a merge button once approved."
+/>
+
+---
+
+## Team Collaboration Workflow
+
+Here's the workflow your FRC team will follow for every code change. This is the pattern you'll use throughout the season.
+
+### The Branch → Commit → Push → PR → Merge Cycle
+
+**1. Pull the latest code**
+
+```bash title="Terminal"
+git checkout main
+git pull
+```
+
+Always start from an up-to-date main branch.
+
+**2. Create a feature branch**
+
+```bash title="Terminal"
+git checkout -b add-dashboard-output
+```
+
+Name your branch after what you're working on. Keep it short and descriptive.
+
+**3. Make your changes**
+
+Edit files in your IDE. For example, add a SmartDashboard output to a subsystem.
+
+**4. Stage and commit**
+
+```bash title="Terminal"
+git add .
+git commit -m "Add shooter RPM to SmartDashboard"
+```
+
+**5. Push your branch to GitHub**
+
+```bash title="Terminal"
+git push --set-upstream origin add-dashboard-output
+```
+
+**6. Open a pull request on GitHub**
+
+Go to your repository on GitHub. You'll see a banner saying your branch was recently pushed, with a "Compare & pull request" button. Click it.
+
+- Write a clear title: "Add shooter RPM to SmartDashboard"
+- In the description, explain what you changed and why
+- Request a review from a mentor or teammate
+
+**7. Review and merge**
+
+After your PR is approved:
+- Click "Merge pull request" on GitHub
+- Delete the branch (GitHub offers a button for this)
+- Locally, switch back to main and pull:
+
+```bash title="Terminal"
+git checkout main
+git pull
+```
+
+:::tip[Branch Naming Conventions]
+Good branch names describe the work:
+- `fix-intake-deploy-speed`
+- `add-shooter-dashboard`
+- `update-auto-paths`
+
+Avoid generic names like `my-branch` or `test123`.
+:::
+
+---
+
+## 🔧 Guided Activity: Clone the Team's Robot Project
+
+Let's put your Git skills to work. You'll clone the team's actual robot repository and verify the files are there.
+
+### Step 1: Clone the Repository
+
+Open your terminal and run:
+
+```bash title="Terminal"
+git clone {robotConfig.repoUrl}.git
+```
+
+:::note
+If the command above shows a placeholder URL, ask your mentor for the actual repository URL. The URL is configured in the course settings.
+:::
+
+### Step 2: Navigate into the Project
+
+```bash title="Terminal"
+cd 2026code
+```
+
+### Step 3: Verify the Project Files
+
+```bash title="Terminal"
+git status
+```
+
+You should see `On branch {robotConfig.defaultBranch}` and a clean working tree.
+
+Now check that the robot code is there:
+
+```bash title="Terminal"
+ls src/main/java/frc/robot/
+```
+
+You should see files like:
+- `Robot.java`
+- `RobotContainer.java`
+- `Constants.java`
+- `Main.java`
+- A `subsystems/` folder
+- A `commands/` folder
+
+### Step 4: Explore the History
+
+```bash title="Terminal"
+git log --oneline -10
+```
+
+This shows the last 10 commits. You'll see messages from your teammates describing what they changed.
+
+<AnswerReveal client:load label="What should you see?">
+After cloning, `git status` should show you're on the `{robotConfig.defaultBranch}` branch with nothing to commit. The `ls` command should list the core robot files. If you see an error, double-check the repository URL and make sure you have access (ask a mentor to add you as a collaborator on GitHub).
+</AnswerReveal>
+
+---
+
+## Resolving Merge Conflicts
+
+Merge conflicts happen when two people edit the same lines in the same file. Git can't decide which version to keep, so it asks you to resolve it manually.
+
+Don't panic — conflicts are normal and easy to fix once you know the pattern.
+
+### How a Conflict Happens
+
+Imagine two students both edit `Constants.java`:
+
+**Student A** (on branch `fix-shooter-speed`):
+```java title="Constants.java — Student A's change"
+public static final double SHOOTER_SPEED = 0.85;
+```
+
+**Student B** (on branch `tune-shooter`):
+```java title="Constants.java — Student B's change"
+public static final double SHOOTER_SPEED = 0.90;
+```
+
+Student A merges first. When Student B tries to merge, Git finds a conflict because the same line was changed differently.
+
+### What a Conflict Looks Like
+
+When you pull or merge and there's a conflict, Git marks the file like this:
+
+```java title="Constants.java — Conflict markers"
+<<<<<<< HEAD
+public static final double SHOOTER_SPEED = 0.85;
+=======
+public static final double SHOOTER_SPEED = 0.90;
+>>>>>>> tune-shooter
+```
+
+Here's what the markers mean:
+- `<<<<<<< HEAD` — the version currently in the branch you're merging into
+- `=======` — the divider between the two versions
+- `>>>>>>> tune-shooter` — the version from the incoming branch
+
+### How to Resolve It
+
+**Step 1:** Open the file and find the conflict markers.
+
+**Step 2:** Decide which version to keep (or combine them). Delete the conflict markers and leave only the code you want:
+
+```java title="Constants.java — Resolved"
+public static final double SHOOTER_SPEED = 0.90;
+```
+
+**Step 3:** Stage and commit the resolution:
+
+```bash title="Terminal"
+git add src/main/java/frc/robot/Constants.java
+git commit -m "Resolve merge conflict: use 0.90 for shooter speed"
+```
+
+:::caution
+Always remove **all** conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`). If you leave them in, the code won't compile.
+:::
+
+### Guided Conflict Resolution Example
+
+Let's practice. Suppose you're on `main` and you pull, but there's a conflict in `Constants.java`:
+
+```java title="Constants.java — Your file after pulling"
+<<<<<<< HEAD
+public static final double INTAKE_SPEED = 0.50;
+=======
+public static final double INTAKE_SPEED = 0.65;
+>>>>>>> update-intake
+```
+
+**Your task:** The team decided the intake should run at 0.65. Edit the file to keep only that value, remove all conflict markers, then stage and commit.
+
+<AnswerReveal client:load label="Show the resolved file and commands">
+The resolved file should look like:
+
+```java title="Constants.java — Resolved"
+public static final double INTAKE_SPEED = 0.65;
+```
+
+Then run:
+
+```bash title="Terminal"
+git add src/main/java/frc/robot/Constants.java
+git commit -m "Resolve conflict: set intake speed to 0.65"
+```
+
+The key steps are: (1) delete the `<<<<<<<`, `=======`, and `>>>>>>>` lines, (2) keep the correct code, (3) stage and commit.
+</AnswerReveal>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint 3: Collaboration Workflow"
+  prompt="Put these steps in the correct order for the team collaboration workflow: Open a pull request, Create a branch, Pull latest main, Push your branch, Commit your changes, Merge after review."
+>
+The correct order is:
+
+1. **Pull latest main** — `git checkout main && git pull`
+2. **Create a branch** — `git checkout -b my-feature`
+3. **Commit your changes** — `git add . && git commit -m "description"`
+4. **Push your branch** — `git push --set-upstream origin my-feature`
+5. **Open a pull request** — on GitHub, click "Compare & pull request"
+6. **Merge after review** — after approval, click "Merge pull request"
+
+This cycle repeats for every feature or fix your team works on.
+</Checkpoint>
+
+<Quiz client:load
+  question="What do the <<<<<<< and >>>>>>> markers in a file mean?"
+  options={[
+    "The file is corrupted and needs to be re-downloaded",
+    "Git found a merge conflict and is showing both versions of the conflicting code",
+    "The file has syntax errors that need to be fixed",
+    "Someone deleted part of the file by accident"
+  ]}
+  correctIndex={1}
+  explanation="Conflict markers show you both versions of code that Git couldn't automatically merge. The section between <<<<<<< and ======= is one version, and between ======= and >>>>>>> is the other. You resolve the conflict by choosing the correct code and removing all markers."
+/>
+
+---
+
+## Quick Reference: Git Commands Cheat Sheet
+
+| Command | What It Does |
+|---|---|
+| `git clone <url>` | Download a repository to your computer |
+| `git status` | See what files have changed |
+| `git add <file>` | Stage a file for commit |
+| `git add .` | Stage all changed files |
+| `git commit -m "msg"` | Save staged changes with a message |
+| `git push` | Upload commits to GitHub |
+| `git pull` | Download and merge latest changes |
+| `git checkout -b <name>` | Create and switch to a new branch |
+| `git checkout <branch>` | Switch to an existing branch |
+| `git branch` | List all local branches |
+| `git log --oneline` | View commit history (compact) |
+
+---
+
+## What's Next?
+
+You now have the Git and GitHub skills you need to collaborate on your team's robot code. In **Lesson 1: Project Structure**, you'll open the robot project and learn how the files and folders are organized.
+
+:::tip[Keep Practicing]
+The best way to get comfortable with Git is to use it. Every time you make a change to the robot code — even a small one — go through the full workflow: branch, commit, push, PR, merge. It becomes second nature fast.
+:::
