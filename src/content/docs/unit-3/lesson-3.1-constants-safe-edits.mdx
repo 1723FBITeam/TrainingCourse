@@ -1,5 +1,5 @@
 ---
-title: "Lesson 6: Constants & Safe Edits"
+title: "Lesson 3.1: Constants & Safe Edits"
 description: "Learn to safely modify constants, add dashboard outputs, and create simple commands"
 sidebar:
   order: 1
@@ -26,7 +26,7 @@ By the end of this lesson you will be able to:
 - Apply a basic code review mindset before committing changes
 
 :::tip[Before You Start]
-Make sure you've completed **Lesson 5: RobotContainer and Bindings** first. This lesson builds on your understanding of subsystems, commands, and how they're wired together. You'll be making real changes to the code — small, safe ones — so you need to understand the architecture first.
+Make sure you've completed **Lesson 2.3: RobotContainer and Bindings** first. This lesson builds on your understanding of subsystems, commands, and how they're wired together. You'll be making real changes to the code — small, safe ones — so you need to understand the architecture first.
 :::
 
 ---
@@ -233,7 +233,7 @@ Adding `SmartDashboard.putNumber()` or `SmartDashboard.putBoolean()`:
 
 ## Creating a Simple Command
 
-In Lesson 4 you learned how commands work. Now let's create one. The safest kind of new command is one that **only calls existing subsystem methods** — you're not changing how the subsystem works, just creating a new way to trigger it.
+In Lesson 2.2 you learned how commands work. Now let's create one. The safest kind of new command is one that **only calls existing subsystem methods** — you're not changing how the subsystem works, just creating a new way to trigger it.
 
 ### Example: A "Slow Intake" Command
 
@@ -339,7 +339,7 @@ git diff
 git checkout .
 ```
 
-This is why we learned Git in Lesson 0 — it's your safety net.
+This is why we learned Git in Lesson 0.1 — it's your safety net.
 
 ---
 
@@ -452,7 +452,7 @@ git commit -m "asdf"
 A good commit message helps your future self (and your teammates) understand why the change was made. When something breaks at 2 AM during competition, you'll be glad you wrote clear messages.
 
 :::tip[The Pull Request]
-Remember from Lesson 0: don't push directly to `main`. Create a branch, make your changes, push the branch, and open a pull request. This gives your mentor or a teammate a chance to review your code before it goes into the main codebase. Code review catches mistakes that self-review misses.
+Remember from Lesson 0.1: don't push directly to `main`. Create a branch, make your changes, push the branch, and open a pull request. This gives your mentor or a teammate a chance to review your code before it goes into the main codebase. Code review catches mistakes that self-review misses.
 :::
 
 ---
@@ -521,7 +521,7 @@ You can now:
 - Make safe edits: constants, dashboard outputs, simple commands
 - Test, review, and commit your changes properly
 
-Head to **Unit 4: Make a Small Change** to put this lesson into practice with a guided hands-on exercise. Then try **Unit 5: Add a Simple Feature** to create your own command from scratch.
+Head to **Activity 3.2: Make a Small Change** to put this lesson into practice with a guided hands-on exercise. Then try **Activity 3.3: Add a Simple Feature** to create your own command from scratch.
 
 After that, check out the **Deliverables** section to complete your Code Map, Trace Worksheet, Glossary, and Code Reading Checklist — the tangible proof of everything you've learned.
 

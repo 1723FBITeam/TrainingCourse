@@ -1,5 +1,5 @@
 ---
-title: "Unit 4: Make a Small Change"
+title: "Activity 3.2: Make a Small Change"
 description: "Modify a constant value and verify the project still compiles"
 sidebar:
   order: 2
@@ -22,12 +22,12 @@ By the end of this unit you will have:
 - Built the project and confirmed it compiles without errors
 - Committed your change with a clear, descriptive message
 
-This is your first real edit to the robot codebase. It's small on purpose — the goal is to build the muscle memory of the safe contribution workflow you learned in Lesson 6.
+This is your first real edit to the robot codebase. It's small on purpose — the goal is to build the muscle memory of the safe contribution workflow you learned in Lesson 3.1.
 
 :::tip[What You Need]
 - **WPILib VS Code** with the robot project open
-- The project building successfully (you verified this in Unit 1)
-- Git configured on your machine (from Lesson 0)
+- The project building successfully (you verified this in Activity 1.3)
+- Git configured on your machine (from Lesson 0.1)
 :::
 
 ---
@@ -68,7 +68,7 @@ You can also view the file on GitHub: <GitHubLink client:load path={`${robotConf
 
 ## Step 3: Find a Safe Constant to Change
 
-Scroll through Constants.java and look at the inner classes. Remember from Lesson 6: **CAN IDs are off-limits** (they match physical wiring), but **behavior values** like speeds, limits, and thresholds are safe to experiment with.
+Scroll through Constants.java and look at the inner classes. Remember from Lesson 3.1: **CAN IDs are off-limits** (they match physical wiring), but **behavior values** like speeds, limits, and thresholds are safe to experiment with.
 
 Here's a good candidate inside `ShootingConstants`:
 
@@ -198,7 +198,7 @@ This confirms:
 - The change is what you intended (the value went from `0.85` to `0.80`)
 - No accidental edits anywhere else
 
-Run through the self-review checklist from Lesson 6:
+Run through the self-review checklist from Lesson 3.1:
 
 1. ✅ **Does it build?** — Yes, you just verified that
 2. ✅ **Did I only change what I intended?** — `git diff` confirms one line changed
@@ -250,4 +250,4 @@ This is the exact same workflow you'll use for every contribution to the robot c
 
 ## What's Next?
 
-Ready for something bigger? In **Unit 5: Add a Simple Feature**, you'll create a brand new command that interacts with an existing subsystem. Same safe workflow, just a few more lines of code.
+Ready for something bigger? In **Activity 3.3: Add a Simple Feature**, you'll create a brand new command that interacts with an existing subsystem. Same safe workflow, just a few more lines of code.

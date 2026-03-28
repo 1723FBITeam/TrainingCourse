@@ -1,5 +1,5 @@
 ---
-title: "Unit 1: Open & Build the Project"
+title: "Activity 1.3: Open & Build the Project"
 description: "Open the robot project in your IDE and run your first build"
 sidebar:
   order: 3
@@ -17,14 +17,14 @@ import { robotConfig } from '../../../config/robot-references';
 By the end of this unit you will have:
 
 - Opened the team's Robot_Project in WPILib VS Code
-- Located the key files you learned about in Lesson 1
+- Located the key files you learned about in Lesson 1.1
 - Run a Gradle build and confirmed it completes without errors
 
 This is your first hands-on interaction with the real codebase. No code changes — just open, explore, and build.
 
 :::tip[What You Need]
 - **WPILib VS Code** installed on your computer (comes with the WPILib installer)
-- The team's robot project cloned to your machine (you did this in Lesson 0)
+- The team's robot project cloned to your machine (you did this in Lesson 0.1)
 - An internet connection for the first build (Gradle downloads dependencies)
 :::
 
@@ -36,11 +36,11 @@ WPILib ships its own version of VS Code with all the FRC extensions pre-installe
 
 1. Launch **WPILib VS Code** from your Start Menu (Windows) or Applications folder (macOS)
 2. Go to **File → Open Folder…**
-3. Navigate to where you cloned the robot project and select the `2026code/` folder
+3. Navigate to where you cloned the robot project and select the `{robotConfig.repoName}/` folder
 4. Click **Open** (or **Select Folder** on Windows)
 
 :::caution[Open the Right Folder]
-Make sure you open the `2026code/` folder itself — not a parent folder that *contains* it. VS Code needs to see `build.gradle` at the top level to recognize this as a Gradle project. If you see `build.gradle` in the file explorer sidebar, you're in the right place.
+Make sure you open the `{robotConfig.repoName}/` folder itself — not a parent folder that *contains* it. VS Code needs to see `build.gradle` at the top level to recognize this as a Gradle project. If you see `build.gradle` in the file explorer sidebar, you're in the right place.
 :::
 
 After opening, VS Code may show a notification asking to import the Gradle project. Click **Yes** or **Import** if prompted. This lets the Java extension understand the project structure.
@@ -49,10 +49,10 @@ After opening, VS Code may show a notification asking to import the Gradle proje
 
 ## Step 2: Verify the Project Structure
 
-Use the VS Code file explorer (the sidebar on the left) to confirm you can see the project files. Expand the folders and check that the structure matches what you learned in Lesson 1:
+Use the VS Code file explorer (the sidebar on the left) to confirm you can see the project files. Expand the folders and check that the structure matches what you learned in Lesson 1.1:
 
 ```
-2026code/
+Drive2026FBI/
 ├── src/
 │   └── main/
 │       ├── java/frc/robot/    ← Robot code lives here
@@ -81,7 +81,7 @@ And the subfolders:
 - `generated/` — auto-generated swerve config (don't edit!)
 
 :::note[Can't Find the Files?]
-If the `src/main/java/frc/robot/` path doesn't appear, double-check that you opened the correct folder. The `2026code/` folder should be the workspace root — you should see `build.gradle` at the top level of the explorer, not nested inside another folder.
+If the `src/main/java/frc/robot/` path doesn't appear, double-check that you opened the correct folder. The `{robotConfig.repoName}/` folder should be the workspace root — you should see `build.gradle` at the top level of the explorer, not nested inside another folder.
 :::
 
 ---
@@ -92,7 +92,7 @@ Let's make sure VS Code can actually read the Java files. Click on <GitHubLink c
 
 You should see Java code with syntax highlighting (keywords in different colors). If the file opens as plain text with no colors, the Java extension may not be loaded yet — give it a minute and try again.
 
-Don't worry about understanding every line right now. You covered the lifecycle in Lesson 2. The point here is just to confirm the IDE is working.
+Don't worry about understanding every line right now. You covered the lifecycle in Lesson 1.2. The point here is just to confirm the IDE is working.
 
 ---
 
@@ -111,7 +111,7 @@ A terminal panel will open at the bottom of VS Code showing the build progress.
 ### Option B: Using the Terminal Directly
 
 1. Open the VS Code terminal: **Terminal → New Terminal** (or press **Ctrl+`**)
-2. Make sure you're in the `2026code/` directory
+2. Make sure you're in the `{robotConfig.repoName}/` directory
 3. Run the build command:
 
 ```bash
@@ -184,4 +184,4 @@ If your build failed, check the troubleshooting table above. The most common iss
 
 You've confirmed that the project opens and builds cleanly. This is your baseline — from now on, whenever you make changes in later units, you'll run this same build to verify nothing broke.
 
-Next up in **Layer 2**, you'll start reading the actual robot code. **Lesson 3: Subsystems** walks through the subsystem classes that control the robot's physical mechanisms.
+Next up in **Unit 2**, you'll start reading the actual robot code. **Lesson 2.1: Subsystems** walks through the subsystem classes that control the robot's physical mechanisms.

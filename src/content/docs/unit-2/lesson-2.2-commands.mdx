@@ -1,5 +1,5 @@
 ---
-title: "Lesson 4: Commands"
+title: "Lesson 2.2: Commands"
 description: "Understand how commands define robot behaviors using subsystems"
 sidebar:
   order: 2
@@ -24,14 +24,14 @@ By the end of this lesson you will be able to:
 - Understand command groups and how they combine simple commands into complex behaviors
 
 :::tip[Before You Start]
-Make sure you've completed **Lesson 3: Subsystems** first. Commands *use* subsystems — they call the public methods you learned about in the last lesson. If you don't know what a subsystem is yet, go back and read Lesson 3.
+Make sure you've completed **Lesson 2.1: Subsystems** first. Commands *use* subsystems — they call the public methods you learned about in the last lesson. If you don't know what a subsystem is yet, go back and read Lesson 2.1.
 :::
 
 ---
 
 ## The Mental Model: Command = Instruction
 
-In Lesson 3 you learned that **subsystems are capabilities** — they answer "what can the robot do?" Now it's time for the other half:
+In Lesson 2.1 you learned that **subsystems are capabilities** — they answer "what can the robot do?" Now it's time for the other half:
 
 > **A command is an instruction that tells one or more subsystems what to do and when to do it.**
 
@@ -312,7 +312,7 @@ NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> {
 }, shooterSubsystem));
 ```
 
-These are the same subsystem methods you learned about in Lesson 3, just wrapped in commands and given names that PathPlanner can reference. `Commands.run()` creates a `RunCommand` (runs every 20ms), and `Commands.runOnce()` creates an `InstantCommand` (runs once).
+These are the same subsystem methods you learned about in Lesson 2.1, just wrapped in commands and given names that PathPlanner can reference. `Commands.run()` creates a `RunCommand` (runs every 20ms), and `Commands.runOnce()` creates an `InstantCommand` (runs once).
 
 ---
 
@@ -498,7 +498,7 @@ NamedCommands.registerCommand("StopShooter", Commands.runOnce(() -> {
 System.out.println(">>> AUTO: Stopping shooter <<<");
 ```
 
-This is a safe change — it only adds a log message and doesn't affect any motor behavior. After making the change, build the project to make sure it compiles. You'll learn more about safe edits like this in Lesson 6.
+This is a safe change — it only adds a log message and doesn't affect any motor behavior. After making the change, build the project to make sure it compiles. You'll learn more about safe edits like this in Lesson 3.1.
 
 :::caution[Modifications Only]
 In this course, code writing activities are limited to modifying existing code or creating simple new commands. We're not rewriting subsystems or changing motor configurations — that's for Programming 2.
@@ -522,5 +522,5 @@ In this course, code writing activities are limited to modifying existing code o
 
 ## What's Next?
 
-You now understand both halves of the robot's architecture: **subsystems** (capabilities) and **commands** (instructions). In **Lesson 5: RobotContainer and Bindings**, you'll see how RobotContainer ties everything together — creating subsystems, wiring buttons to commands, and setting up autonomous routines. You'll also trace the complete path from a button press to a motor output.
+You now understand both halves of the robot's architecture: **subsystems** (capabilities) and **commands** (instructions). In **Lesson 2.3: RobotContainer and Bindings**, you'll see how RobotContainer ties everything together — creating subsystems, wiring buttons to commands, and setting up autonomous routines. You'll also trace the complete path from a button press to a motor output.
 

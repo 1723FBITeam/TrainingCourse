@@ -11,38 +11,37 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       sidebar: [
         { label: 'Welcome', link: '/' },
-        { label: 'Instructor Setup', link: '/instructor-setup' },
         {
-          label: 'Layer 0: Prerequisites',
+          label: 'Unit 0: Prerequisites',
           items: [
-            { label: 'Lesson 0: Git & GitHub', link: '/layer-0/lesson-0-git-github' },
+            { label: 'Lesson 0.1: Git & GitHub', link: '/unit-0/lesson-01-git-github' },
           ],
         },
         {
-          label: 'Layer 1: Orientation',
+          label: 'Unit 1: Orientation',
           items: [
-            { label: 'Lesson 1: Project Structure', link: '/layer-1/lesson-1-project-structure' },
-            { label: 'Lesson 2: Robot Lifecycle', link: '/layer-1/lesson-2-robot-lifecycle' },
-            { label: 'Unit 1: Open & Build', link: '/layer-1/unit-1-open-and-build' },
+            { label: 'Lesson 1.1: Project Structure', link: '/unit-1/lesson-11-project-structure' },
+            { label: 'Lesson 1.2: Robot Lifecycle', link: '/unit-1/lesson-12-robot-lifecycle' },
+            { label: 'Activity 1.3: Open & Build', link: '/unit-1/activity-13-open-and-build' },
           ],
         },
         {
-          label: 'Layer 2: Core Flow',
+          label: 'Unit 2: Core Flow',
           items: [
-            { label: 'Lesson 3: Subsystems', link: '/layer-2/lesson-3-subsystems' },
-            { label: 'Lesson 4: Commands', link: '/layer-2/lesson-4-commands' },
-            { label: 'Lesson 5: RobotContainer', link: '/layer-2/lesson-5-robotcontainer' },
-            { label: 'Unit 2: Trace a Button', link: '/layer-2/unit-2-trace-button' },
-            { label: 'Unit 3: Trace a Sensor', link: '/layer-2/unit-3-trace-sensor' },
-            { label: 'Unit 6: Autonomous', link: '/layer-2/unit-6-autonomous' },
+            { label: 'Lesson 2.1: Subsystems', link: '/unit-2/lesson-21-subsystems' },
+            { label: 'Lesson 2.2: Commands', link: '/unit-2/lesson-22-commands' },
+            { label: 'Lesson 2.3: RobotContainer', link: '/unit-2/lesson-23-robotcontainer' },
+            { label: 'Activity 2.4: Trace a Button', link: '/unit-2/activity-24-trace-button' },
+            { label: 'Activity 2.5: Trace a Sensor', link: '/unit-2/activity-25-trace-sensor' },
+            { label: 'Activity 2.6: Autonomous', link: '/unit-2/activity-26-autonomous' },
           ],
         },
         {
-          label: 'Layer 3: Safe Contribution',
+          label: 'Unit 3: Safe Contribution',
           items: [
-            { label: 'Lesson 6: Constants & Safe Edits', link: '/layer-3/lesson-6-constants-safe-edits' },
-            { label: 'Unit 4: Small Change', link: '/layer-3/unit-4-small-change' },
-            { label: 'Unit 5: Add a Feature', link: '/layer-3/unit-5-add-feature' },
+            { label: 'Lesson 3.1: Constants & Safe Edits', link: '/unit-3/lesson-31-constants-safe-edits' },
+            { label: 'Activity 3.2: Small Change', link: '/unit-3/activity-32-small-change' },
+            { label: 'Activity 3.3: Add a Feature', link: '/unit-3/activity-33-add-feature' },
           ],
         },
         {
@@ -52,6 +51,13 @@ export default defineConfig({
             { label: 'Trace Worksheet', link: '/deliverables/deliverable-trace-worksheet' },
             { label: 'Glossary', link: '/deliverables/deliverable-glossary' },
             { label: 'Code Reading Checklist', link: '/deliverables/deliverable-checklist' },
+          ],
+        },
+        {
+          label: 'Instructors',
+          collapsed: true,
+          items: [
+            { label: 'Instructor Setup Guide', link: '/instructor-setup' },
           ],
         },
       ],

@@ -1,5 +1,5 @@
 ---
-title: "Unit 6: Understanding Autonomous"
+title: "Activity 2.6: Understanding Autonomous"
 description: "Learn how autonomous routines work with PathPlanner"
 sidebar:
   order: 6
@@ -23,7 +23,7 @@ By the end of this unit you will have:
 - Understood how the auto chooser lets the drive team pick a routine before a match
 
 :::tip[Before You Start]
-Make sure you've completed **Lesson 5: RobotContainer & Bindings** — it introduces named commands and the auto chooser at a high level. This unit goes deeper into the actual auto files and how PathPlanner puts everything together. Have the robot project open in your IDE.
+Make sure you've completed **Lesson 2.3: RobotContainer & Bindings** — it introduces named commands and the auto chooser at a high level. This unit goes deeper into the actual auto files and how PathPlanner puts everything together. Have the robot project open in your IDE.
 :::
 
 ---
@@ -240,7 +240,7 @@ You've now seen four different command types that PathPlanner uses to compose au
 | `race` | Run multiple commands at the same time (ends when **first** finishes) | AutoShoot vs. 3-second timeout |
 | `deadline` | Run multiple commands, end when the **first** command finishes | AutoShoot with time limit |
 
-These are the same command composition patterns you learned about in Lesson 4 (sequential, parallel, race, deadline) — PathPlanner just uses them in JSON format instead of Java code.
+These are the same command composition patterns you learned about in Lesson 2.2 (sequential, parallel, race, deadline) — PathPlanner just uses them in JSON format instead of Java code.
 
 ---
 
@@ -281,7 +281,7 @@ public void autonomousInit() {
 
 The `getAutonomousCommand()` method returns whatever the drive team selected, and the command scheduler runs it. The vision cameras are also configured for optimal accuracy during auto (that's what the `SetIMUMode` calls do).
 
-**5. During auto:** The command scheduler executes the auto routine step by step — following paths, running named commands, and composing them with sequential/parallel/race/deadline groups. The vision pose estimation you traced in Unit 3 runs continuously to keep the robot's position accurate.
+**5. During auto:** The command scheduler executes the auto routine step by step — following paths, running named commands, and composing them with sequential/parallel/race/deadline groups. The vision pose estimation you traced in Activity 2.5 runs continuously to keep the robot's position accurate.
 
 ---
 
@@ -339,4 +339,4 @@ Compose auto routines    →    autos/*.auto files (JSON command sequences)
 
 You now understand how autonomous mode works from top to bottom — from PathPlanner's JSON files through named commands to the actual subsystem code. You've read every auto routine on the robot and can explain what each one does.
 
-In **Layer 3**, you'll start making safe changes to the robot code. First up: **Lesson 6: Constants & Safe Edits**, where you'll learn which values are safe to modify and how to test your changes without breaking anything.
+In **Unit 3**, you'll start making safe changes to the robot code. First up: **Lesson 3.1: Constants & Safe Edits**, where you'll learn which values are safe to modify and how to test your changes without breaking anything.

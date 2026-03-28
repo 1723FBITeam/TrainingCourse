@@ -1,5 +1,5 @@
 ---
-title: "Unit 3: Trace a Sensor Reading"
+title: "Activity 2.5: Trace a Sensor Reading"
 description: "Trace how sensor data flows through the robot code"
 sidebar:
   order: 5
@@ -20,12 +20,12 @@ By the end of this unit you will have:
 - Traced the Limelight vision camera data from raw reading to pose estimator update
 - Understood the "reverse trace" technique — following sensor data from input to where it's used
 - Identified the filtering and rejection logic that protects the robot from bad data
-- Documented the sensor trace using the same step-by-step format from Unit 2
+- Documented the sensor trace using the same step-by-step format from Activity 2.4
 
-In Unit 2 you traced *forward* — from a button press to a motor output. This time you'll trace *backward* — starting from a sensor (the Limelight camera) and following the data through the code to see where and how it's used.
+In Activity 2.4 you traced *forward* — from a button press to a motor output. This time you'll trace *backward* — starting from a sensor (the Limelight camera) and following the data through the code to see where and how it's used.
 
 :::tip[Before You Start]
-Make sure you've completed **Unit 2: Trace a Button Press** and **Lesson 5: RobotContainer & Bindings**. Have the robot project open in your IDE so you can follow along in the actual code.
+Make sure you've completed **Activity 2.4: Trace a Button Press** and **Lesson 2.3: RobotContainer & Bindings**. Have the robot project open in your IDE so you can follow along in the actual code.
 :::
 
 ---
@@ -253,7 +253,7 @@ Here's the full sensor trace from camera reading to pose update:
 
 ## Step 9: Document Your Trace
 
-Add this sensor trace to your **Trace Worksheet** deliverable. Use the same table format from Unit 2:
+Add this sensor trace to your **Trace Worksheet** deliverable. Use the same table format from Activity 2.4:
 
 | Step | File | Location | What Happens |
 |------|------|----------|-------------|
@@ -266,7 +266,7 @@ Add this sensor trace to your **Trace Worksheet** deliverable. Use the same tabl
 | 7 | CommandSwerveDrivetrain.java | `addVisionMeasurement()` | Feeds validated estimate into Kalman filter |
 
 :::tip[Forward vs. Reverse Traces]
-You now have two trace techniques. **Forward traces** (Unit 2) start from a human action and follow it to a motor output. **Reverse traces** (this unit) start from a sensor input and follow it to where the data is used. Both are essential for understanding robot code — use whichever direction makes sense for the question you're trying to answer.
+You now have two trace techniques. **Forward traces** (Activity 2.4) start from a human action and follow it to a motor output. **Reverse traces** (this activity) start from a sensor input and follow it to where the data is used. Both are essential for understanding robot code — use whichever direction makes sense for the question you're trying to answer.
 :::
 
 ---
@@ -275,4 +275,4 @@ You now have two trace techniques. **Forward traces** (Unit 2) start from a huma
 
 You've completed your first sensor trace — from a Limelight camera image all the way through filtering and validation to the drivetrain's pose estimator. You've seen how the code protects itself from bad data with multiple layers of rejection checks.
 
-In **Unit 6: Autonomous**, you'll see how the corrected pose estimate is used during autonomous routines to follow pre-planned paths accurately.
+In **Activity 2.6: Autonomous**, you'll see how the corrected pose estimate is used during autonomous routines to follow pre-planned paths accurately.

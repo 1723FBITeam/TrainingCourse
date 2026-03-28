@@ -1,5 +1,5 @@
 ---
-title: "Unit 2: Trace a Button Press"
+title: "Activity 2.4: Trace a Button Press"
 description: "Trace the X button intake from controller press to motor output"
 sidebar:
   order: 4
@@ -19,13 +19,13 @@ By the end of this unit you will have:
 
 - Traced the complete execution path from the X button press to intake motor output
 - Identified every file and method involved in the intake sequence
-- Documented your trace using the step-by-step format from Lesson 5
+- Documented your trace using the step-by-step format from Lesson 2.3
 - Understood how `toggleOnTrue`, `SequentialCommandGroup`, and `InstantCommand` work together
 
 This is your **first assignment**. You'll follow the code from the driver's controller all the way to spinning motors — the same skill you'll use every time you need to understand what a button does.
 
 :::tip[Before You Start]
-Make sure you've completed **Lesson 5: RobotContainer & Bindings**. You saw a full trace of the Y button (shoot) there. Now you'll do the same thing yourself for the X button (intake). Have the robot project open in your IDE so you can follow along in the actual code.
+Make sure you've completed **Lesson 2.3: RobotContainer & Bindings**. You saw a full trace of the Y button (shoot) there. Now you'll do the same thing yourself for the X button (intake). Have the robot project open in your IDE so you can follow along in the actual code.
 :::
 
 ---
@@ -72,7 +72,7 @@ Let's break this down piece by piece.
 
 ### What does `toggleOnTrue` mean?
 
-Remember from Lesson 5: `toggleOnTrue` means the button acts like a light switch. Press X once → the command starts. Press X again → the command is cancelled (and cleanup runs). The driver doesn't have to hold the button.
+Remember from Lesson 2.3: `toggleOnTrue` means the button acts like a light switch. Press X once → the command starts. Press X again → the command is cancelled (and cleanup runs). The driver doesn't have to hold the button.
 
 ### What is a `SequentialCommandGroup`?
 
@@ -276,4 +276,4 @@ Now that you've traced the intake button, try tracing a different button on your
 
 You've completed your first code trace — from the X button on the controller all the way through to spinning intake motors. This is the core skill of reading robot code: following the execution path from input to output.
 
-In **Unit 3: Trace a Sensor**, you'll trace in the other direction — from a sensor reading back through the code to see how the robot uses that data to make decisions.
+In **Activity 2.5: Trace a Sensor**, you'll trace in the other direction — from a sensor reading back through the code to see how the robot uses that data to make decisions.

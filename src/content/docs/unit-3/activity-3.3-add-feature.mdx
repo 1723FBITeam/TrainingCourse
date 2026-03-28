@@ -1,5 +1,5 @@
 ---
-title: "Unit 5: Add a Simple Feature"
+title: "Activity 3.3: Add a Simple Feature"
 description: "Create a new command that interacts with an existing subsystem"
 sidebar:
   order: 3
@@ -24,9 +24,9 @@ By the end of this unit you will have:
 You're writing real robot code now. The command is small — it only calls methods that already exist on a subsystem — but the process is exactly how every new feature starts on the team.
 
 :::tip[What You Need]
-- **WPILib VS Code** with the robot project open and building (verified in Unit 1)
-- Git configured and a working branch (you practiced this in Unit 4)
-- Familiarity with commands and subsystems (Lessons 3–5)
+- **WPILib VS Code** with the robot project open and building (verified in Activity 1.3)
+- Git configured and a working branch (you practiced this in Activity 3.2)
+- Familiarity with commands and subsystems (Lessons 2.1–2.3)
 :::
 
 ---
@@ -38,7 +38,7 @@ We're going to create a **SpinUpCommand** — a command that spins the shooter f
 Why this command?
 
 - It uses **existing methods** on ShooterSubsystem — no new hardware control needed
-- It follows the exact same pattern as AutoShootCommand (which you studied in Lesson 4)
+- It follows the exact same pattern as AutoShootCommand (which you studied in Lesson 2.2)
 - It's useful in practice: pre-spinning the flywheels saves time before a shot
 
 Here's what the command will do:
@@ -55,7 +55,7 @@ Take a look at the subsystem methods we'll call:
 
 ## Step 1: Create a Branch
 
-Just like Unit 4, start with a clean branch:
+Just like Activity 3.2, start with a clean branch:
 
 ```bash
 git checkout main
@@ -304,7 +304,7 @@ You should see:
 - `modified: src/main/java/frc/robot/RobotContainer.java`
 - `Untracked files: src/main/java/frc/robot/commands/SpinUpCommand.java`
 
-Run through the self-review checklist from Lesson 6:
+Run through the self-review checklist from Lesson 3.1:
 
 1. ✅ **Does it build?** — Yes
 2. ✅ **Did I only change what I intended?** — One new file, one modified file

@@ -5,96 +5,50 @@ description: "FRC Programming 1: Reading Our Robot Code"
 
 import { robotConfig } from '../../config/robot-references';
 
-# FRC Programming 1: Reading Our Robot Code
+# Hey, welcome to the team! 🎉
 
 **Season: {robotConfig.season} {robotConfig.teamNumber > 0 ? `• Team ${robotConfig.teamNumber}` : ''}**
 
-Welcome to your team's programming training course! 🎉
+This course will help you understand the robot code your team uses in competition. You don't need to be a Java expert. You don't even need to have written code before. By the end, you'll be able to open the project, find your way around, understand what the code does, and start making real contributions.
 
-This course is designed to help you — a new or returning FRC team member — get comfortable with the robot code your team actually uses in competition. You don't need to be a Java expert. You don't even need to have written a single line of code before. By the end of this course, you'll be able to open the robot project, find your way around, understand what the code does, and start making safe contributions.
+Everything here is self-paced — no lectures, no deadlines. Just you and the code. Work through it at your own speed, and use the quizzes and checkpoints along the way to make sure things are clicking.
 
-## Our Philosophy
+## Before you start
 
-This course is built around a few core ideas:
+Make sure you have these installed:
 
-:::tip[How We Learn Here]
-1. **Reading before writing.** You'll spend most of your time *reading* real code, not writing from scratch. Understanding what's already there is the most important skill on an FRC team.
-2. **Real team code, not toy examples.** Every lesson references the actual robot project your team built. No fake demos — the real deal.
-3. **Interactive web experience.** Quizzes, expandable answers, and checkpoints are built right into each lesson so you can check your understanding as you go.
-4. **Self-paced and practical.** Work through lessons on your own schedule. No lectures, no deadlines — just you and the code.
-5. **Code flow over syntax.** We care more about *how the pieces connect* than memorizing Java keywords. You'll trace how a button press becomes a motor spinning.
-6. **Small wins build confidence.** Every lesson ends with something you can point to and say "I understand that now."
-:::
-
-## Course Structure
-
-The course is organized into four layers. Each layer builds on the one before it.
-
-### 🔧 Layer 0: Prerequisites
-
-Get set up with the tools you'll need. **Lesson 0** covers Git and GitHub — the version control system your team uses to collaborate on code. You'll learn to clone the repo, create branches, and open pull requests.
-
-> If you've never used Git before, start here. If you're already comfortable with Git, feel free to skip ahead to Layer 1.
-
-### 🗺️ Layer 1: Orientation
-
-Get your bearings in the robot project. You'll learn:
-- How a Java FRC project is organized (folders, packages, files)
-- What each of the core files does (Main, Robot, RobotContainer, Constants)
-- The robot lifecycle — what happens from power-on to teleop
-
-**Lessons:** Lesson 1 (Project Structure), Lesson 2 (Robot Lifecycle)
-**Hands-on:** Unit 1 — Open the project in your IDE and build it
-
-### 🔍 Layer 2: Reading Core Robot Flow
-
-Dive into the real code. You'll learn:
-- What subsystems are and how they control hardware
-- What commands are and how they make the robot do things
-- How RobotContainer wires buttons to actions
-- How to trace a button press all the way to a motor spinning
-
-**Lessons:** Lesson 3 (Subsystems), Lesson 4 (Commands), Lesson 5 (RobotContainer & Bindings)
-**Hands-on:** Unit 2 — Trace a Button Press, Unit 3 — Trace a Sensor, Unit 6 — Understand Autonomous
-
-### ✏️ Layer 3: Safe Contribution
-
-Start making small, safe changes to the codebase:
-- Edit a constant and verify it compiles
-- Add dashboard outputs and read logs
-- Create a simple command from scratch
-- Learn the basics of code review
-
-**Lessons:** Lesson 6 (Constants & Safe Edits)
-**Hands-on:** Unit 4 — Make a Small Change, Unit 5 — Add a Simple Feature
-
-### 📋 Deliverables
-
-As you work through the course, you'll build four reference documents:
-- **Code Map** — A one-page guide to every file in the robot project
-- **Trace Worksheet** — A step-by-step trace from button press to motor output
-- **Glossary** — Key FRC programming terms in your own words
-- **Code Reading Checklist** — A reusable framework for reading any code file
-
-These aren't busywork — they're tools you'll actually use during build season.
-
-## Getting Started
-
-:::note[New to Git?]
-If you haven't used Git or GitHub before, we strongly recommend starting with **Lesson 0: Git & GitHub Fundamentals** in Layer 0. It'll walk you through everything you need to clone the team repo and collaborate with your teammates. It's completely self-paced and you can finish it in one sitting.
-:::
-
-:::caution[Before You Begin]
-Make sure you have the following installed on your computer:
 - [WPILib](https://docs.wpilib.org/en/stable/docs/zero-to-robot/step-2/wpilib-setup.html) (includes VS Code and Java)
 - [Git](https://git-scm.com/downloads)
 - A GitHub account with access to your team's repository
+
+If you're not sure about any of these, ask a mentor — they'll get you set up.
+
+## Pick your starting point
+
+- 🆕 **Never used Git?** → Start with [Lesson 0.1: Git & GitHub](./unit-0/lesson-0.1-git-github) — it covers everything you need to clone the team repo and collaborate with teammates.
+- 🔰 **Know Git, new to robot code?** → Jump straight to [Lesson 1.1: Project Structure](./unit-1/lesson-1.1-project-structure).
+- 🔄 **Returning member?** → Browse the sidebar and pick up wherever you left off.
+
+## What you'll learn
+
+The course has four units that build on each other:
+
+| Unit | What's it about? | What you'll do |
+|------|-------------------|----------------|
+| **Unit 0** | Prerequisites | Set up Git and GitHub |
+| **Unit 1** | Orientation | Learn the project layout and how the robot starts up |
+| **Unit 2** | Core Flow | Read subsystems, commands, and trace button presses to motor outputs |
+| **Unit 3** | Safe Contribution | Make your first real code changes |
+
+Along the way you'll build four reference docs (Code Map, Trace Worksheet, Glossary, and Checklist) that you'll actually use during build season.
+
+## How this course works
+
+:::tip[Good to know]
+- **Reading before writing.** You'll spend most of your time *reading* real code, not writing from scratch. That's the most important skill on an FRC team.
+- **Real team code.** Every lesson references the actual robot project — no fake demos.
+- **Interactive.** Quizzes, expandable answers, and checkpoints are built into each lesson.
+- **Code flow over syntax.** We care more about *how the pieces connect* than memorizing Java keywords.
 :::
 
-**Ready to go?** Pick your starting point:
-
-- 🆕 **Never used Git?** → Start with [Lesson 0: Git & GitHub](./layer-0/lesson-0-git-github)
-- 🔰 **Know Git, new to robot code?** → Jump to [Lesson 1: Project Structure](./layer-1/lesson-1-project-structure)
-- 🔄 **Returning member wanting a refresher?** → Browse the sidebar and pick any lesson
-
-Good luck, have fun, and remember — every expert on this team started exactly where you are now. 🚀
+Every expert on this team started exactly where you are now. You've got this. 🚀

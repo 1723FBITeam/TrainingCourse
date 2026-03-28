@@ -1,5 +1,6 @@
 export const robotConfig = {
   repoUrl: "https://github.com/1723FBITeam/Drive2026FBI",
+  repoName: "Drive2026FBI",
   defaultBranch: "main",
   projectRoot: "src/main/java/frc/robot",
   coreFiles: {

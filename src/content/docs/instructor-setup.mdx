@@ -25,7 +25,7 @@ The config has **no build-time dependency** on the robot project directory. It s
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `repoUrl` | `string` | Full GitHub URL to the robot repo (e.g., `https://github.com/your-org/2026code`). Used by the `GitHubLink` component to build clickable links to source files. |
+| `repoUrl` | `string` | Full GitHub URL to the robot repo (e.g., `https://github.com/your-org/Drive2026FBI`). Used by the `GitHubLink` component to build clickable links to source files. |
 | `defaultBranch` | `string` | Branch name for GitHub links (usually `main`). |
 | `projectRoot` | `string` | Path from repo root to the robot package (e.g., `src/main/java/frc/robot`). |
 | `coreFiles` | `object` | Maps logical names (`main`, `robot`, `robotContainer`, `constants`) to filenames. |
@@ -63,12 +63,12 @@ Open `training-course/src/config/robot-references.ts` and update every field:
 Lessons embed Java code snippets directly in MDX as fenced code blocks. These are **static snapshots** — they don't auto-update from the config. Search for code blocks and verify they match the new robot code:
 
 ```
-training-course/src/content/docs/layer-1/lesson-1-project-structure.mdx
-training-course/src/content/docs/layer-1/lesson-2-robot-lifecycle.mdx
-training-course/src/content/docs/layer-2/lesson-3-subsystems.mdx
-training-course/src/content/docs/layer-2/lesson-4-commands.mdx
-training-course/src/content/docs/layer-2/lesson-5-robotcontainer.mdx
-training-course/src/content/docs/layer-3/lesson-6-constants-safe-edits.mdx
+training-course/src/content/docs/unit-1/lesson-1.1-project-structure.mdx
+training-course/src/content/docs/unit-1/lesson-1.2-robot-lifecycle.mdx
+training-course/src/content/docs/unit-2/lesson-2.1-subsystems.mdx
+training-course/src/content/docs/unit-2/lesson-2.2-commands.mdx
+training-course/src/content/docs/unit-2/lesson-2.3-robotcontainer.mdx
+training-course/src/content/docs/unit-3/lesson-3.1-constants-safe-edits.mdx
 ```
 
 :::caution[Inline snippets need manual updates]
@@ -77,12 +77,12 @@ Any Java code shown inside ` ```java ` blocks is a copy-paste from the robot pro
 
 ### Step 3: Review Trace Exercises
 
-The trace exercises (Units 2, 3, and 6) and the Trace Worksheet deliverable walk through specific execution paths in the robot code. These reference particular methods, line numbers, and call sequences that will change with a new robot:
+The trace exercises (Activities 2.4, 2.5, and 2.6) and the Trace Worksheet deliverable walk through specific execution paths in the robot code. These reference particular methods, line numbers, and call sequences that will change with a new robot:
 
 ```
-training-course/src/content/docs/layer-2/unit-2-trace-button.mdx
-training-course/src/content/docs/layer-2/unit-3-trace-sensor.mdx
-training-course/src/content/docs/layer-2/unit-6-autonomous.mdx
+training-course/src/content/docs/unit-2/activity-2.4-trace-button.mdx
+training-course/src/content/docs/unit-2/activity-2.5-trace-sensor.mdx
+training-course/src/content/docs/unit-2/activity-2.6-autonomous.mdx
 training-course/src/content/docs/deliverables/deliverable-trace-worksheet.mdx
 ```
 
@@ -141,7 +141,7 @@ Use this checklist when adapting the course for a new robot project:
 - [ ] Updated `canIds` to match new robot's electrical layout
 - [ ] Updated `season` and `teamNumber`
 - [ ] Reviewed and updated inline Java code snippets in all lesson files
-- [ ] Reviewed and updated `CodeTrace` steps in Units 2, 3, and 6
+- [ ] Reviewed and updated `CodeTrace` steps in Activities 2.4, 2.5, and 2.6
 - [ ] Reviewed and updated the Trace Worksheet deliverable
 - [ ] Reviewed and updated the Code Map deliverable
 - [ ] Updated `base` path in `astro.config.mjs` if the repo name changed

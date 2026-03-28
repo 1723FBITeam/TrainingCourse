@@ -1,5 +1,5 @@
 ---
-title: "Lesson 2: Robot Lifecycle"
+title: "Lesson 1.2: Robot Lifecycle"
 description: "Understand the robot execution flow and lifecycle methods"
 sidebar:
   order: 2
@@ -24,7 +24,7 @@ By the end of this lesson you will be able to:
 - Identify which Core Files are responsible for each phase of the robot's life
 
 :::tip[Before You Start]
-Make sure you've completed **Lesson 1: Project Structure** so you know where the core files live. You'll be opening <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> and <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> during this lesson.
+Make sure you've completed **Lesson 1.1: Project Structure** so you know where the core files live. You'll be opening <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robot}`} label="Robot.java" /> and <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> during this lesson.
 :::
 
 ---
@@ -164,7 +164,7 @@ controller.x()
     );
 ```
 
-Don't worry about understanding every detail of that binding yet — you'll dig into commands and bindings in Lessons 4 and 5. For now, just know that RobotContainer is where inputs (buttons) get connected to outputs (motor actions).
+Don't worry about understanding every detail of that binding yet — you'll dig into commands and bindings in Lessons 2.2 and 2.3. For now, just know that RobotContainer is where inputs (buttons) get connected to outputs (motor actions).
 
 ---
 
@@ -361,10 +361,10 @@ Now that you understand the lifecycle, let's connect it back to the four Core Fi
 
 Understanding the lifecycle is the foundation for everything else in this course:
 
-- **Lesson 3 (Subsystems)** — You'll see how subsystems are created during initialization and how their `periodic()` methods run every loop
-- **Lesson 4 (Commands)** — You'll learn how commands get scheduled and executed by the CommandScheduler
-- **Lesson 5 (RobotContainer)** — You'll trace button presses from the controller through the binding to the command to the motor output
-- **Unit 2 (Trace a Button)** — You'll follow the complete path from a button press to a motor spinning
+- **Lesson 2.1 (Subsystems)** — You'll see how subsystems are created during initialization and how their `periodic()` methods run every loop
+- **Lesson 2.2 (Commands)** — You'll learn how commands get scheduled and executed by the CommandScheduler
+- **Lesson 2.3 (RobotContainer)** — You'll trace button presses from the controller through the binding to the command to the motor output
+- **Activity 2.4 (Trace a Button)** — You'll follow the complete path from a button press to a motor spinning
 
 Every time you read robot code, ask yourself: *"When does this code run?"* The answer is always one of the lifecycle methods you learned today.
 
@@ -372,4 +372,4 @@ Every time you read robot code, ask yourself: *"When does this code run?"* The a
 
 ## What's Next?
 
-In **Unit 1: Open & Build**, you'll open the robot project in your IDE and run your first Gradle build. Then in **Lesson 3: Subsystems**, you'll dive into the subsystem files and learn how they control real hardware.
+In **Activity 1.3: Open & Build**, you'll open the robot project in your IDE and run your first Gradle build. Then in **Lesson 2.1: Subsystems**, you'll dive into the subsystem files and learn how they control real hardware.
