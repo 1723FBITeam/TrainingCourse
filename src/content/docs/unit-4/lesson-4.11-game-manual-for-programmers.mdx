@@ -1,0 +1,234 @@
+---
+title: "Lesson 4.11: FRC Game Manual for Programmers"
+description: "Learn the parts of the FRC Game Manual that directly affect how you write and deploy robot code"
+sidebar:
+  order: 11
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Identify the sections of the FRC Game Manual that are most relevant to programmers
+- Explain the control system rules that constrain your hardware and software choices
+- Describe autonomous period constraints and how they affect your auto routines
+- List the safety rules that affect robot code (e-stop behavior, disabled mode requirements)
+- Know where to look when a rule question comes up during build season or competition
+
+:::tip[Before You Start]
+Complete **Activity 4.10: Explore NetworkTables** first. No specific code knowledge is needed for this lesson — it's about rules, not code. But having context from the previous lessons will help you understand *why* certain rules matter to programmers. Have a browser open to the [FRC Game Manual](https://www.firstinspires.org/resource-library/frc/competition-manual) — you'll reference it during this lesson.
+:::
+
+---
+
+## Why Programmers Need to Read the Game Manual
+
+Most FRC programmers think the Game Manual is for the mechanical and strategy teams. That's a mistake. The manual contains rules that directly affect your code:
+
+- **What hardware you can use** (and how it must be wired)
+- **What your robot can do during autonomous** (and what it can't)
+- **Safety requirements** that your code must enforce
+- **Inspection rules** that your software must pass
+
+Violating these rules can get your robot disabled, your team penalized, or your robot failed at inspection. Knowing the rules before you write code saves painful surprises at competition.
+
+---
+
+## Section 1: Control System Rules
+
+The Game Manual specifies exactly what hardware your robot's control system can include. As a programmer, you need to know what's legal because it determines what libraries and APIs you use.
+
+
+### Required Components
+
+Every FRC robot must have these components — no exceptions:
+
+| Component | What It Does | Programming Relevance |
+|-----------|-------------|----------------------|
+| **roboRIO 2** | The robot's brain — runs your Java code | Your code deploys here via `gradlew deploy` |
+| **Power Distribution Hub (PDH)** | Distributes power to all components | You can read current draw per channel via CAN |
+| **Robot Signal Light (RSL)** | Flashing orange light showing robot state | Controlled automatically by WPILib — don't override |
+| **Radio** | WiFi communication with Driver Station | Must be programmed with the FRC Radio Configuration Utility |
+| **Main Breaker** | Emergency power cutoff | The physical e-stop — cuts all power instantly |
+
+### Legal Motor Controllers
+
+The manual specifies which motor controllers are allowed. Your team uses:
+
+- **TalonFX** (integrated in Falcon 500 / Kraken X60 motors) — controlled via CTRE Phoenix 6
+- **TalonFXS** — CTRE's standalone motor controller for brushed/brushless motors
+
+Other legal controllers include SPARK MAX, SPARK Flex (REV), and Jaguar (legacy). Each has its own vendor library and API. You can't use arbitrary motor controllers — only FRC-legal ones.
+
+### Legal Sensors
+
+The manual also specifies legal sensors. Common ones your code might interact with:
+
+- **Encoders** (built into TalonFX, or external via CANcoder)
+- **Gyros** (Pigeon 2 on your robot — provides heading and rotation data)
+- **Limit switches** (digital inputs for detecting mechanism positions)
+- **Cameras** (Limelight, PhotonVision — for AprilTag detection)
+
+---
+
+## Section 2: Autonomous Period Constraints
+
+The autonomous period is the first 15 seconds of a match where the robot runs without driver input. The rules here directly affect your auto routines.
+
+### Key Autonomous Rules
+
+1. **No driver input during auto** — Your code must run entirely from pre-programmed commands. The Driver Station blocks joystick input during autonomous mode. This is why you build auto routines with PathPlanner and command sequences.
+
+2. **Starting position matters** — Your robot must start within its designated starting zone. Your auto routines need to account for the starting position when planning paths.
+
+3. **Auto-to-teleop transition** — When autonomous ends and teleop begins, your code must handle the transition cleanly. Any running auto commands should be cancelled, and teleop controls should take over. WPILib handles most of this automatically through the robot lifecycle (`autonomousExit()` → `teleopInit()`).
+
+4. **Game-specific auto rules** — Each year's game has specific rules about what scores during auto, bonus points for certain actions, and restricted zones. Read the game-specific section carefully — it determines what your auto routines should prioritize.
+
+<Quiz client:load
+  question="During the autonomous period, what happens if your code tries to read joystick input?"
+  options={[
+    "The joystick values are passed through normally",
+    "The Driver Station blocks joystick data — your code gets zeros",
+    "The robot is immediately disabled",
+    "The code throws an exception and crashes"
+  ]}
+  correctIndex={1}
+  explanation="During autonomous, the Driver Station does not send joystick data to the robot. If your code reads joystick values, it will get zeros (or default values). This is why auto routines must be fully pre-programmed — there's no driver input available."
+/>
+
+---
+
+## Section 3: Safety Rules for Code
+
+Safety rules aren't just about mechanical design. Several rules directly affect how you write code.
+
+### E-Stop Behavior
+
+The **Emergency Stop (E-Stop)** is a critical safety feature. When triggered:
+
+- The Driver Station sends a disable signal to the robot
+- WPILib's `disabledInit()` and `disabledPeriodic()` run
+- All motor outputs are set to zero
+- The robot cannot be re-enabled until the Driver Station is restarted
+
+**Your code must respect disabled mode.** Never write code that tries to move motors during `disabledPeriodic()`. WPILib enforces this at the framework level, but if you bypass the command scheduler (calling motor methods directly in `Robot.java`), you could create a safety hazard.
+
+### Disabled Mode Requirements
+
+When the robot is disabled (between matches, during setup, after e-stop):
+
+- **Motors must not move** — WPILib automatically disables motor output
+- **Sensors can still be read** — you can update odometry, read cameras, etc.
+- **NetworkTables still works** — dashboards still show data
+- **Code still runs** — `disabledPeriodic()` is called every 20ms, but motor commands are blocked
+
+This is why you can see your robot's position on the dashboard even when it's disabled — the code is running, it just can't move anything.
+
+### Bumper and Frame Rules (Why Programmers Care)
+
+The manual requires bumpers to cover specific portions of the frame perimeter. This matters to programmers because:
+
+- Your intake mechanism must retract within the frame perimeter at the start of the match
+- Your auto routine's first action might need to deploy the intake *after* the match starts
+- Mechanism positions at startup must comply with the starting configuration rules
+
+
+---
+
+## Section 4: Inspection Checklist (Software Items)
+
+At every competition, your robot goes through inspection. Several checklist items are software-related:
+
+| Inspection Item | What They Check | How to Pass |
+|----------------|----------------|-------------|
+| **roboRIO firmware** | Correct firmware version installed | Use the roboRIO Imaging Tool to update |
+| **Radio firmware** | Correct radio firmware | Use the FRC Radio Configuration Utility |
+| **Team number** | Correct team number in code and radio | Check `build.gradle` and radio config |
+| **Robot Signal Light** | RSL flashes correctly in each mode | Don't override WPILib's RSL control |
+| **E-Stop functionality** | Robot disables when e-stop is pressed | Don't bypass WPILib's disable handling |
+| **Autonomous behavior** | Robot doesn't move before auto starts | Ensure no motor commands in `robotInit()` or `disabledPeriodic()` |
+
+### Pre-Competition Software Checklist
+
+Before every competition, verify:
+
+1. ✅ roboRIO firmware is the latest version
+2. ✅ Radio is programmed with correct team number
+3. ✅ Code deploys successfully via `gradlew deploy`
+4. ✅ Auto routines work as expected
+5. ✅ E-stop properly disables all motors
+6. ✅ Robot starts in a legal configuration (mechanisms retracted)
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Game Manual for Programmers"
+  prompt="Answer these questions: (1) Name two control system components that are required on every FRC robot. (2) Why can't your auto routine use joystick input? (3) What should your code do (or not do) when the robot is in disabled mode?"
+>
+1. **Required components** (any two): roboRIO 2, Power Distribution Hub, Robot Signal Light (RSL), radio, main breaker. All five are mandatory.
+
+2. **No joystick in auto:** The Driver Station blocks joystick data during the autonomous period. If your code reads joystick values, it gets zeros. Auto routines must be fully pre-programmed using PathPlanner paths and command sequences.
+
+3. **Disabled mode:** Your code should NOT attempt to move any motors. WPILib automatically blocks motor output in disabled mode. You CAN still read sensors, update odometry, and publish to NetworkTables. The `disabledPeriodic()` method runs every 20ms, but motor commands are ignored for safety.
+</Checkpoint>
+
+---
+
+## Where to Find the Manual
+
+The FRC Game Manual is updated every year when the new game is announced (typically in early January). You can find it at:
+
+> **[firstinspires.org/resource-library/frc/competition-manual](https://www.firstinspires.org/resource-library/frc/competition-manual)**
+
+The manual is split into sections:
+
+| Section | What It Covers | Programmer Relevance |
+|---------|---------------|---------------------|
+| **Introduction** | FIRST values, competition overview | Low |
+| **Game Description** | Field layout, game pieces, scoring | Medium — affects auto strategy |
+| **Arena** | Field dimensions, markings | Medium — affects path planning |
+| **Robot Rules** | Size, weight, control system, bumpers | High — hardware and software constraints |
+| **Game Rules** | Match flow, penalties, autonomous rules | High — auto constraints, safety |
+| **Tournament** | Schedule, rankings, alliances | Low |
+
+Focus on **Robot Rules** and **Game Rules** — those are the sections that most affect your code.
+
+:::tip[Team Updates]
+Throughout the season, FIRST publishes **Team Updates** that modify or clarify rules. Check for updates weekly — a rule change could affect your auto routines or mechanism behavior. Your team's strategy lead should flag any updates that affect programming.
+:::
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Game Manual** | The official FRC competition rules document, updated annually, covering robot rules, game rules, and inspection requirements |
+| **Control System** | The required electronic components on every FRC robot — roboRIO, PDH, radio, RSL, and main breaker |
+| **E-Stop** | Emergency Stop — a safety mechanism that immediately disables the robot and blocks all motor output |
+| **Autonomous Period** | The first 15 seconds of a match where the robot runs pre-programmed routines without driver input |
+| **Inspection** | A pre-competition check where volunteers verify your robot meets all rules, including software requirements |
+| **Team Update** | Official rule modifications published by FIRST during the season that may change game rules or robot requirements |
+
+---
+
+## What's Next?
+
+You now know which parts of the Game Manual affect your code — from control system requirements to autonomous constraints to safety rules. This knowledge prevents costly surprises at competition.
+
+In **Lesson 4.2: Git & GitHub Team Workflow**, you'll learn the version control workflow your team uses to collaborate on code — branching, pull requests, code review, and handling merge conflicts.
+
+
+
+In **Lesson 4.12: Reading Autonomous Routines**, you'll learn how to read PathPlanner JSON files, identify paths and Named Commands, and understand how your team's autonomous routines are structured.

@@ -1,0 +1,317 @@
+---
+title: "Lesson 6.7: Vision Processing"
+description: "Learn how cameras and AprilTags enable robot localization, auto-alignment, and target tracking through vision processing"
+sidebar:
+  order: 7
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain how AprilTag detection works and why it's used in FRC
+- Describe the vision processing pipeline from camera image to robot pose
+- Understand the difference between 2D targeting and 3D pose estimation
+- Compare Limelight and PhotonVision as vision processing platforms
+- Identify how latency affects vision measurements and how to compensate
+
+:::tip[Before You Start]
+Complete **Activity 6.6: Tune a PID Loop**. Have your team's code open in your IDE. If your team uses Limelight or PhotonVision, have the relevant documentation open: [docs.limelightvision.io](https://docs.limelightvision.io) for Limelight or [docs.photonvision.org](https://docs.photonvision.org) for PhotonVision.
+:::
+
+---
+
+## Why Vision Processing?
+
+In Unit 5, you learned that **odometry** (Lesson 5.11) tracks the robot's position using wheel encoders and the gyro. Odometry is fast and smooth, but it **drifts** — small errors accumulate over time. After driving across the field and back, your odometry might be off by 10-30 cm.
+
+**Vision processing** gives the robot a way to correct that drift. By detecting known landmarks on the field (AprilTags), the robot can calculate its actual position and correct the odometry estimate.
+
+Vision also enables:
+- **Auto-alignment** — automatically aiming at a scoring target
+- **Game piece detection** — finding notes, cones, or cubes on the field
+- **Multi-target tracking** — seeing multiple AprilTags simultaneously for better accuracy
+
+---
+
+## AprilTags in FRC
+
+Since 2023, FRC fields have **AprilTags** — square black-and-white markers placed at known positions around the field. Each tag has a unique ID and a known 3D position.
+
+### How AprilTag Detection Works
+
+1. **Camera captures an image** — the camera sees the field, including any visible AprilTags
+2. **Image processing finds the tag** — the vision system detects the tag's four corners in the image
+3. **Pose estimation calculates position** — using the known tag size and camera calibration, the system calculates the 3D position and orientation of the tag relative to the camera
+4. **Robot pose is computed** — knowing where the camera is on the robot and where the tag is on the field, the system calculates the robot's field position
+
+```
+Camera Image → Tag Detection → Camera-to-Tag Transform → Robot Pose on Field
+```
+
+### What You Get from a Detection
+
+Each AprilTag detection provides:
+
+| Data | What It Means |
+|------|--------------|
+| **Tag ID** | Which tag was detected (maps to a known field position) |
+| **tx, ty** | Horizontal and vertical angle to the tag center (2D targeting) |
+| **Distance** | How far the camera is from the tag |
+| **3D Pose** | Full 6-DOF position and orientation of the tag relative to the camera |
+| **Ambiguity** | How confident the detection is (lower is better) |
+
+---
+
+## 2D Targeting vs 3D Pose Estimation
+
+There are two fundamentally different ways to use vision data:
+
+### 2D Targeting
+
+Use the tag's position in the camera image to aim at it. This is simpler and works well for:
+- Aiming a turret at a scoring target
+- Aligning to a game piece
+- Simple distance estimation
+
+```java
+// Get horizontal angle to target
+double tx = limelight.getEntry("tx").getDouble(0.0);
+// Use tx to aim the turret
+turret.setAngle(turret.getAngle() + tx);
+```
+
+### 3D Pose Estimation
+
+Use the tag's 3D position to calculate the robot's position on the field. This is more complex but enables:
+- Correcting odometry drift
+- Knowing your exact field position for autonomous
+- Multi-tag fusion for higher accuracy
+
+```java
+// Get robot pose from vision
+Pose2d visionPose = getVisionEstimate();
+// Feed it to the pose estimator
+poseEstimator.addVisionMeasurement(visionPose, timestamp);
+```
+
+Most competitive teams use **both** — 3D pose estimation for localization and 2D targeting for fine alignment.
+
+---
+
+<Quiz client:load
+  question="Your robot's odometry says it's at (2.0, 3.0) meters on the field, but vision processing detects an AprilTag and calculates the robot is actually at (2.15, 2.85) meters. What should the robot do?"
+  options={[
+    "Ignore the vision data — odometry is always more accurate",
+    "Replace the odometry estimate entirely with the vision estimate",
+    "Blend the two estimates using a pose estimator that weighs each based on confidence",
+    "Stop moving until the two estimates agree"
+  ]}
+  correctIndex={2}
+  explanation="Neither odometry nor vision is perfect. Odometry is smooth but drifts. Vision is accurate at the moment of detection but can be noisy and has latency. A pose estimator (using a Kalman filter) blends both measurements based on their respective confidence levels, producing a better estimate than either alone. You'll learn more about this in Lesson 6.8."
+/>
+
+---
+
+## Vision Processing Platforms
+
+Two platforms dominate FRC vision processing:
+
+### Limelight
+
+[Limelight](https://docs.limelightvision.io) is a self-contained vision processing camera. It handles everything — camera, processing, and networking — in one unit.
+
+| Feature | Details |
+|---------|---------|
+| **Setup** | Plug in power and Ethernet, configure via web interface |
+| **Processing** | On-device — no additional coprocessor needed |
+| **AprilTag support** | Built-in MegaTag and MegaTag2 pipelines |
+| **NetworkTables** | Publishes results automatically to NT |
+| **Latency** | Typically 20-40ms pipeline latency |
+| **Multi-tag** | MegaTag2 fuses multiple tags for better accuracy |
+
+Limelight communicates with your robot code through NetworkTables. You read values like `tx`, `ty`, `tv` (target visible), and `botpose` (robot pose from AprilTags).
+
+### PhotonVision
+
+[PhotonVision](https://docs.photonvision.org) is open-source vision processing software that runs on a coprocessor (Raspberry Pi, Orange Pi, etc.) with a USB camera.
+
+| Feature | Details |
+|---------|---------|
+| **Setup** | Install on a coprocessor, connect USB camera, configure via web interface |
+| **Processing** | On the coprocessor — you choose the hardware |
+| **AprilTag support** | Built-in AprilTag pipeline with multi-tag PnP |
+| **Code integration** | Java library with `PhotonCamera` and `PhotonPoseEstimator` classes |
+| **Latency** | Depends on hardware — typically 20-50ms |
+| **Multi-tag** | Multi-tag PnP for improved accuracy |
+
+PhotonVision integrates directly into your Java code:
+
+```java
+PhotonCamera camera = new PhotonCamera("front-camera");
+var result = camera.getLatestResult();
+if (result.hasTargets()) {
+  PhotonTrackedTarget target = result.getBestTarget();
+  double yaw = target.getYaw();
+}
+```
+
+### Which Should You Use?
+
+| Consideration | Limelight | PhotonVision |
+|--------------|-----------|-------------|
+| Ease of setup | Easier — all-in-one | More setup — separate hardware |
+| Cost | Higher ($400+) | Lower ($50-100 for Pi + camera) |
+| Flexibility | Fixed hardware | Choose your camera and coprocessor |
+| Multi-camera | Multiple Limelights | Multiple cameras on one coprocessor |
+| Open source | No | Yes |
+
+Both are excellent choices. Many top teams use Limelight for its simplicity; others prefer PhotonVision for its flexibility and cost.
+
+---
+
+## The Vision Pipeline
+
+Regardless of platform, the vision pipeline follows the same steps:
+
+### 1. Image Capture
+The camera captures frames at 30-90 FPS depending on resolution and hardware.
+
+### 2. Tag Detection
+The vision processor finds AprilTags in the image. This involves:
+- Converting to grayscale
+- Finding quadrilateral shapes
+- Decoding the tag ID from the pattern
+- Locating the four corner pixels precisely
+
+### 3. Pose Estimation (SolvePnP)
+Using the known tag size (6.5 inches in FRC), the camera's calibration parameters, and the detected corner positions, the system solves the **Perspective-n-Point (PnP)** problem to calculate the 3D transform from camera to tag.
+
+### 4. Field Localization
+The camera-to-tag transform is combined with:
+- The known tag position on the field (from the FRC field layout)
+- The known camera position on the robot (camera mount offset)
+
+This produces the robot's position on the field.
+
+### 5. Latency Compensation
+Vision processing takes time (20-50ms). By the time the robot receives the pose estimate, it has already moved. The pose estimator compensates by applying the vision measurement at the timestamp when the image was captured, not when the result arrived.
+
+---
+
+## Multi-Camera Fusion
+
+Many competitive teams run **multiple cameras** to improve accuracy and coverage:
+
+| Camera Position | What It Sees | Benefit |
+|----------------|-------------|---------|
+| Front-facing | Tags ahead of the robot | Good for driving toward scoring positions |
+| Rear-facing | Tags behind the robot | Good for backing into positions |
+| Side-facing | Tags to the left/right | Wider field of view |
+
+When multiple cameras see tags simultaneously, the pose estimates can be fused for higher accuracy. Each camera provides an independent measurement, and the pose estimator blends them based on confidence.
+
+---
+
+<Quiz client:load
+  question="Your robot has two cameras — one facing forward and one facing backward. During autonomous, the robot is driving forward and only the rear camera can see AprilTags. What happens to localization?"
+  options={[
+    "Localization fails because the front camera can't see any tags",
+    "The rear camera provides pose corrections while the front camera contributes nothing — localization still works",
+    "Both cameras must see tags for localization to work",
+    "The robot switches to odometry-only mode automatically"
+  ]}
+  correctIndex={1}
+  explanation="Each camera operates independently. If the rear camera sees AprilTags, it provides pose corrections to the pose estimator. The front camera simply has no data to contribute at that moment. Localization continues with odometry plus rear camera corrections. This is one reason teams use multiple cameras — at least one usually has a view of tags."
+/>
+
+---
+
+## Latency: The Hidden Challenge
+
+Vision latency is the time between when the camera captures an image and when your robot code receives the processed result. Typical latencies:
+
+| Source | Latency |
+|--------|---------|
+| Camera exposure | 5-15ms |
+| Image transfer | 2-5ms |
+| Processing (tag detection + PnP) | 10-30ms |
+| NetworkTables transfer | 1-5ms |
+| **Total** | **20-50ms** |
+
+At 3 m/s, a 40ms latency means the robot has moved **12 cm** since the image was captured. If you apply the vision pose at the current time instead of the capture time, you introduce a 12 cm error.
+
+### How Latency Compensation Works
+
+WPILib's `SwerveDrivePoseEstimator` handles this automatically:
+
+```java
+poseEstimator.addVisionMeasurement(
+  visionPose,
+  captureTimestamp  // When the image was taken, not when the result arrived
+);
+```
+
+The pose estimator rewinds its internal state to the capture timestamp, applies the vision correction, and then replays all odometry updates that happened since then. This produces a much more accurate result than applying the correction at the current time.
+
+---
+
+## Connecting to Your Team's Code
+
+Your team's vision setup likely involves:
+
+1. **Camera configuration** — Limelight web interface or PhotonVision dashboard
+2. **NetworkTables reading** — getting vision data in your robot code
+3. **Pose estimation** — feeding vision data to the pose estimator in your drivetrain
+
+Look at <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" /> for how your team integrates vision data. Search for:
+- `addVisionMeasurement` — where vision poses are fed to the estimator
+- `Limelight` or `PhotonCamera` — how vision data is read
+- `getLatency` or `timestamp` — how latency compensation is handled
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Vision Processing"
+  prompt="Explain the vision processing pipeline from camera image to robot pose in 4-5 steps. Then: your robot's auto routine consistently ends up 15cm to the right of where it should be. The odometry looks correct at the start but drifts during the routine. How could vision processing help fix this?"
+>
+**Vision Pipeline:**
+1. Camera captures an image containing AprilTags
+2. Vision processor detects the tags and identifies their corner positions in the image
+3. SolvePnP calculates the 3D transform from camera to each detected tag
+4. Using the known tag positions on the field and camera position on the robot, the system calculates the robot's field pose
+5. The pose is sent to the robot code with a timestamp for latency-compensated fusion with odometry
+
+**Fixing the auto drift:**
+Vision processing can correct the odometry drift during the auto routine. By detecting AprilTags while driving, the pose estimator blends the (drifting) odometry with (accurate) vision measurements. This keeps the robot's position estimate accurate throughout the routine, so path following stays on target. The 15cm drift would be corrected each time the camera sees a tag, preventing the error from accumulating.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **AprilTag** | A square black-and-white fiducial marker with a unique ID, placed at known positions on the FRC field for robot localization |
+| **Vision Pipeline** | The sequence of image capture, tag detection, pose estimation, and field localization that converts camera images into robot position data |
+| **SolvePnP** | The Perspective-n-Point algorithm that calculates a 3D transform from 2D image points and known 3D object points |
+| **Latency Compensation** | Applying vision measurements at the timestamp when the image was captured rather than when the result was received, accounting for processing delay |
+| **Multi-Tag Fusion** | Using detections of multiple AprilTags simultaneously to produce a more accurate pose estimate than any single tag alone |
+| **Limelight** | A self-contained vision processing camera for FRC with built-in AprilTag detection and NetworkTables integration |
+| **PhotonVision** | Open-source vision processing software for FRC that runs on a coprocessor with USB cameras |
+
+---
+
+## What's Next?
+
+You now understand how vision gives your robot eyes. In **Lesson 6.8: Pose Estimation and Localization**, you'll dive deeper into how the pose estimator fuses odometry and vision data using a Kalman filter — and how to tune the standard deviations that control how much the robot trusts each data source.

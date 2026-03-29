@@ -1,0 +1,287 @@
+---
+title: "Lesson 4.1: WPILib Documentation Deep Dive"
+description: "Learn to navigate WPILib docs effectively — Zero to Robot, command-based index, and API javadocs"
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeReading } from '../../../components/CodeReading';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Navigate the WPILib documentation site and find answers to common questions
+- Use the Zero to Robot guide as a reference for hardware and software setup
+- Find command-based programming topics in the WPILib docs index
+- Look up specific classes and methods in the WPILib API javadocs
+- Distinguish between tutorial-style docs and API reference docs
+
+:::caution[Unit 4 Prerequisites]
+Complete **Units 0–3 (Core Curriculum)** before starting Unit 4. You should be comfortable with the project structure, robot lifecycle, subsystems, commands, RobotContainer bindings, and making safe edits. Unit 4 builds directly on those foundations.
+:::
+
+:::tip[Before You Start]
+Have a browser open alongside your IDE. You'll be jumping between the WPILib docs site and your team's robot code throughout this lesson.
+:::
+
+---
+
+## Why WPILib Docs Matter
+
+In Units 1–3 you learned to read your team's robot code. But what happens when you see a class you don't recognize, or a method you've never used? That's where the WPILib documentation comes in.
+
+WPILib is the official library that powers every FRC robot. Its documentation is the single most important reference you'll use as an FRC programmer. The docs live at:
+
+> **[docs.wpilib.org](https://docs.wpilib.org)**
+
+:::note[🧠 Mental Model]
+Think of the WPILib docs like a toolbox manual. You don't read it cover to cover — you look up the tool you need when you need it. The skill isn't memorizing the docs. It's knowing where to look.
+:::
+
+Think of it as the instruction manual for everything your robot code depends on. The challenge isn't that the docs are bad — they're actually quite good. The challenge is that they're *big*, and knowing where to look is half the battle.
+
+---
+
+## The Three Layers of WPILib Docs
+
+WPILib documentation is organized into three layers, each serving a different purpose:
+
+| Layer | What It Is | When to Use It |
+|-------|-----------|----------------|
+| **Zero to Robot** | Step-by-step setup guide | Setting up a new robot project, flashing the roboRIO, installing tools |
+| **Programming Guide** | Conceptual tutorials organized by topic | Learning how subsystems, commands, triggers, and schedulers work |
+| **API Javadocs** | Auto-generated reference for every class and method | Looking up exact method signatures, parameters, and return types |
+
+Let's explore each one.
+
+---
+
+## Layer 1: Zero to Robot
+
+The **Zero to Robot** guide is the first thing you see on the WPILib docs site. It walks through everything from unboxing the control system to deploying your first robot program. You probably used parts of it when your team set up the robot at the start of the season.
+
+Even if you're past the setup phase, Zero to Robot is still useful as a reference:
+
+- **Hardware overview** — diagrams of the control system, wiring layouts, pneumatics setup
+- **Software installation** — WPILib installer, VS Code, vendor libraries
+- **roboRIO imaging** — how to flash and configure the roboRIO
+- **Radio programming** — configuring the robot radio for competition
+
+You won't use Zero to Robot every day, but when something goes wrong with the physical setup (roboRIO won't connect, radio needs re-imaging, new laptop needs WPILib installed), this is where you go.
+
+:::tip[Bookmark It]
+Bookmark the Zero to Robot page now: [docs.wpilib.org/en/stable/docs/zero-to-robot/introduction.html](https://docs.wpilib.org/en/stable/docs/zero-to-robot/introduction.html). You'll thank yourself at 11 PM the night before a competition when the roboRIO needs re-imaging.
+:::
+
+---
+
+## Layer 2: The Programming Guide
+
+This is where you'll spend most of your time. The WPILib Programming Guide covers every major concept in FRC programming, organized by topic. The most important sections for your team's code are:
+
+### Command-Based Programming
+
+Since your team uses the command-based framework (you've seen `SubsystemBase`, `Command`, `RobotContainer`), the command-based section is your home base. Key pages include:
+
+- **What Is Command-Based Programming?** — the philosophy behind subsystems and commands
+- **Subsystems** — how `SubsystemBase` works, the `periodic()` method, default commands
+- **Commands** — `InstantCommand`, `RunCommand`, `SequentialCommandGroup`, `ParallelCommandGroup`
+- **Binding Commands to Triggers** — `onTrue`, `whileTrue`, `toggleOnTrue` (you traced these in Unit 2!)
+- **The Command Scheduler** — how WPILib decides which commands run each loop
+
+Let's connect this to code you already know. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and look at the button bindings. Every binding type you see (`toggleOnTrue`, `whileTrue`, `onTrue`) has a dedicated page in the WPILib docs explaining exactly how it behaves.
+
+### Other Key Sections
+
+Beyond command-based programming, these sections come up frequently:
+
+| Section | What You'll Find | Example from Your Code |
+|---------|-----------------|----------------------|
+| **Actuators** | Motor controller APIs, servo control | How `TalonFX` and `TalonFXS` methods work |
+| **Sensors** | Encoders, gyros, limit switches | How `CommandSwerveDrivetrain` reads the Pigeon gyro |
+| **NetworkTables** | Publish/subscribe, SmartDashboard | The `SmartDashboard.putNumber()` calls you added in Unit 3 |
+| **Kinematics & Odometry** | Swerve math, pose tracking | The math behind `CommandSwerveDrivetrain` |
+| **Path Planning** | Trajectory generation, path following | How PathPlanner integrates with WPILib |
+
+---
+
+<Quiz client:load
+  question="You want to understand exactly how toggleOnTrue works — when the command starts, when it stops, and what happens if you press the button while the command is already running. Which layer of WPILib docs should you check first?"
+  options={[
+    "Zero to Robot — it covers all button setup",
+    "The Programming Guide — Command-Based section on triggers",
+    "The API Javadocs — look up the Trigger class",
+    "The WPILib GitHub README"
+  ]}
+  correctIndex={1}
+  explanation="The Programming Guide's command-based section on triggers explains the behavior of each binding type (onTrue, whileTrue, toggleOnTrue) with diagrams and examples. The API Javadocs would give you the method signature but not the conceptual explanation. Zero to Robot covers hardware setup, not programming concepts."
+/>
+
+---
+
+## Layer 3: API Javadocs
+
+The API javadocs are the most detailed — and most intimidating — layer. They're auto-generated from the WPILib source code and list every class, method, parameter, and return type in the library.
+
+You access them at:
+
+> **[first.wpi.edu/allwpilib/docs/release/java/](https://first.wpi.edu/allwpilib/docs/release/java/)**
+
+### When to Use Javadocs
+
+Use the javadocs when you need to answer very specific questions:
+
+- "What parameters does `SwerveDriveKinematics.toSwerveModuleStates()` take?"
+- "What does `Rotation2d.fromDegrees()` return?"
+- "Does `CommandScheduler.getInstance().run()` return anything?"
+
+### How to Navigate Javadocs
+
+Javadocs can feel overwhelming at first. Here's the fastest way to find what you need:
+
+1. **Use the search bar** — type the class name (e.g., `Trigger`) and click the result
+2. **Scan the method summary** — this table at the top lists every method with a one-line description
+3. **Click a method** — scroll down to the full description with parameters, return type, and sometimes examples
+4. **Check "See Also"** — related classes and methods are linked at the bottom
+
+### Connecting Javadocs to Your Code
+
+Let's try it. Your team's <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> uses `controller.x()` to get a trigger for the X button. If you look up the `CommandXboxController` class in the javadocs, you'll find:
+
+- `x()` returns a `Trigger` object
+- `Trigger` has methods like `onTrue()`, `whileTrue()`, `toggleOnTrue()`
+- Each method takes a `Command` parameter
+
+This is exactly what you see in the code. The javadocs confirm the pattern and show you what other options are available (like `onFalse()`, `whileTrue()`, `debounce()`).
+
+:::note[Javadocs vs. Programming Guide]
+Think of it this way: the Programming Guide teaches you *how to drive*. The Javadocs are the *owner's manual* — every knob, switch, and spec. You learn to drive first (Programming Guide), then look up specifics when you need them (Javadocs).
+:::
+
+---
+
+## Practical Exercise: Find It in the Docs
+
+Let's practice navigating the docs with real questions from your team's code. For each question below, try to find the answer in the WPILib docs before revealing it.
+
+### Question 1: What does `Commands.run()` do?
+
+Your team uses `Commands.run()` in RobotContainer to create inline commands. What exactly does this factory method do?
+
+<AnswerReveal client:load label="Show Answer">
+`Commands.run()` is a static factory method in the `Commands` class. It creates a `RunCommand` — a command that calls the given lambda every 20ms until cancelled. It takes two parameters: a `Runnable` (the lambda to execute) and zero or more `Subsystem` requirements.
+
+You can find this in the Programming Guide under **Command-Based → Command Compositions** or in the Javadocs under `edu.wpi.first.wpilibj2.command.Commands`.
+</AnswerReveal>
+
+### Question 2: What is `finallyDo()`?
+
+In the X button intake binding, you saw `.finallyDo(() -> { ... })`. What does this decorator do?
+
+<AnswerReveal client:load label="Show Answer">
+`finallyDo()` is a command decorator that runs a given action when the command ends, whether it finishes normally or is interrupted. It's like a `finally` block in Java try/catch — it always runs.
+
+Find it in the Javadocs under the `Command` class → `finallyDo(BooleanConsumer)` method. The Programming Guide covers it under **Command Compositions → Command Decorators**.
+</AnswerReveal>
+
+### Question 3: What's the difference between `SequentialCommandGroup` and `ParallelCommandGroup`?
+
+Your intake binding uses a `SequentialCommandGroup`. What would change if it were a `ParallelCommandGroup`?
+
+<AnswerReveal client:load label="Show Answer">
+A `SequentialCommandGroup` runs commands one after another — each must finish before the next starts. A `ParallelCommandGroup` runs all commands at the same time and finishes when all of them are done.
+
+If the intake binding used `ParallelCommandGroup`, the deploy, wait, and roller commands would all start simultaneously — the rollers would spin before the intake is deployed, which would be useless (or dangerous).
+
+Find this in the Programming Guide under **Command-Based → Command Compositions**.
+</AnswerReveal>
+
+---
+
+## Building a Docs Lookup Habit
+
+The best FRC programmers aren't the ones who memorize every API. They're the ones who know how to find answers quickly. Here's a workflow to build that habit:
+
+### The 3-Step Lookup
+
+1. **Start with the Programming Guide** — search for the concept (e.g., "triggers", "subsystems", "path following")
+2. **If you need exact details, go to Javadocs** — search for the specific class or method name
+3. **If you're still stuck, search the WPILib GitHub** — the source code itself is the ultimate reference
+
+### Common Lookup Scenarios
+
+| You're Wondering... | Where to Look |
+|---------------------|--------------|
+| "How does this WPILib concept work?" | Programming Guide |
+| "What parameters does this method take?" | API Javadocs |
+| "What are all the trigger binding types?" | Programming Guide → Binding Commands to Triggers |
+| "How do I create a swerve drive?" | Programming Guide → Kinematics & Odometry |
+| "What does this error message mean?" | Programming Guide → Troubleshooting, or search the WPILib GitHub issues |
+| "Is there an example of this pattern?" | Programming Guide examples, or WPILib example projects on GitHub |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Navigate the Docs"
+  prompt="Without looking at the answers above, describe the three layers of WPILib documentation and when you'd use each one. Then: your teammate asks 'What's the difference between onTrue and toggleOnTrue?' — which doc layer would you check first, and what section would you navigate to?"
+>
+**Three layers:**
+1. **Zero to Robot** — step-by-step hardware/software setup guide. Use when setting up a new robot, re-imaging the roboRIO, or installing WPILib on a new computer.
+2. **Programming Guide** — conceptual tutorials organized by topic. Use when learning how a concept works (subsystems, commands, triggers, kinematics).
+3. **API Javadocs** — auto-generated reference for every class and method. Use when you need exact method signatures, parameters, and return types.
+
+**For the onTrue vs toggleOnTrue question:** Check the **Programming Guide** first, specifically the **Command-Based → Binding Commands to Triggers** section. It explains each binding type with behavior descriptions. If you need the exact method signatures after that, check the `Trigger` class in the Javadocs.
+</Checkpoint>
+
+---
+
+## Beyond WPILib: Other Documentation You'll Use
+
+WPILib isn't the only documentation you'll reference. Your team's robot uses vendor libraries that have their own docs:
+
+| Library | Documentation Site | What It Covers |
+|---------|-------------------|----------------|
+| **CTRE Phoenix 6** | [v6.docs.ctr-electronics.com](https://v6.docs.ctr-electronics.com/) | TalonFX, TalonFXS, Pigeon 2, CANcoder — the motors and sensors on your robot |
+| **REV Robotics** | [docs.revrobotics.com](https://docs.revrobotics.com/) | SPARK MAX, SPARK Flex, color sensors — if your team uses REV hardware |
+| **PathPlanner** | [pathplanner.dev](https://pathplanner.dev/) | Autonomous path planning — you'll dive into this in Lessons 4.12 and beyond |
+| **AdvantageScope** | [docs.advantagescope.org](https://docs.advantagescope.org/) | Log viewer and data analysis — essential for debugging |
+
+For now, focus on getting comfortable with WPILib docs. You'll explore vendor docs in depth in Unit 5 (Lesson 5.9: Vendor Documentation Deep Dive).
+
+:::tip[Pro Tip: Use Ctrl+F]
+On any documentation page, use `Ctrl+F` (or `Cmd+F` on Mac) to search within the page. Documentation pages can be long, and the browser's find feature is often faster than scrolling.
+:::
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **WPILib** | The official FRC robot programming library, providing the framework for subsystems, commands, sensors, actuators, and more |
+| **Zero to Robot** | The WPILib setup guide covering hardware configuration, software installation, and first robot program deployment |
+| **API Javadocs** | Auto-generated reference documentation listing every class, method, parameter, and return type in the WPILib library |
+| **Command-Based Framework** | The WPILib programming paradigm that organizes robot code into subsystems (hardware control) and commands (behaviors) |
+| **Trigger** | A WPILib class that represents a boolean condition (like a button press) and can bind commands to state changes |
+| **Command Decorator** | A method like `finallyDo()`, `withTimeout()`, or `unless()` that wraps a command to modify its behavior |
+
+---
+
+## What's Next?
+
+You now know how to navigate the WPILib docs — from high-level tutorials to exact method signatures. This skill will save you hours of guessing and trial-and-error throughout the season.
+
+In **Activity 4.4: Explore Your Own Robot Code**, you'll apply the Code Reading Framework to three files in your team's project that you haven't opened yet. You'll use the WPILib docs to look up unfamiliar classes and methods as you go — putting your new docs navigation skills to work immediately.
+
+
+In **Lesson 4.2: Git & GitHub Team Workflow**, you'll learn the branching strategy, pull request process, code review, and merge conflict resolution your team uses to collaborate safely on robot code.

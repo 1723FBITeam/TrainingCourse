@@ -1,0 +1,310 @@
+---
+title: "Lesson 4.9: NetworkTables Basics"
+description: "Understand the publish/subscribe data system that connects your robot to dashboards, cameras, and the Driver Station"
+sidebar:
+  order: 9
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what NetworkTables is and why FRC robots use it
+- Describe the publish/subscribe model and how data flows between robot and dashboard
+- Identify SmartDashboard methods in your team's code and explain what they do
+- Explain how the Limelight camera publishes vision data through NetworkTables
+- Describe how the autonomous chooser uses NetworkTables to let drivers select an auto routine
+
+:::tip[Before You Start]
+Complete **Activity 4.8: Trace a New Button** first. You should be comfortable reading RobotContainer and subsystem code. Have a browser open to [docs.wpilib.org](https://docs.wpilib.org) — you'll reference the NetworkTables documentation during this lesson.
+:::
+
+---
+
+## What Is NetworkTables?
+
+Every FRC robot has a hidden data layer running alongside the command-based code you've been reading. That layer is called **NetworkTables** — a real-time key-value store that lets different programs share data over the network.
+
+Think of NetworkTables as a shared whiteboard:
+
+- The **robot code** writes values to the whiteboard (motor speeds, sensor readings, robot position)
+- The **Driver Station dashboard** reads those values and displays them
+- The **Limelight camera** writes vision data to the whiteboard
+- **AdvantageScope** or **Shuffleboard** reads everything for logging and visualization
+
+All of this happens automatically over the robot's network — no manual file transfers or serial connections needed.
+
+
+### The Key-Value Model
+
+NetworkTables stores data as **key-value pairs**, organized into tables (like folders). Each entry has:
+
+- A **key** (the name): e.g., `"/SmartDashboard/Intake/Speed"`
+- A **value** (the data): e.g., `0.5`
+- A **type**: number, boolean, string, or structured types like `Pose2d`
+
+```
+NetworkTables
+├── SmartDashboard/
+│   ├── Intake/Speed = 0.5
+│   ├── Shooter/RPM = 3200.0
+│   └── Auto Chooser = "TwoNoteAuto"
+├── limelight/
+│   ├── tv = 1.0          (target visible)
+│   ├── tx = -3.5          (horizontal offset)
+│   └── botpose_wpiblue = [1.2, 5.4, 0, ...]
+└── FMSInfo/
+    ├── IsRedAlliance = false
+    └── MatchNumber = 42
+```
+
+---
+
+## The Publish/Subscribe Model
+
+NetworkTables uses a **publish/subscribe** pattern. This is a fundamental concept in software engineering — not just FRC.
+
+### Publishers
+
+A **publisher** writes data to NetworkTables. Your robot code is the primary publisher:
+
+```java title="Publishing data from robot code"
+// Simple approach — SmartDashboard wrapper
+SmartDashboard.putNumber("Intake/Speed", intakeMotor.getVelocity().getValueAsDouble());
+SmartDashboard.putBoolean("Intake/Deployed", isDeployed);
+SmartDashboard.putString("Robot/State", "INTAKING");
+
+// Advanced approach — direct NetworkTables publisher
+NetworkTableInstance.getDefault()
+    .getTable("MyTable")
+    .getEntry("myValue")
+    .setDouble(3.14);
+```
+
+### Subscribers
+
+A **subscriber** reads data from NetworkTables. Dashboards, logging tools, and even other parts of your robot code can subscribe:
+
+```java title="Reading data from NetworkTables"
+// Reading a value published by the Limelight
+double tx = LimelightHelpers.getTX("");  // Internally reads from NetworkTables
+
+// Reading a SmartDashboard value
+double speed = SmartDashboard.getNumber("Intake/Speed", 0.0);
+//                                                       ^^^
+//                                     Default value if key doesn't exist
+```
+
+### Why Publish/Subscribe?
+
+The beauty of this model is **decoupling**. The robot code doesn't need to know who's reading the data. It just publishes. Whether it's Shuffleboard, AdvantageScope, a Limelight, or nothing at all — the robot code is the same. This makes it easy to add new dashboard widgets or logging tools without changing any robot code.
+
+---
+
+<Quiz client:load
+  question="Your team's code calls SmartDashboard.putNumber('Shooter/RPM', 3200). What does this do?"
+  options={[
+    "Sets the shooter motor to 3200 RPM",
+    "Publishes the value 3200 to NetworkTables under the key 'SmartDashboard/Shooter/RPM'",
+    "Sends 3200 to the Driver Station over USB",
+    "Saves 3200 to a log file on the roboRIO"
+  ]}
+  correctIndex={1}
+  explanation="SmartDashboard.putNumber() publishes a value to NetworkTables. It doesn't control any motors — it just makes the data available for dashboards and logging tools to read. The key becomes 'SmartDashboard/Shooter/RPM' in the NetworkTables hierarchy."
+/>
+
+---
+
+## SmartDashboard — The Easy API
+
+`SmartDashboard` is a convenience wrapper around NetworkTables. It's the most common way FRC teams publish data because it's simple:
+
+| Method | What It Does | Example |
+|--------|-------------|---------|
+| `putNumber(key, value)` | Publishes a double | `putNumber("Shooter/RPM", 3200)` |
+| `putBoolean(key, value)` | Publishes a boolean | `putBoolean("Intake/HasNote", true)` |
+| `putString(key, value)` | Publishes a string | `putString("Auto/Selected", "TwoNote")` |
+| `getNumber(key, default)` | Reads a double | `getNumber("Shooter/RPM", 0.0)` |
+| `getBoolean(key, default)` | Reads a boolean | `getBoolean("Intake/HasNote", false)` |
+
+All SmartDashboard entries live under the `SmartDashboard/` table in NetworkTables. When you call `putNumber("Shooter/RPM", 3200)`, the full NetworkTables key is `"/SmartDashboard/Shooter/RPM"`.
+
+### Where SmartDashboard Appears in Your Code
+
+Search your project for `SmartDashboard` to find where your team publishes data. Common locations:
+
+- **Subsystem `periodic()` methods** — publishing sensor readings every loop
+- **Telemetry.java** — <GitHubLink client:load path={`${robotConfig.projectRoot}/Telemetry.java`} label="Telemetry.java" /> publishes drivetrain data
+- **RobotContainer** — publishing auto chooser selections
+
+
+---
+
+## Limelight Data Flow
+
+Your team's Limelight camera is one of the most interesting NetworkTables publishers. It runs its own vision processing and publishes results directly to NetworkTables — your robot code just reads them.
+
+### How Limelight Uses NetworkTables
+
+The Limelight publishes data under the `limelight/` table:
+
+| Key | Type | What It Means |
+|-----|------|--------------|
+| `tv` | Number (0 or 1) | Is a target visible? 1 = yes, 0 = no |
+| `tx` | Number (degrees) | Horizontal offset from crosshair to target |
+| `ty` | Number (degrees) | Vertical offset from crosshair to target |
+| `ta` | Number (%) | Target area (how much of the image the target fills) |
+| `botpose_wpiblue` | Number array | Robot's estimated position on the field (from AprilTags) |
+
+Your team's code reads these values through <GitHubLink client:load path={`${robotConfig.projectRoot}/LimelightHelpers.java`} label="LimelightHelpers.java" />:
+
+```java title="LimelightHelpers.java — Reading Limelight data from NetworkTables"
+// These methods internally read from the limelight/ NetworkTables table
+double targetVisible = LimelightHelpers.getTV("");   // reads limelight/tv
+double horizontalOffset = LimelightHelpers.getTX(""); // reads limelight/tx
+Pose2d robotPose = LimelightHelpers.getBotPoseEstimate_wpiBlue("").pose;
+```
+
+The empty string `""` is the Limelight's name — if you only have one Limelight, the default name works. Teams with multiple cameras use names like `"limelight-front"` and `"limelight-back"`.
+
+### The Data Flow
+
+```
+Limelight Camera                NetworkTables              Robot Code
+────────────────               ──────────────             ──────────
+Sees AprilTag #4  →  Publishes botpose_wpiblue  →  LimelightHelpers.getBotPoseEstimate()
+Calculates offset →  Publishes tx, ty, ta       →  LimelightHelpers.getTX(), getTY()
+Detects target    →  Publishes tv = 1           →  LimelightHelpers.getTV()
+```
+
+The camera does all the heavy vision processing. Your robot code just reads the results. This is the power of NetworkTables — the camera and robot code don't need to know about each other's internals. They communicate through shared data.
+
+---
+
+## The Autonomous Chooser
+
+One of the most practical uses of NetworkTables is the **autonomous chooser** — the dropdown on the Driver Station dashboard that lets the drive team select which auto routine to run.
+
+### How It Works
+
+1. **Robot code** creates a `SendableChooser` and adds auto options:
+
+```java title="RobotContainer.java — Auto chooser setup"
+private final SendableChooser<Command> autoChooser = new SendableChooser<>();
+
+public RobotContainer() {
+    autoChooser.setDefaultOption("Do Nothing", new InstantCommand());
+    autoChooser.addOption("Two Note Auto", buildTwoNoteAuto());
+    autoChooser.addOption("Three Note Auto", buildThreeNoteAuto());
+
+    SmartDashboard.putData("Auto Chooser", autoChooser);
+}
+```
+
+2. **SmartDashboard.putData()** publishes the chooser to NetworkTables. The dashboard reads it and displays a dropdown.
+
+3. **The drive team** selects an option on the dashboard before the match starts.
+
+4. **When autonomous begins**, the robot code reads the selection:
+
+```java title="Robot.java — Reading the auto selection"
+public void autonomousInit() {
+    Command autoCommand = autoChooser.getSelected();
+    if (autoCommand != null) {
+        autoCommand.schedule();
+    }
+}
+```
+
+The entire flow happens through NetworkTables. The robot publishes the options, the dashboard displays them, the driver selects one, and the robot reads the selection — all through the shared data layer.
+
+
+<Quiz client:load
+  question="How does the Limelight camera send vision data to your robot code?"
+  options={[
+    "Through a USB cable directly to the roboRIO",
+    "By writing to a shared file on the roboRIO",
+    "By publishing values to NetworkTables, which the robot code reads",
+    "Through a special Limelight API that bypasses NetworkTables"
+  ]}
+  correctIndex={2}
+  explanation="The Limelight publishes vision data (target offsets, robot pose estimates) to NetworkTables entries under the 'limelight/' table. Your robot code reads these values through LimelightHelpers, which internally accesses NetworkTables. The camera and robot code never communicate directly — NetworkTables is the intermediary."
+/>
+
+---
+
+## Viewing NetworkTables Data
+
+You can view all NetworkTables data in real time using several tools:
+
+| Tool | What It Shows | When to Use |
+|------|-------------|-------------|
+| **Shuffleboard** | Customizable dashboard with widgets | During practice — drag and drop widgets for the data you care about |
+| **AdvantageScope** | Full NetworkTables tree + logging | During debugging — see every entry, graph values over time |
+| **OutlineViewer** | Raw NetworkTables tree (text-based) | Quick inspection — see all keys and values in a simple list |
+| **Glass** | WPILib's built-in dashboard | Simulation — works without a real robot |
+
+In the next activity, you'll use one of these tools to explore your robot's live NetworkTables data.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: NetworkTables Understanding"
+  prompt="Answer these questions without looking back: (1) What is the publish/subscribe model in one sentence? (2) Name two things that publish data to NetworkTables on your robot. (3) How does the autonomous chooser use NetworkTables to let drivers select an auto routine?"
+>
+1. **Publish/subscribe:** Publishers write data to shared keys, and subscribers read from those keys — neither needs to know about the other.
+
+2. **Two publishers:** (a) Your robot code (via SmartDashboard.putNumber/putBoolean/putString) and (b) the Limelight camera (publishes vision data like tx, ty, tv, botpose). Other valid answers: the FMS (publishes match info), the Driver Station (publishes joystick data).
+
+3. **Auto chooser flow:** The robot code creates a SendableChooser with auto options and publishes it to NetworkTables via SmartDashboard.putData(). The dashboard reads the options and shows a dropdown. The driver selects an option. When autonomous starts, the robot code calls autoChooser.getSelected() to read the selection from NetworkTables and schedule that command.
+</Checkpoint>
+
+---
+
+## NetworkTables vs. Other Communication
+
+It's worth understanding what NetworkTables is *not*:
+
+| Communication | What It Does | NetworkTables? |
+|--------------|-------------|---------------|
+| **CAN bus** | Robot code ↔ motor controllers, sensors | No — CAN is hardware-level, not NetworkTables |
+| **NetworkTables** | Robot code ↔ dashboards, cameras, logging | Yes — this lesson! |
+| **Driver Station protocol** | Robot code ↔ Driver Station (enable/disable, joysticks) | Partially — joystick data comes through DS, but some data uses NT |
+| **FMS** | Field Management System ↔ robot (match info, alliance) | Yes — FMS data is published to NetworkTables |
+
+CAN bus handles the low-level hardware communication (telling motors what to do). NetworkTables handles the high-level data sharing (telling dashboards what's happening). They serve different purposes at different levels.
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **NetworkTables** | A real-time key-value data store that lets programs on the robot network share data — the communication backbone between robot code, dashboards, and cameras |
+| **Publish/Subscribe** | A communication pattern where publishers write data to shared keys and subscribers read from those keys, without needing to know about each other |
+| **SmartDashboard** | A WPILib convenience class that wraps NetworkTables access, providing simple `putNumber`/`getNumber` methods for publishing and reading data |
+| **SendableChooser** | A WPILib class that creates a dropdown selector on the dashboard via NetworkTables, commonly used for autonomous routine selection |
+| **Key-Value Pair** | A data entry in NetworkTables consisting of a name (key) and associated data (value), organized into tables |
+| **Limelight** | A vision camera that processes AprilTags and targets, publishing results to NetworkTables for the robot code to read |
+
+---
+
+## What's Next?
+
+You now understand the data layer that connects your robot to the outside world. NetworkTables is the invisible backbone behind every dashboard widget, every Limelight reading, and every auto chooser selection.
+
+In **Activity 4.10: Explore Live NetworkTables**, you'll connect to a running robot (or simulation) and use OutlineViewer or AdvantageScope to see every NetworkTables entry in real time. You'll document what your robot publishes and where that data comes from in the code.
+
+
+
+In **Activity 4.10: Explore Live NetworkTables**, you'll connect to a running robot (or simulation) and use OutlineViewer or AdvantageScope to see every NetworkTables entry in real time. You'll document what your robot publishes and where that data comes from in the code.

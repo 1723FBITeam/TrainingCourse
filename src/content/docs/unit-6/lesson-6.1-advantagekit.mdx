@@ -1,0 +1,333 @@
+---
+title: "Lesson 6.1: AdvantageKit Logging and Replay"
+description: "Learn how AdvantageKit's IO abstraction and structured logging enable replay-based debugging — re-run your robot code on real match data"
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what AdvantageKit is and why structured logging matters for FRC debugging
+- Describe the IO abstraction pattern and how it separates hardware access from logic
+- Understand how replay debugging lets you re-run robot code on recorded match data
+- Identify the key components of an AdvantageKit-based project (IO interfaces, IO implementations, Logger)
+- Navigate the AdvantageKit documentation to find setup and usage guides
+
+:::caution[Unit 6 Prerequisites]
+Complete **Unit 5** before starting Unit 6. You should be comfortable with debugging using Shuffleboard and AdvantageScope, reading top team code, deploying and testing on the robot, understanding swerve concepts, and creating PathPlanner auto routines. Unit 6 builds on all of those skills.
+:::
+
+:::tip[Before You Start]
+Have a browser open to [docs.advantagekit.org](https://docs.advantagekit.org) and your team's code in your IDE. You'll be comparing AdvantageKit patterns to your team's current code structure throughout this lesson.
+:::
+
+:::note[😤 This Is the Hard Stuff — And That's OK]
+Unit 6 introduces concepts that even experienced FRC programmers find challenging. IO abstraction, replay debugging, and structured logging are advanced software engineering patterns. If something doesn't click immediately, that's completely normal. Focus on understanding the *why* before worrying about the *how*. You can adopt these patterns gradually — one subsystem at a time.
+:::
+
+---
+
+## Why Structured Logging?
+
+In Unit 5, you learned to debug with Shuffleboard and AdvantageScope — adding `SmartDashboard.putNumber()` calls to see values in real time. That works, but it has serious limitations:
+
+| Problem | What Happens |
+|---------|-------------|
+| **You forgot to log something** | The match is over. You can't go back and add the missing data. |
+| **The bug only happens in matches** | You can't reproduce it in the pit because the conditions are different. |
+| **You want to test a code change** | You have to deploy, enable, and physically run the robot again. |
+| **Multiple people need to debug** | Everyone needs to be at the robot at the same time. |
+
+**AdvantageKit** solves all of these problems with a single idea: **log everything, replay anything.**
+
+> **[docs.advantagekit.org](https://docs.advantagekit.org)**
+
+AdvantageKit is an open-source logging framework created by Team 6328 (Mechanical Advantage). It records every input to your robot code — every sensor reading, every button press, every CAN message — into a structured log file. After the match, you can **replay** that log file through your robot code on a laptop, and the code behaves exactly as it did on the field.
+
+---
+
+## The IO Abstraction Pattern
+
+The key architectural idea behind AdvantageKit is the **IO abstraction layer**. Instead of your subsystem talking directly to hardware, you insert an interface between them.
+
+### Without IO Abstraction (Your Team's Current Approach)
+
+In your team's code, subsystems access hardware directly:
+
+```java
+public class IntakeSubsystem extends SubsystemBase {
+  private final TalonFX rollerMotor = new TalonFX(31);
+
+  public void runRollers(double speed) {
+    rollerMotor.set(speed);
+  }
+
+  @Override
+  public void periodic() {
+    SmartDashboard.putNumber("Intake/RollerSpeed",
+      rollerMotor.getVelocity().getValueAsDouble());
+  }
+}
+```
+
+This works fine for running on the robot, but you can't replay it — the `TalonFX` object needs real hardware.
+
+### With IO Abstraction (AdvantageKit Pattern)
+
+AdvantageKit splits the subsystem into three pieces:
+
+**1. The IO Interface** — defines what inputs the subsystem needs:
+
+```java
+public interface IntakeIO {
+  @AutoLog
+  public static class IntakeIOInputs {
+    public double rollerVelocityRPM = 0.0;
+    public double rollerCurrentAmps = 0.0;
+    public boolean noteDetected = false;
+  }
+
+  public default void updateInputs(IntakeIOInputs inputs) {}
+  public default void setRollerSpeed(double speed) {}
+}
+```
+
+**2. The Real IO Implementation** — talks to actual hardware:
+
+```java
+public class IntakeIOTalonFX implements IntakeIO {
+  private final TalonFX rollerMotor = new TalonFX(31);
+
+  @Override
+  public void updateInputs(IntakeIOInputs inputs) {
+    inputs.rollerVelocityRPM = rollerMotor.getVelocity().getValueAsDouble() * 60.0;
+    inputs.rollerCurrentAmps = rollerMotor.getSupplyCurrent().getValueAsDouble();
+  }
+
+  @Override
+  public void setRollerSpeed(double speed) {
+    rollerMotor.set(speed);
+  }
+}
+```
+
+**3. The Subsystem** — contains only logic, no hardware:
+
+```java
+public class Intake extends SubsystemBase {
+  private final IntakeIO io;
+  private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
+
+  public Intake(IntakeIO io) {
+    this.io = io;
+  }
+
+  @Override
+  public void periodic() {
+    io.updateInputs(inputs);
+    Logger.processInputs("Intake", inputs);
+  }
+
+  public void runRollers(double speed) {
+    io.setRollerSpeed(speed);
+  }
+}
+```
+
+The subsystem never touches a motor directly. It asks the IO layer for inputs and sends outputs through the IO layer. This separation is what makes replay possible.
+
+---
+
+## How Replay Works
+
+Here's the magic: during a match, AdvantageKit's `Logger` records every `IntakeIOInputs` update into a `.wpilog` file. After the match, you can run your robot code on a laptop with a **replay IO implementation** that reads inputs from the log file instead of from hardware.
+
+```
+Match Day:
+  Real Hardware → IntakeIOTalonFX → Subsystem Logic → Logger → .wpilog file
+
+Replay:
+  .wpilog file → IntakeIOReplay → Subsystem Logic → Compare outputs
+```
+
+This means:
+- **You can add new logging** after the match and see what the values would have been
+- **You can change your logic** and see how the robot would have behaved differently
+- **You can debug on your laptop** without the robot present
+- **Multiple people can replay** the same match independently
+
+---
+
+<Quiz client:load
+  question="Why does AdvantageKit require an IO abstraction layer between subsystems and hardware?"
+  options={[
+    "To make the code run faster on the roboRIO",
+    "To allow subsystem logic to run without real hardware during replay",
+    "To reduce the number of CAN messages sent to motors",
+    "To make the code compatible with both Java and C++"
+  ]}
+  correctIndex={1}
+  explanation="The IO abstraction separates hardware access from subsystem logic. During replay, the IO layer is swapped from real hardware (IntakeIOTalonFX) to a replay implementation that reads from log files. The subsystem logic runs identically in both cases because it never touches hardware directly."
+/>
+
+---
+
+## The AdvantageKit Logger
+
+The `Logger` class is the central piece of AdvantageKit's logging system. It handles:
+
+1. **Input logging** — automatically records all IO inputs every cycle via `Logger.processInputs()`
+2. **Output logging** — records values you explicitly log via `Logger.recordOutput()`
+3. **Metadata** — timestamps, loop timing, and system information
+4. **File management** — writes to `.wpilog` files on a USB drive or the roboRIO filesystem
+
+### What Gets Logged Automatically
+
+When you call `Logger.processInputs("Intake", inputs)`, AdvantageKit logs every field in the `IntakeIOInputs` class:
+
+- `Intake/rollerVelocityRPM`
+- `Intake/rollerCurrentAmps`
+- `Intake/noteDetected`
+
+These appear as structured entries in AdvantageScope, organized by subsystem name.
+
+### What You Log Manually
+
+For outputs and computed values, use `Logger.recordOutput()`:
+
+```java
+Logger.recordOutput("Intake/TargetSpeed", targetSpeed);
+Logger.recordOutput("Intake/State", currentState.toString());
+Logger.recordOutput("Intake/HasNote", hasNote);
+```
+
+The combination of automatic input logging and manual output logging gives you a complete picture of what the robot was doing and why.
+
+---
+
+## Comparing to Your Team's Code
+
+Let's look at how your team's code compares to the AdvantageKit pattern.
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" /> in your IDE.
+
+| Aspect | Your Team's Code | AdvantageKit Pattern |
+|--------|-----------------|---------------------|
+| Hardware access | Direct in subsystem | Through IO interface |
+| Logging | `SmartDashboard.putNumber()` calls | `Logger.processInputs()` + `Logger.recordOutput()` |
+| Replay capability | None — needs real hardware | Full replay from log files |
+| Simulation support | Limited | Swap IO implementation for sim physics |
+| File count per subsystem | 1 file | 3+ files (IO interface, IO impl, subsystem) |
+| Complexity | Lower — easier to read | Higher — more files, more abstraction |
+
+Neither approach is "wrong." Your team's approach is simpler and easier for new members to understand. The AdvantageKit approach is more powerful for debugging and testing. Many teams adopt AdvantageKit gradually — starting with one subsystem and expanding over time.
+
+---
+
+## Setting Up AdvantageKit
+
+If your team decides to adopt AdvantageKit, the setup process involves:
+
+1. **Adding the dependency** — AdvantageKit is distributed as a vendor library (vendordep JSON)
+2. **Configuring the Logger** — in `Robot.java`, initialize the Logger with your preferred data receivers (file, NetworkTables)
+3. **Creating IO interfaces** — one per subsystem, defining the inputs that subsystem needs
+4. **Creating IO implementations** — real hardware, simulation, and replay versions
+5. **Refactoring subsystems** — inject the IO interface instead of creating hardware objects directly
+
+The full setup guide is at [docs.advantagekit.org](https://docs.advantagekit.org). Start with their "Getting Started" page and the example projects.
+
+:::note[Gradual Adoption]
+You don't have to convert your entire codebase at once. Many teams start by adding AdvantageKit logging to their drivetrain (the most critical subsystem for auto debugging) and expand from there. Even without the full IO abstraction, you can use `Logger.recordOutput()` to log values more effectively than SmartDashboard.
+:::
+
+---
+
+## Reading AdvantageKit Logs in AdvantageScope
+
+You already know AdvantageScope from Unit 5 (Lesson 5.8). AdvantageKit logs are designed to work seamlessly with AdvantageScope:
+
+1. **Open the .wpilog file** — drag it into AdvantageScope or use File → Open
+2. **Browse the tree** — inputs are organized by subsystem name (e.g., `Intake/rollerVelocityRPM`)
+3. **Graph values** — drag any logged value onto a graph to see it over time
+4. **Compare inputs vs outputs** — overlay the target speed and actual speed to see tracking performance
+5. **Scrub through time** — use the timeline to jump to specific moments in the match
+
+The structured naming (`Subsystem/Field`) makes it much easier to find what you need compared to scattered `SmartDashboard` entries.
+
+---
+
+## Why Top Teams Use AdvantageKit
+
+Team 6328 created AdvantageKit because they needed to debug autonomous routines that only failed during matches. With replay, they could:
+
+- Re-run their auto code on match data and see exactly where the path diverged
+- Add new logging after the match to investigate values they didn't think to log
+- Test code changes against real match data before deploying to the robot
+- Share log files with team members who weren't at the event
+
+Other top teams (1678, 3476, 4099) have adopted AdvantageKit or similar logging frameworks for the same reasons. At the highest level of FRC competition, the ability to debug from data — not from memory or guesswork — is a significant competitive advantage.
+
+<Quiz client:load
+  question="After a match, you realize you forgot to log the shooter flywheel speed. With AdvantageKit's replay system, what can you do?"
+  options={[
+    "Nothing — the data is lost forever since you didn't log it",
+    "Add the logging code, replay the match log, and see the flywheel speed values",
+    "Ask the Driver Station to resend the data",
+    "Re-run the exact same match on the field"
+  ]}
+  correctIndex={1}
+  explanation="With AdvantageKit, all hardware inputs are recorded automatically through the IO layer. Even if you didn't explicitly log the flywheel speed, the raw motor data is in the log. You can add Logger.recordOutput() for the flywheel speed, replay the match, and the new logging will show the values as if they were always there."
+/>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: AdvantageKit Concepts"
+  prompt="Explain the three-piece IO abstraction pattern (IO interface, IO implementation, subsystem) in your own words. Then: your team's auto routine drifted 30cm to the left during a match, but you can't reproduce it in the pit. How would AdvantageKit's replay system help you debug this?"
+>
+**IO Abstraction Pattern:**
+1. **IO Interface** — defines what sensor data the subsystem needs (velocity, current, position) without specifying how to get it. It's a contract.
+2. **IO Implementation** — the concrete class that talks to real hardware (TalonFX, SparkMax) and fills in the sensor data. Different implementations exist for real hardware, simulation, and replay.
+3. **Subsystem** — contains only the logic (state machines, PID, decisions). It receives an IO object through its constructor and never touches hardware directly.
+
+**Debugging the auto drift:**
+With AdvantageKit, you'd open the match log in AdvantageScope and:
+1. Graph the odometry pose (x, y, heading) over time to see exactly when the drift started
+2. Compare the commanded path vs actual path — is the robot following the path but the path is wrong, or is the robot deviating from the path?
+3. Check gyro heading — did the gyro drift, causing field-relative control to be off?
+4. Check wheel encoder data — is one module reporting incorrect values?
+5. If you need more data, add new logging and replay the match to see the additional values
+
+Without AdvantageKit, you'd have to guess, try to reproduce the issue in the pit (different surface, different battery, different conditions), and hope you get lucky.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **AdvantageKit** | An open-source logging and replay framework for FRC created by Team 6328, enabling structured data recording and replay-based debugging |
+| **IO Abstraction** | A design pattern that separates hardware access from subsystem logic using interfaces, enabling replay and simulation |
+| **Replay Debugging** | The process of re-running robot code on recorded match data to analyze behavior without a physical robot |
+| **Logger** | The AdvantageKit class that records all IO inputs and manual outputs to structured log files |
+| **IO Interface** | A Java interface defining the inputs a subsystem needs (sensor readings) and outputs it produces (motor commands) |
+| **IO Implementation** | A concrete class that fulfills the IO interface by communicating with real hardware, simulation physics, or log file data |
+
+---
+
+## What's Next?
+
+Now that you understand the concepts behind AdvantageKit, it's time to put them into practice. In **Activity 6.2: Replay a Match**, you'll add AdvantageKit logging to one subsystem in your team's code, record data during a test run, and replay it in AdvantageScope to experience the power of replay debugging firsthand.

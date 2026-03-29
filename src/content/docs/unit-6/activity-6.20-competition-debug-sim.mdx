@@ -1,0 +1,260 @@
+---
+title: "Activity 6.20: Simulated Competition Debugging"
+description: "Practice diagnosing and fixing robot code issues under time pressure — a simulated competition debugging scenario"
+sidebar:
+  order: 20
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Practiced the five-minute debugging flowchart under simulated time pressure
+- Diagnosed at least two injected issues in your team's code
+- Applied the hotfix branch workflow to make targeted fixes
+- Experienced the pressure of competition debugging in a safe environment
+
+:::tip[Before You Start]
+Complete **Lesson 6.19: Competition Readiness**. You need a partner or mentor to act as the "competition coordinator" who introduces scenarios. Have your team's robot project open, a terminal ready, and a timer available.
+:::
+
+---
+
+## How This Activity Works
+
+This is a role-playing exercise that simulates competition debugging pressure. One person plays the **programmer** (you), and another plays the **drive team lead** who reports problems and enforces time limits.
+
+If you're working alone, use the scenarios below with a timer. Give yourself strict time limits — the point is to practice working under pressure.
+
+### Rules
+
+1. **Set a timer** for each scenario — you must reach a decision before time runs out
+2. **No looking ahead** — read one scenario at a time
+3. **Document your process** — write down what you checked and in what order
+4. **Use the flowchart** from Lesson 6.19 — don't just guess
+
+---
+
+## Scenario 1: The Auto That Didn't Move (5 minutes)
+
+**⏱️ Set your timer for 5 minutes.**
+
+**Situation:** Your drive team lead runs over to the pit after a match and says: "The robot didn't move during auto. It just sat there for 15 seconds. Teleop worked fine."
+
+### Your Task
+
+Using the five-minute debugging flowchart, work through these questions:
+
+1. **Did the robot move at all during auto?** No — it was completely stationary.
+2. **Is it hardware or software?** Teleop worked fine, so hardware is probably okay.
+3. **What are the most likely software causes?**
+
+Work through the possibilities and write down your diagnosis:
+
+| Check | What to Look For | Your Finding |
+|-------|-----------------|--------------|
+| Auto chooser | Is the correct auto selected? | |
+| DS console | Any error messages during auto? | |
+| Named Commands | Are all Named Commands registered? | |
+| Starting pose | Does the auto's starting pose match where the robot was placed? | |
+| Code version | Is the latest code deployed? Check build timestamp | |
+
+<AnswerReveal client:load label="Most Likely Cause">
+**Most likely:** The auto chooser was set to "Do Nothing" or an empty auto. This is the #1 cause of "robot didn't move in auto" at competitions.
+
+**Second most likely:** A Named Command threw an exception during initialization, which cancelled the entire auto command group. Check the DS console for red error text.
+
+**Third most likely:** The robot's starting pose was so far from the path's expected starting pose that the path follower immediately finished (it thought it was already at the end).
+
+**Quick fix:** Verify the auto chooser, check DS console, and if needed, redeploy with the correct default auto.
+</AnswerReveal>
+
+**Time's up!** Write down your diagnosis and proposed fix before moving on.
+
+**My diagnosis:** _______________
+**My proposed fix:** _______________
+**Time remaining when I reached a decision:** _______________
+
+---
+
+## Scenario 2: The Intermittent Shooter (7 minutes)
+
+**⏱️ Set your timer for 7 minutes.**
+
+**Situation:** "The shooter worked in matches 1 and 2 but didn't work in match 3. We pressed the shoot button and nothing happened. Then in match 4 it worked again."
+
+### Your Task
+
+This is trickier — intermittent issues are harder to diagnose than consistent failures.
+
+1. **What makes intermittent issues different?** The code didn't change between matches, so the bug is likely environmental or timing-related.
+
+2. **Work through these possibilities:**
+
+| Possible Cause | How to Check | Likely? |
+|---------------|-------------|---------|
+| Loose CAN wire to shooter motor | Check physical connections | Maybe |
+| Battery voltage too low (brownout) | Check DS voltage log from match 3 | Possible |
+| Command scheduling conflict | Check if another command was using the shooter subsystem | Possible |
+| Button binding intermittent | Check DS joystick input log | Unlikely |
+| Thermal shutdown on motor controller | Check motor controller LEDs/status | Possible |
+
+3. **What data would help you diagnose this?**
+
+<AnswerReveal client:load label="Debugging Approach">
+**Best approach:** Check the match 3 log in AdvantageScope.
+
+Look for:
+- **Battery voltage** — did it drop below 8V? Motor controllers may brown out before the roboRIO does
+- **CAN bus errors** — did the shooter motor controllers lose communication?
+- **Command scheduler** — was the shoot command actually scheduled when the button was pressed?
+- **Motor output** — was the code sending voltage to the motors but they weren't responding? (hardware issue) Or was the code not sending voltage at all? (software issue)
+
+**Most likely cause for intermittent shooter:** CAN bus communication issue. A loose wire or connector causes the motor controller to drop off the bus intermittently. The fix is electrical (reseat the CAN connector), not software.
+
+**Software-side mitigation:** Add a CAN device health check that alerts the driver if a device goes offline.
+</AnswerReveal>
+
+**My diagnosis:** _______________
+**My proposed fix:** _______________
+**Is this a software fix or a hand-off to electrical?** _______________
+
+---
+
+## Scenario 3: The Hotfix Under Pressure (10 minutes)
+
+**⏱️ Set your timer for 10 minutes.**
+
+**Situation:** "Our 2-piece auto is scoring the first piece but missing the second. We have 12 minutes before our next match. The drive team wants to switch to a reliable 1-piece auto for the next match while we fix the 2-piece for later."
+
+### Your Task
+
+This requires both a quick fix AND a longer-term plan.
+
+**Immediate fix (do this now):**
+
+1. Create a hotfix branch:
+```bash
+git checkout main
+git checkout -b hotfix/safe-auto-default
+```
+
+2. Change the default auto to the 1-piece routine (modify the auto chooser default in RobotContainer)
+
+3. Commit and deploy:
+```bash
+git add .
+git commit -m "hotfix: default to 1-piece auto for safety"
+```
+
+4. Verify: enable the robot, check that the 1-piece auto is selected by default
+
+**Longer-term plan (document for later):**
+
+| Item | Your Plan |
+|------|-----------|
+| What's wrong with the 2-piece auto? | |
+| What data do you need to diagnose it? | |
+| When will you fix it? (between matches? end of day?) | |
+| How will you test the fix before using it in a match? | |
+
+<AnswerReveal client:load label="Hotfix Strategy">
+**The right call:** Switching to the 1-piece auto is the correct decision. A reliable 1-piece auto scores more points over a competition than an unreliable 2-piece auto that fails half the time.
+
+**For the 2-piece fix:**
+1. Review the match log — where exactly does the second piece fail? (path following? intake timing? shooting?)
+2. If it's a path issue: adjust waypoints or constraints in PathPlanner
+3. If it's a timing issue: move event markers earlier
+4. Test the fix in the pit (or simulation) at least twice before using it in a match
+5. When confident, merge the fix and update the default auto back to 2-piece
+</AnswerReveal>
+
+---
+
+## Scenario 4: The Mystery Error (5 minutes)
+
+**⏱️ Set your timer for 5 minutes.**
+
+**Situation:** The DS console shows this error repeatedly during the match:
+
+```
+ERROR: Unhandled exception: java.lang.NullPointerException
+  at frc.robot.commands.AutoShootCommand.execute(AutoShootCommand.java:47)
+```
+
+The robot drives fine but the shoot button does nothing.
+
+### Your Task
+
+1. What does this error tell you?
+2. What's on line 47 of AutoShootCommand?
+3. What's the quickest safe fix?
+
+| Question | Your Answer |
+|----------|-------------|
+| What object is likely null? | |
+| Why might it be null? | |
+| Can you fix this in 5 minutes? | |
+| If not, what's the fallback? | |
+
+<AnswerReveal client:load label="NullPointerException Analysis">
+**What it means:** Something on line 47 of AutoShootCommand.execute() is null. Common causes:
+- A subsystem reference wasn't passed to the constructor
+- A sensor or motor controller object failed to initialize
+- A method returned null unexpectedly
+
+**Quick diagnosis:** Open AutoShootCommand.java, look at line 47. What objects are being accessed? Which one could be null?
+
+**If you can identify and fix it in 5 minutes:** Create a hotfix branch, add a null check or fix the initialization, deploy, and test.
+
+**If you can't fix it quickly:** Disable the AutoShootCommand binding temporarily. The driver can still score manually using individual subsystem commands if available.
+</AnswerReveal>
+
+---
+
+## Debrief
+
+After completing all scenarios, reflect on your performance:
+
+| Question | Your Answer |
+|----------|-------------|
+| Which scenario was hardest? Why? | |
+| Did you follow the debugging flowchart or skip steps? | |
+| How did time pressure affect your decision-making? | |
+| What would you do differently at a real competition? | |
+| What's one debugging skill you want to practice more? | |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Competition Debugging"
+  prompt="Reflect on the simulation: (1) What was your biggest takeaway about debugging under pressure? (2) In which scenario did you feel most confident? Least confident? (3) What's one process or habit you'll adopt for your next competition based on this exercise?"
+>
+Strong answers include:
+
+1. **Pressure insight** — e.g., "Under time pressure, I wanted to skip the systematic flowchart and just start changing code. But the flowchart actually saved time because it pointed me to the most likely cause first instead of guessing randomly."
+
+2. **Confidence assessment** — e.g., "I felt most confident in Scenario 1 (auto didn't move) because the checklist made it straightforward. Least confident in Scenario 2 (intermittent shooter) because intermittent issues are harder to reproduce and diagnose."
+
+3. **Actionable habit** — e.g., "I'm going to print the pre-match checklist and the five-minute debugging flowchart and laminate them for the pit. Having them physically available means I won't forget steps when I'm stressed."
+</Checkpoint>
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Pre-Match Checklist** — a systematic list of checks performed before each match to verify robot readiness
+- **[Hotfix Branch](/reference-sheets/glossary)** — a short-lived Git branch created at competition for targeted code fixes without disrupting the stable main branch
+- **Triage** — the process of quickly assessing and prioritizing issues during competition to decide what to fix first
+- **Brownout** — a voltage drop on the robot caused by excessive current draw, which can disable motors and cause erratic behavior
+:::
+
+## What's Next?
+
+You've practiced competition debugging under pressure. In **Activity 6.21: Compare Drivetrain Implementations**, you'll complete the final comparison exercise — examining how a top team structures their swerve drivetrain code and comparing it to your team's CommandSwerveDrivetrain.

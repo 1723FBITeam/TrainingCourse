@@ -34,5 +34,5 @@ export const robotConfig = {
     climbLeft: 41, climbRight: 42, elevator: 43,
   },
   season: "2026 REBUILT",
-  teamNumber: 0,
+  teamNumber: 1723,
 };

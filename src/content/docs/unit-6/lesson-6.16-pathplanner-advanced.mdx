@@ -1,0 +1,348 @@
+---
+title: "Lesson 6.16: Advanced PathPlanner"
+description: "Master advanced PathPlanner features — on-the-fly path generation, custom constraints, zone behaviors, and AutoBuilder composition"
+sidebar:
+  order: 16
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Generate paths on-the-fly from code instead of the PathPlanner GUI
+- Apply custom constraints to control speed and acceleration in specific path segments
+- Configure zone behaviors that change robot actions based on field position
+- Compose complex autonomous routines using AutoBuilder
+- Understand when to use GUI-designed paths vs. code-generated paths
+
+:::tip[Before You Start]
+Complete **Lesson 6.15: Architecture Patterns from Top Teams**. You should be comfortable with basic PathPlanner concepts from Unit 4 (Lesson 4.12) and Unit 5 (Lesson 5.13). Have the [PathPlanner documentation](https://pathplanner.dev) open in a browser tab.
+:::
+
+---
+
+## Beyond GUI-Designed Paths
+
+In Unit 4 you learned to *read* PathPlanner paths. In Unit 5 you *created* paths in the GUI and registered Named Commands. Now it's time to go further.
+
+The PathPlanner GUI is great for designing paths you know ahead of time. But what about:
+
+- **Dynamic scoring** — generating a path to the nearest game piece based on vision data
+- **Adaptive autos** — choosing different paths based on alliance partner positions
+- **Recovery paths** — generating a return-to-path if the robot gets bumped off course
+
+These scenarios require generating paths from code at runtime. PathPlanner's API makes this possible.
+
+> **Reference:** [pathplanner.dev](https://pathplanner.dev) — the official PathPlanner documentation covers all features discussed in this lesson.
+
+---
+
+## On-the-Fly Path Generation
+
+PathPlanner lets you create paths programmatically using `PathPlannerPath` and waypoints defined in code.
+
+### Creating a Path from Poses
+
+```java
+import com.pathplanner.lib.path.*;
+import edu.wpi.first.math.geometry.*;
+
+// Generate a path from current position to a target
+public Command driveToTarget(Pose2d targetPose) {
+  Pose2d currentPose = drivetrain.getPose();
+
+  List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
+    currentPose,
+    targetPose
+  );
+
+  PathPlannerPath path = new PathPlannerPath(
+    waypoints,
+    new PathConstraints(
+      3.0,   // max velocity (m/s)
+      3.0,   // max acceleration (m/s²)
+      2 * Math.PI,  // max angular velocity (rad/s)
+      2 * Math.PI   // max angular acceleration (rad/s²)
+    ),
+    null,  // ideal starting state (null = use current)
+    new GoalEndState(0.0, targetPose.getRotation())  // stop at target
+  );
+
+  return AutoBuilder.followPath(path);
+}
+```
+
+### When to Use On-the-Fly Paths
+
+| Scenario | GUI Path | On-the-Fly Path |
+|----------|----------|-----------------|
+| Fixed auto routine (same every match) | ✅ Best choice | Unnecessary complexity |
+| Drive to nearest game piece (vision-based) | ❌ Can't predict position | ✅ Generate from vision data |
+| Return to path after being bumped | ❌ Can't predict bump | ✅ Generate recovery path |
+| Adaptive auto based on game state | ❌ Too many variations | ✅ Generate based on conditions |
+
+The rule of thumb: if you know the path before the match starts, design it in the GUI. If the path depends on runtime data, generate it from code.
+
+---
+
+<Quiz client:load
+  question="Your robot uses vision to detect game pieces on the field. You want to drive to the nearest one during autonomous. Should you use a GUI-designed path or an on-the-fly path?"
+  options={[
+    "GUI-designed — create paths to every possible game piece location",
+    "On-the-fly — generate a path from the robot's current pose to the detected game piece",
+    "Neither — just drive straight toward it with no path planning",
+    "GUI-designed — create one path and hope the game piece is there"
+  ]}
+  correctIndex={1}
+  explanation="Since the game piece position isn't known until the robot's vision system detects it at runtime, you need an on-the-fly path. Creating GUI paths to every possible location would be impractical (too many paths) and inflexible. Driving straight without path planning would ignore obstacles and field geometry. On-the-fly generation creates an optimal path from wherever the robot is to wherever the game piece is."
+/>
+
+---
+
+## Path Constraints
+
+Constraints control how fast and aggressively the robot moves along a path. You can set global constraints for the entire path or apply different constraints to specific segments.
+
+### Global Constraints
+
+```java
+PathConstraints globalConstraints = new PathConstraints(
+  4.0,          // max velocity: 4 m/s
+  3.5,          // max acceleration: 3.5 m/s²
+  2 * Math.PI,  // max angular velocity
+  2 * Math.PI   // max angular acceleration
+);
+```
+
+### Constraint Zones (Per-Segment Constraints)
+
+In the PathPlanner GUI, you can define **constraint zones** — regions of the path where different speed limits apply. This is useful for:
+
+- **Slowing down near scoring positions** — precision matters more than speed
+- **Speeding up on straightaways** — maximize time efficiency
+- **Reducing acceleration near game pieces** — smoother pickup
+
+```java
+// In code, constraint zones are defined as part of the path
+ConstraintsZone slowZone = new ConstraintsZone(
+  0.7,  // start position (0.0 to 1.0 along path)
+  1.0,  // end position
+  new PathConstraints(1.5, 2.0, Math.PI, Math.PI)  // slower near the end
+);
+```
+
+### Choosing Constraint Values
+
+| Parameter | Conservative | Moderate | Aggressive |
+|-----------|-------------|----------|------------|
+| Max velocity | 2.0 m/s | 3.5 m/s | 5.0 m/s |
+| Max acceleration | 2.0 m/s² | 3.0 m/s² | 4.5 m/s² |
+| Max angular velocity | π rad/s | 2π rad/s | 3π rad/s |
+
+Start conservative and increase gradually. Aggressive constraints look great in simulation but can cause wheel slip, overshoot, or tipping on a real robot.
+
+---
+
+## Zone Behaviors
+
+PathPlanner supports **event markers** and **zone-based triggers** that fire commands when the robot enters specific regions of the field or reaches specific points along a path.
+
+### Event Markers
+
+Event markers trigger a Named Command at a specific point along the path:
+
+```java
+// In the PathPlanner GUI, you place event markers on the path
+// In code, you register the Named Commands they reference
+
+NamedCommands.registerCommand("startIntake",
+  intake.runOnce(() -> intake.deploy())
+    .andThen(intake.run(() -> intake.runRollers()))
+);
+
+NamedCommands.registerCommand("prepareShooter",
+  shooter.runOnce(() -> shooter.spinUp(4000))
+);
+```
+
+When the robot reaches the marker position on the path, the associated command starts automatically.
+
+### Combining Markers with Path Segments
+
+A well-designed auto uses markers to overlap actions with driving:
+
+```
+Path: Start → Game Piece → Scoring Position
+  ├── At 30%: startIntake (deploy intake before arriving at game piece)
+  ├── At 60%: retractIntake (retract after pickup)
+  └── At 80%: prepareShooter (spin up before arriving at scoring position)
+```
+
+This parallelism — doing things while driving — is what separates good autos from great ones.
+
+---
+
+## AutoBuilder Composition
+
+AutoBuilder is PathPlanner's tool for composing complex autonomous routines from multiple paths and commands.
+
+### Basic AutoBuilder Setup
+
+```java
+// In RobotContainer constructor — configure AutoBuilder once
+AutoBuilder.configure(
+  drivetrain::getPose,           // Pose supplier
+  drivetrain::resetPose,         // Pose reset consumer
+  drivetrain::getChassisSpeeds,  // ChassisSpeeds supplier
+  drivetrain::drive,             // Drive consumer
+  new PPHolonomicDriveController(
+    new PIDConstants(5.0, 0.0, 0.0),  // Translation PID
+    new PIDConstants(5.0, 0.0, 0.0)   // Rotation PID
+  ),
+  robotConfig,                   // Robot configuration
+  () -> isRedAlliance(),         // Alliance flip supplier
+  drivetrain                     // Drive subsystem
+);
+```
+
+### Composing Multi-Path Autos
+
+```java
+// Build a complex auto from multiple paths and commands
+public Command fourPieceAuto() {
+  return Commands.sequence(
+    // Score preloaded piece
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ScorePreload")),
+    shootCommand(),
+
+    // Pick up piece 2 and score
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToGamePiece2")),
+    intakeCommand().withTimeout(1.5),
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToScoring2")),
+    shootCommand(),
+
+    // Pick up piece 3 and score
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToGamePiece3")),
+    intakeCommand().withTimeout(1.5),
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToScoring3")),
+    shootCommand()
+  );
+}
+```
+
+### Conditional Autos
+
+```java
+// Choose paths based on runtime conditions
+public Command adaptiveAuto() {
+  return Commands.sequence(
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ScorePreload")),
+    shootCommand(),
+
+    // Decide based on what the vision system sees
+    Commands.either(
+      // If game piece detected at position A
+      Commands.sequence(
+        AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToPositionA")),
+        intakeCommand().withTimeout(1.5)
+      ),
+      // Otherwise go to position B
+      Commands.sequence(
+        AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToPositionB")),
+        intakeCommand().withTimeout(1.5)
+      ),
+      () -> vision.seesGamePieceAtA()  // Condition
+    ),
+
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ReturnToScore")),
+    shootCommand()
+  );
+}
+```
+
+---
+
+<Quiz client:load
+  question="You're building a 3-piece auto. The robot scores a preloaded piece, picks up two more, and scores each. Between the second and third pickup, you want the robot to spin up the shooter while driving. How do you achieve this?"
+  options={[
+    "Add a spinUp() call before the path — it will run during the path",
+    "Use an event marker on the path that triggers the spinUp Named Command at the right position",
+    "Create a ParallelCommandGroup with the path and spinUp — but this would conflict with the drivetrain",
+    "You can't overlap actions with driving in PathPlanner"
+  ]}
+  correctIndex={1}
+  explanation="Event markers are designed exactly for this. Place a marker on the path at the point where you want the shooter to start spinning up (e.g., 70% through the return path). Register a Named Command for spinUp. PathPlanner will trigger it automatically when the robot reaches that point, overlapping the shooter spin-up with driving. This saves time compared to sequential spin-up-then-drive."
+/>
+
+---
+
+## Debugging Autonomous Routines
+
+Advanced autos have more things that can go wrong. Here's a debugging toolkit:
+
+### Common Issues and Fixes
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| Robot drives the wrong direction | Alliance flipping not configured | Check `isRedAlliance()` supplier in AutoBuilder |
+| Robot overshoots waypoints | Constraints too aggressive | Reduce max velocity and acceleration |
+| Robot stops mid-path | Named Command throws exception | Check DS console for errors, verify command registration |
+| Path doesn't match GUI preview | Pose estimation drift | Calibrate odometry, check gyro, tune vision fusion |
+| Robot jerks at path transitions | Discontinuous velocity between paths | Ensure end velocity of one path matches start of next |
+
+### Logging for Auto Debugging
+
+```java
+// Log useful data during autonomous
+Logger.recordOutput("Auto/CurrentPath", currentPathName);
+Logger.recordOutput("Auto/TargetPose", targetPose);
+Logger.recordOutput("Auto/PoseError", poseError);
+Logger.recordOutput("Auto/IsFollowingPath", isFollowing);
+```
+
+Review these logs in AdvantageScope after each auto run to identify where things go wrong.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Advanced PathPlanner"
+  prompt="(1) Describe a scenario where on-the-fly path generation would be more appropriate than a GUI-designed path. (2) Your auto routine needs the robot to slow down as it approaches a scoring position. How would you implement this? (3) You're building a 4-piece auto and want to overlap intake deployment with driving. What PathPlanner feature would you use?"
+>
+Strong answers include:
+
+1. **On-the-fly scenario** — e.g., "During autonomous, our vision system detects a game piece that's been knocked to an unexpected position. We generate a path from our current pose to the detected position, since we couldn't have predicted this location when designing paths in the GUI."
+
+2. **Slowing down** — "Use a constraint zone on the last 30% of the path with reduced max velocity (e.g., 1.5 m/s instead of 3.5 m/s). In the PathPlanner GUI, drag a constraint zone over the approach segment and set lower velocity limits."
+
+3. **Overlapping actions** — "Place an event marker on the path at the point where the intake should start deploying (before the robot arrives at the game piece). Register a Named Command called 'deployIntake' that runs the intake deploy. The intake deploys while the robot is still driving, saving time."
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **On-the-Fly Path Generation** | Creating PathPlanner paths programmatically at runtime based on current robot state or sensor data, rather than pre-designing them in the GUI |
+| **Path Constraints** | Speed and acceleration limits applied to a path, controlling how fast and aggressively the robot moves |
+| **Constraint Zone** | A region of a path where different constraints apply, allowing variable speed along the route |
+| **Event Marker** | A point on a path that triggers a Named Command when the robot reaches it, enabling action overlap with driving |
+| **AutoBuilder** | PathPlanner's utility for configuring path following and composing complex autonomous routines from paths and commands |
+| **Alliance Flipping** | Automatically mirroring paths for the opposite alliance side so the same auto works from both sides of the field |
+| **Goal End State** | The desired velocity and heading when the robot reaches the end of a path |
+
+---
+
+## What's Next?
+
+You now understand PathPlanner's advanced features. In **Activity 6.17: Implement an Advanced Auto Feature**, you'll put one of these techniques into practice — building an on-the-fly path, adding constraint zones, or composing a multi-path auto with event markers.

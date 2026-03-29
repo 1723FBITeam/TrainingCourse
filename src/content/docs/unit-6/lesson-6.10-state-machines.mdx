@@ -1,0 +1,415 @@
+---
+title: "Lesson 6.10: State Machines"
+description: "Learn the state machine pattern for coordinating complex robot behaviors — states, transitions, guards, and the superstructure pattern"
+sidebar:
+  order: 10
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what a state machine is and why it's useful for robot control
+- Identify the components of a state machine: states, transitions, and guards
+- Recognize implicit state machines in command-based code (like AutoShootCommand)
+- Implement an explicit state machine using the enum + switch pattern
+- Understand the superstructure pattern used by top FRC teams
+
+:::tip[Before You Start]
+Complete **Activity 6.9: Analyze Pose Estimator Data**. Have your team's code open in your IDE. You'll be examining how your team's commands coordinate multi-step behaviors.
+:::
+
+---
+
+## What Is a State Machine?
+
+A **state machine** is a design pattern where a system is modeled as a set of discrete **states** with defined **transitions** between them. At any moment, the system is in exactly one state, and it moves to another state when specific conditions (called **guards**) are met.
+
+You encounter state machines everywhere in daily life:
+
+| System | States | Transitions |
+|--------|--------|-------------|
+| Traffic light | Red, Yellow, Green | Timer expires → next color |
+| Vending machine | Idle, Accepting Money, Dispensing | Insert coin → Accepting; Enough money → Dispensing |
+| Elevator | Idle, Moving Up, Moving Down, Door Open | Button pressed → Moving; Arrived → Door Open |
+
+In FRC, state machines coordinate complex multi-step behaviors like:
+- **Intake → Index → Shoot** — picking up a game piece, indexing it, and launching it
+- **Auto-aim → Spin up → Feed → Reset** — the full shooting sequence
+- **Extend → Grab → Retract → Score** — a climbing or scoring sequence
+
+---
+
+## Why Not Just Use Sequential Commands?
+
+WPILib's command-based framework already handles sequencing with `SequentialCommandGroup` and `ParallelCommandGroup`. So why use state machines?
+
+### Sequential Commands Work Well For Simple Sequences
+
+```java
+new SequentialCommandGroup(
+  new DeployIntake(),
+  new RunRollers().until(() -> noteDetected),
+  new RetractIntake()
+);
+```
+
+This is clean and readable for linear sequences.
+
+### But They Struggle With Complex Behaviors
+
+What if you need:
+- **Conditional branching** — if the note isn't detected after 2 seconds, retract and try again
+- **Interruption handling** — if the driver presses a button mid-sequence, abort safely
+- **Parallel coordination** — the turret should aim while the flywheel spins up, but feeding should only start when both are ready
+- **Error recovery** — if the flywheel doesn't reach speed, don't feed the note
+
+Sequential commands can handle some of these with decorators (`.withTimeout()`, `.unless()`, `.finallyDo()`), but the logic gets tangled quickly. State machines make complex coordination explicit and readable.
+
+---
+
+:::caution[🤔 Predict First]
+Think about your team's AutoShootCommand. It aims the turret, spins up the flywheel, and feeds the note. Before reading on: how many distinct "phases" or "states" do you think this command has? Write them down. We'll compare your list to the actual states in a moment.
+:::
+
+---
+
+## Implicit State Machines in Your Code
+
+Your team's code already contains implicit state machines — commands that manage multiple steps internally. Let's look at a key example.
+
+### AutoShootCommand
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/commands/AutoShootCommand.java`} label="AutoShootCommand.java" /> in your IDE.
+
+This command coordinates the full shooting sequence: aim the turret, spin up the flywheel, and feed the note. Even if it doesn't use the word "state machine," it's managing states internally.
+
+Look for patterns like:
+- **Boolean flags** tracking what's ready (`turretOnTarget`, `flywheelAtSpeed`)
+- **Conditional logic** in `execute()` that checks multiple conditions before proceeding
+- **Different behaviors** depending on what phase the command is in
+
+```java
+// Implicit state machine pattern (simplified)
+public void execute() {
+  turret.aimAtTarget();
+  shooter.spinUp(targetRPM);
+
+  if (turret.isOnTarget() && shooter.isAtSpeed()) {
+    feeder.feed();  // Only feed when both are ready
+  }
+}
+```
+
+This is an implicit state machine with states like:
+- **AIMING** — turret is moving, flywheel is spinning up
+- **READY** — both turret and flywheel are on target
+- **FEEDING** — note is being fed to the shooter
+
+The transitions are the `if` conditions. The guards are `turret.isOnTarget()` and `shooter.isAtSpeed()`.
+
+---
+
+<Quiz client:load
+  question="In the AutoShootCommand, the turret aims and the flywheel spins up simultaneously. Feeding only starts when both are ready. What type of coordination is this?"
+  options={[
+    "Sequential — one thing happens after another",
+    "Parallel with a synchronization gate — multiple things happen simultaneously, but the next step waits for all to complete",
+    "Random — the order doesn't matter",
+    "Recursive — the command calls itself"
+  ]}
+  correctIndex={1}
+  explanation="The turret aiming and flywheel spin-up happen in parallel (simultaneously). The feeding step acts as a synchronization gate — it only proceeds when both parallel tasks are complete. This is a common state machine pattern: parallel activities converging on a guard condition before the next state."
+/>
+
+---
+
+## Explicit State Machines: The Enum + Switch Pattern
+
+Making the state machine explicit improves readability and makes the logic easier to modify. The most common pattern in FRC is **enum + switch**:
+
+### Step 1: Define the States
+
+```java
+public enum ShootState {
+  IDLE,
+  AIMING,
+  SPINNING_UP,
+  READY,
+  FEEDING,
+  DONE
+}
+```
+
+### Step 2: Track the Current State
+
+```java
+private ShootState state = ShootState.IDLE;
+```
+
+### Step 3: Use a Switch Statement in execute()
+
+```java
+@Override
+public void execute() {
+  switch (state) {
+    case IDLE:
+      // Start aiming and spinning up
+      turret.aimAtTarget();
+      shooter.spinUp(targetRPM);
+      state = ShootState.AIMING;
+      break;
+
+    case AIMING:
+      turret.aimAtTarget();
+      shooter.spinUp(targetRPM);
+      // Guard: both subsystems ready?
+      if (turret.isOnTarget() && shooter.isAtSpeed()) {
+        state = ShootState.READY;
+      }
+      break;
+
+    case READY:
+      // Start feeding
+      feeder.feed();
+      state = ShootState.FEEDING;
+      break;
+
+    case FEEDING:
+      feeder.feed();
+      // Guard: note has left the shooter?
+      if (!noteDetected()) {
+        state = ShootState.DONE;
+      }
+      break;
+
+    case DONE:
+      // Clean up
+      shooter.stop();
+      feeder.stop();
+      break;
+  }
+}
+
+@Override
+public boolean isFinished() {
+  return state == ShootState.DONE;
+}
+```
+
+### Benefits of Explicit State Machines
+
+| Benefit | Why It Matters |
+|---------|---------------|
+| **Readable** | Each state's behavior is clearly defined in one place |
+| **Debuggable** | Log the current state and you know exactly what the robot is doing |
+| **Modifiable** | Adding a new state or changing a transition is straightforward |
+| **Testable** | You can test each state independently |
+| **Error handling** | Add an ERROR state that handles unexpected conditions |
+
+---
+
+## State Machine Diagrams
+
+Before coding a state machine, it helps to draw it. A state diagram shows:
+- **Circles** for states
+- **Arrows** for transitions
+- **Labels** on arrows for guard conditions
+
+```
+                    turret on target
+                    AND flywheel at speed
+  ┌──────┐         ┌──────────┐         ┌───────┐
+  │ IDLE │ ──────► │  AIMING  │ ──────► │ READY │
+  └──────┘  start  └──────────┘         └───┬───┘
+                                            │
+                                            │ start feed
+                                            ▼
+                   ┌──────┐         ┌──────────┐
+                   │ DONE │ ◄────── │ FEEDING  │
+                   └──────┘  note   └──────────┘
+                             left
+```
+
+Drawing the diagram first helps you:
+- Identify all the states you need
+- Define the guard conditions for each transition
+- Spot missing transitions (what happens if the turret loses its target while feeding?)
+- Plan error handling (what if the flywheel never reaches speed?)
+
+---
+
+## Adding Error Handling
+
+Real state machines need to handle things going wrong:
+
+```java
+case AIMING:
+  turret.aimAtTarget();
+  shooter.spinUp(targetRPM);
+
+  if (turret.isOnTarget() && shooter.isAtSpeed()) {
+    state = ShootState.READY;
+  }
+
+  // Timeout guard: if we've been aiming too long, something is wrong
+  if (stateTimer.hasElapsed(3.0)) {
+    state = ShootState.ERROR;
+  }
+  break;
+
+case ERROR:
+  shooter.stop();
+  feeder.stop();
+  turret.stop();
+  // Log the error for debugging
+  Logger.recordOutput("AutoShoot/Error", "Timeout in AIMING state");
+  break;
+```
+
+---
+
+<Quiz client:load
+  question="You're designing a state machine for an intake sequence. The intake should deploy, run rollers until a note is detected, then retract. But if no note is detected after 3 seconds, it should retract anyway. How many states do you need?"
+  options={[
+    "2 states: Running and Done",
+    "3 states: Deploying, Running, Retracting",
+    "4 states: Deploying, Running, Retracting, Done",
+    "5 states: Idle, Deploying, Running, Retracting, Done"
+  ]}
+  correctIndex={3}
+  explanation="You need: IDLE (waiting to start), DEPLOYING (intake extending), RUNNING (rollers spinning, waiting for note or timeout), RETRACTING (intake pulling back in), and DONE (sequence complete). The timeout guard on RUNNING transitions to RETRACTING regardless of whether a note was detected. You could combine IDLE and DONE, but keeping them separate makes the state machine clearer."
+/>
+
+---
+
+## The Superstructure Pattern
+
+Top FRC teams like 254 (The Cheesy Poofs) and 1678 (Citrus Circuits) take state machines to the next level with the **superstructure pattern**.
+
+### What Is a Superstructure?
+
+A superstructure is a single coordinating class that manages all non-drivetrain subsystem interactions. Instead of individual commands coordinating between subsystems, the superstructure owns the state machine that decides what every mechanism should be doing.
+
+```java
+public class Superstructure extends SubsystemBase {
+  private final Intake intake;
+  private final Shooter shooter;
+  private final Turret turret;
+  private final Feeder feeder;
+
+  private SuperState state = SuperState.IDLE;
+
+  public enum SuperState {
+    IDLE,
+    INTAKING,
+    INDEXING,
+    AIMING,
+    SHOOTING,
+    CLIMBING
+  }
+
+  @Override
+  public void periodic() {
+    switch (state) {
+      case IDLE:
+        intake.stop();
+        shooter.stop();
+        break;
+      case INTAKING:
+        intake.deploy();
+        intake.runRollers();
+        if (intake.hasNote()) {
+          state = SuperState.INDEXING;
+        }
+        break;
+      case SHOOTING:
+        turret.aimAtTarget();
+        shooter.spinUp();
+        if (turret.isOnTarget() && shooter.isAtSpeed()) {
+          feeder.feed();
+        }
+        break;
+      // ... more states
+    }
+  }
+
+  // Public methods for commands to request state changes
+  public void requestIntake() { state = SuperState.INTAKING; }
+  public void requestShoot() { state = SuperState.AIMING; }
+  public void requestIdle() { state = SuperState.IDLE; }
+}
+```
+
+### Why Use a Superstructure?
+
+| Benefit | Explanation |
+|---------|------------|
+| **Single source of truth** | One class knows what every mechanism should be doing — no conflicting commands |
+| **Impossible states are impossible** | The state machine prevents the intake and shooter from running simultaneously if that's dangerous |
+| **Easier debugging** | Log the superstructure state and you know the entire robot's behavior |
+| **Simpler commands** | Commands just request state changes instead of directly controlling mechanisms |
+
+### Tradeoffs
+
+| Consideration | Superstructure | Command-Based |
+|--------------|---------------|---------------|
+| Complexity | Higher — one large coordinating class | Lower — many small independent commands |
+| Flexibility | Less — all coordination is centralized | More — commands can be composed freely |
+| Safety | Higher — impossible states are prevented | Lower — conflicting commands are possible |
+| Learning curve | Steeper — need to understand the full state machine | Gentler — each command is self-contained |
+
+Your team's command-based approach is perfectly valid. The superstructure pattern is an advanced alternative that some teams prefer for complex robots with many interacting mechanisms.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: State Machines"
+  prompt="(1) Look at your team's AutoShootCommand — identify the implicit states and transitions. Draw a simple state diagram (describe it in text if you can't draw). (2) What's one advantage of making the state machine explicit with an enum + switch pattern? (3) Would a superstructure pattern benefit your team's robot? Why or why not?"
+>
+**AutoShootCommand states:**
+Looking at the command, the implicit states are:
+- IDLE → command starts
+- AIMING/SPINNING → turret aims, flywheel spins up (parallel)
+- READY → both on target, start feeding
+- FEEDING → note being fed to shooter
+- DONE → note has left, command ends
+
+Transitions: start → AIMING; turret + flywheel ready → READY; start feed → FEEDING; note gone → DONE.
+
+**Advantage of explicit state machine:**
+Debugging — you can log the current state name and instantly know what phase the command is in. With implicit states (boolean flags), you have to reconstruct the state from multiple variables, which is harder to interpret in logs.
+
+**Superstructure for our team:**
+It depends on robot complexity. If the intake, shooter, and turret frequently need to coordinate (e.g., can't intake while shooting), a superstructure prevents conflicts. If the mechanisms are mostly independent, the command-based approach is simpler and sufficient.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **State Machine** | A design pattern where a system is modeled as discrete states with defined transitions and guard conditions controlling movement between states |
+| **State** | A distinct mode of operation where the system exhibits specific behavior (e.g., IDLE, AIMING, FEEDING) |
+| **Transition** | The movement from one state to another, triggered when guard conditions are met |
+| **Guard Condition** | A boolean expression that must be true for a transition to occur (e.g., `turret.isOnTarget()`) |
+| **Enum + Switch Pattern** | A Java implementation of a state machine using an enum for states and a switch statement for state-specific behavior |
+| **Superstructure Pattern** | An architecture pattern where a single coordinating class manages all non-drivetrain subsystem interactions using a centralized state machine |
+| **Implicit State Machine** | A command or class that manages multiple states through boolean flags and conditional logic without explicitly defining states |
+
+---
+
+## What's Next?
+
+Now that you understand state machine concepts, it's time to build one. In **Activity 6.11: Design a State Machine**, you'll take an existing command sequence in your team's code and refactor it into an explicit state machine — or design a new one for a mechanism that needs better coordination.

@@ -1,0 +1,222 @@
+---
+title: "Activity 4.6: Find Java Patterns in Your Code"
+description: "Hunt through your team's robot code to find real examples of each Java pattern"
+sidebar:
+  order: 6
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Found at least one real example of each Java pattern in your team's robot code
+- Documented each example with the file name, line, and a brief explanation
+- Built the habit of recognizing patterns when reading unfamiliar code
+
+:::tip[Before You Start]
+Complete **Lesson 4.5: Java Patterns in FRC Code** first. You need to know what each pattern looks like before you can find them. Have the team's robot project open in your IDE — you'll be searching through multiple files.
+:::
+
+---
+
+## The Pattern Hunt
+
+Your mission: find **one example of each pattern** listed below in your team's actual robot code. For each one, write down:
+
+1. **The file name** where you found it
+2. **The line or code snippet** containing the pattern
+3. **A one-sentence explanation** of what it does in context
+
+Use your IDE's search features (`Ctrl+Shift+F` for global search in VS Code) to help you find patterns quickly.
+
+---
+
+## Pattern 1: Lambda Expression
+
+Find a lambda (`() -> ...` or `(x) -> ...`) in the codebase.
+
+**Where to look:** <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> is full of lambdas in the button bindings. But don't just grab the first one you see — try to find a lambda in a *different* file too.
+
+**Search tip:** Search for `->` in your IDE. Every lambda contains an arrow operator.
+
+<AnswerReveal client:load label="Example Answers">
+Here are some lambdas you might find:
+
+- **RobotContainer.java**: `() -> intakeSubsystem.deployOut()` — a lambda passed to `InstantCommand` that calls the deploy method when the command runs
+- **RobotContainer.java**: `() -> intakeSubsystem.runIntake(0.5)` — a lambda passed to `RunCommand` that runs the intake rollers at 50% speed every 20ms
+- **RobotContainer.java (finallyDo)**: `() -> { intakeSubsystem.stopIntake(); intakeSubsystem.deployIn(); }` — a multi-statement lambda that runs cleanup when the intake command is cancelled
+
+Any lambda you found with `->` counts!
+</AnswerReveal>
+
+---
+
+## Pattern 2: Method Reference
+
+Find a method reference (`object::method` or `this::method` or `ClassName::method`) in the codebase.
+
+**Where to look:** Method references are less common than lambdas but appear in command factories, supplier parameters, and drivetrain configuration. Try searching in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + ".java"} /> or <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[4].file}`} label={robotConfig.subsystems[4].name + ".java"} />.
+
+**Search tip:** Search for `::` in your IDE. Every method reference uses the double-colon operator.
+
+<AnswerReveal client:load label="Example Answers">
+Common method references in FRC code:
+
+- **AutoShootCommand.java or RobotContainer.java**: `this::getSmartTarget` — passes the `getSmartTarget` method as a `Supplier` so the command can call it each loop to get the current target
+- **CommandSwerveDrivetrain.java**: `this::seedFieldCentric` or similar — passes a drivetrain method as a callback
+- **RobotContainer.java**: `intakeSubsystem::stopDeploy` — shorthand for `() -> intakeSubsystem.stopDeploy()`
+
+If you found any `::` usage, you've got a method reference!
+</AnswerReveal>
+
+---
+
+## Pattern 3: Enum
+
+Find an enum declaration (`enum` keyword) or enum usage in the codebase.
+
+**Where to look:** Enums might appear in Constants.java, in subsystem files for state tracking, or in WPILib imports. Even if your team doesn't define custom enums, you'll find WPILib enums being used.
+
+**Search tip:** Search for `enum` or look for WPILib types like `DriverStation.Alliance` or `NeutralModeValue`.
+
+<AnswerReveal client:load label="Example Answers">
+Enums you might find:
+
+- **WPILib usage**: `DriverStation.Alliance.Red` or `DriverStation.Alliance.Blue` — the alliance color enum used to determine field-relative positions
+- **CTRE usage**: `NeutralModeValue.Brake` or `NeutralModeValue.Coast` — motor neutral mode enum used when configuring TalonFX motors
+- **CTRE usage**: `InvertedValue.Clockwise_Positive` — motor direction enum
+- **Custom enum** (if your team defines one): Look for `public enum` in any file
+
+Even using a library-provided enum counts — the pattern is the same.
+</AnswerReveal>
+
+---
+
+## Pattern 4: Static Final Constant
+
+Find a `static final` variable declaration in the codebase.
+
+**Where to look:** <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> is the obvious choice — it's full of them. But also check other files for local constants.
+
+**Search tip:** Search for `static final` in your IDE.
+
+<AnswerReveal client:load label="Example Answers">
+Static final constants you'll find:
+
+- **Constants.java**: `public static final int SHOOTER_LEFT_MOTOR = {robotConfig.canIds.shooterLeft};` — CAN ID for the left shooter flywheel motor, accessible as `ShootingConstants.SHOOTER_LEFT_MOTOR`
+- **Constants.java**: `public static final double HOOD_MAX = 0.85;` — maximum hood servo position
+- **IntakeSubsystem.java** (possibly): `private static final double DEPLOY_SPEED = 0.15;` — deploy motor speed, defined locally in the subsystem
+- **TunerConstants.java**: Various swerve configuration constants (read-only!)
+
+The ALL_CAPS naming convention makes these easy to spot.
+</AnswerReveal>
+
+---
+
+## Pattern 5: Inheritance (`extends`)
+
+Find a class that uses `extends` to inherit from a parent class.
+
+**Where to look:** Every subsystem file uses `extends`. Open any file in the <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems`} isFolder label="subsystems/ folder" />.
+
+**Search tip:** Search for `extends` in your IDE.
+
+<AnswerReveal client:load label="Example Answers">
+Inheritance examples in your project:
+
+- **IntakeSubsystem.java**: `public class IntakeSubsystem extends SubsystemBase` — inherits WPILib's subsystem framework
+- **ShooterSubsystem.java**: `public class ShooterSubsystem extends SubsystemBase` — same pattern
+- **CommandSwerveDrivetrain.java**: `public class CommandSwerveDrivetrain extends SwerveDrivetrain` — inherits CTRE's swerve base class (which itself implements the Subsystem interface)
+- **AutoShootCommand.java**: `public class AutoShootCommand extends Command` — inherits WPILib's command framework
+
+Every subsystem and command class uses inheritance to connect to the WPILib framework.
+</AnswerReveal>
+
+---
+
+## Pattern 6: Interface (`implements`)
+
+Find a class that uses `implements` or a parameter typed as an interface (like `Runnable`, `Supplier`, `Consumer`).
+
+**Where to look:** This one is trickier. Check import statements for `java.util.function.Supplier` or `java.util.function.Consumer`. Also look for `implements` in class declarations.
+
+**Search tip:** Search for `implements` or `Supplier` or `Consumer` in your IDE.
+
+<AnswerReveal client:load label="Example Answers">
+Interface examples you might find:
+
+- **Import statements**: `import java.util.function.Supplier;` — indicates a file uses the Supplier interface
+- **Method parameters**: A method that takes `Supplier<Pose2d>` as a parameter — the caller must provide something that can supply a Pose2d value
+- **CommandSwerveDrivetrain.java**: May implement `Subsystem` interface (through the CTRE base class)
+- **Implicit interfaces**: Every lambda you found in Pattern 1 is actually implementing a functional interface (`Runnable`, `Supplier`, `Consumer`, etc.) — the compiler handles this automatically
+
+If you can't find an explicit `implements` keyword, that's okay — note that every lambda is an implicit interface implementation.
+</AnswerReveal>
+
+---
+
+## Document Your Findings
+
+Fill in this table with your discoveries. You can copy this into a text file or your notes:
+
+| Pattern | File | Code Snippet | What It Does |
+|---------|------|-------------|-------------|
+| Lambda | | | |
+| Method Reference | | | |
+| Enum | | | |
+| Static Final | | | |
+| Inheritance | | | |
+| Interface | | | |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Pattern Hunt Complete"
+  prompt="Review your completed table. Answer these questions: (1) Which pattern was easiest to find? Why? (2) Which pattern was hardest to find? Why? (3) Pick one pattern you found and explain why the code uses that pattern instead of an alternative."
+>
+Common observations:
+
+1. **Easiest**: Usually **static final constants** (Constants.java is full of them) or **inheritance** (every subsystem uses `extends`). These are easy because they're in predictable locations.
+
+2. **Hardest**: Usually **method references** (less common than lambdas, and the `::` syntax is easy to miss) or **interfaces** (often implicit through lambdas rather than explicit `implements` keywords).
+
+3. **Example explanation**: "RobotContainer uses **lambdas** instead of creating separate command classes because the button bindings are simple one-liners. Writing `() -> intake.deployOut()` is much cleaner than creating a whole `DeployIntakeCommand.java` file with a class declaration, constructor, and execute method — all just to call one method."
+</Checkpoint>
+
+---
+
+## Bonus Challenge: Find a Pattern You Didn't Expect
+
+Search the codebase for one of these less common patterns:
+
+- **Ternary operator**: `condition ? valueIfTrue : valueIfFalse` — a compact if/else
+- **Varargs**: `method(Type... args)` — a method that accepts any number of arguments
+- **Generic type**: `List<Command>` or `Supplier<Double>` — type parameters in angle brackets
+- **Try/catch**: `try { ... } catch (Exception e) { ... }` — error handling
+
+You don't need to understand these deeply yet — just notice where they appear. You'll encounter them more as you progress through the tiers.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Lambda Expression** — an anonymous function written inline using the `->` syntax, commonly used for button bindings and simple commands
+- **Method Reference** — a shorthand for a lambda that calls a single method, using the `::` syntax
+- **Static Final** — a constant value declared with `static final` that cannot change at runtime, typically named in ALL_CAPS
+- **Inheritance** — when a class uses `extends` to inherit behavior from a parent class, like subsystems extending `SubsystemBase`
+:::
+
+## What's Next?
+
+You've now identified every major Java pattern in your team's robot code. When you see `() ->`, `::`, `extends`, `static final`, or `enum` in the future, you'll know exactly what they mean.
+
+In **Lesson 4.7: Constants, Subsystems & Commands Revisited**, you'll take a deeper dive into the three building blocks of command-based robot code — building on what you learned in Units 2–3 with more advanced patterns and real-world usage scenarios.
+
+
+In **Lesson 4.7: Constants, Subsystems & Commands Revisited**, you'll take a deeper dive into the three building blocks of command-based robot code — building on what you learned in Units 2–3 with more advanced patterns and real-world usage scenarios.

@@ -1,0 +1,287 @@
+---
+title: "Lesson 5.1: Deploying and Testing on the Robot"
+description: "Master the deploy-test-debug cycle — from gradlew deploy to Driver Station operation to competition-day troubleshooting"
+sidebar:
+  order: 1
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Deploy code to the roboRIO using `gradlew deploy` and understand what happens during the process
+- Operate the Driver Station to enable/disable the robot, select modes, and read console output
+- Diagnose common deployment failures (network issues, build errors, roboRIO not found)
+- Handle competition-day deployment scenarios (last-minute changes, auto switching, failed deploys)
+- Follow a systematic troubleshooting workflow when the robot doesn't respond after deploying
+
+:::caution[Unit 5 Prerequisites]
+Complete **Units 0–4** before starting Unit 5. You should be comfortable with WPILib docs, Java patterns, Git workflows, NetworkTables, and reading autonomous routines. Unit 5 builds directly on those foundations.
+:::
+
+:::tip[Before You Start]
+Complete **Activity 4.13: Read an Auto**. If you have access to the robot, have it powered on and connected to your laptop — you'll get the most out of this lesson with a real deployment. If not, follow along conceptually and practice when the robot is available.
+:::
+
+---
+
+## The Deploy-Test-Debug Cycle
+
+Every code change you make follows the same cycle:
+
+1. **Write code** — make your change in the IDE
+2. **Deploy** — upload the compiled code to the roboRIO
+3. **Test** — enable the robot and verify the change works
+4. **Debug** — if something's wrong, use data and logs to find the issue
+5. **Repeat** — fix the issue and deploy again
+
+This cycle happens dozens of times during a build session and under extreme time pressure at competition. Mastering it makes you a reliable contributor to your team.
+
+---
+
+## Step 1: Deploying Code
+
+### The `gradlew deploy` Command
+
+To deploy code to the roboRIO, run this command from your project's root directory:
+
+```bash
+./gradlew deploy
+```
+
+On Windows, use:
+```bash
+gradlew deploy
+```
+
+### What Happens During Deploy
+
+The deploy process has several stages:
+
+| Stage | What Happens | Common Failures |
+|-------|-------------|-----------------|
+| **Compile** | Java source code is compiled to bytecode | Syntax errors, missing imports, type mismatches |
+| **Build** | Compiled code is packaged with dependencies | Vendordep version conflicts, missing libraries |
+| **Connect** | Gradle connects to the roboRIO over the network | roboRIO not found, wrong IP, network not configured |
+| **Upload** | The compiled JAR file is uploaded to the roboRIO | Connection timeout, roboRIO storage full |
+| **Restart** | The robot program on the roboRIO is restarted | Old code still running (rare), roboRIO crash |
+
+### Connection Methods
+
+You can connect to the roboRIO in three ways:
+
+| Method | Address | When to Use |
+|--------|---------|-------------|
+| **USB** | `172.22.11.2` | Most reliable — use during development |
+| **WiFi (robot radio)** | `10.TE.AM.2` (e.g., `10.17.23.2`) | When you need to test wirelessly |
+| **Ethernet** | `10.TE.AM.2` | Direct ethernet cable to roboRIO |
+
+:::tip[USB First]
+Always try USB first during development. It's the fastest and most reliable connection. Save WiFi testing for when you specifically need to test wireless behavior.
+:::
+
+### Common Deploy Failures and Fixes
+
+| Error Message | Cause | Fix |
+|--------------|-------|-----|
+| `Could not find roboRIO` | Network connection issue | Check USB cable, verify roboRIO is powered on, try `ping 172.22.11.2` |
+| `Build failed` with compile errors | Code has syntax or type errors | Read the error message — it tells you the file and line number |
+| `Connection timed out` | roboRIO is busy or network is slow | Wait and retry, or restart the roboRIO |
+| `Vendordep version mismatch` | Vendor library version doesn't match roboRIO firmware | Update vendordeps or re-image the roboRIO |
+| `Deploy failed: permission denied` | Another deploy is in progress | Wait for the current deploy to finish |
+
+---
+
+## Step 2: The Driver Station
+
+The **Driver Station (DS)** is the application that connects to your robot, enables/disables it, and displays diagnostic information. It's your primary interface for testing.
+
+### Driver Station Layout
+
+| Panel | What It Shows |
+|-------|-------------|
+| **Mode selector** | TeleOp, Autonomous, Test, Practice — choose which mode to enable |
+| **Enable/Disable** | The big green/red button — enables or disables robot operation |
+| **Joystick indicators** | Shows connected controllers and their button/axis states |
+| **Console output** | `System.out.println()` messages and error output from the robot |
+| **Battery voltage** | Current battery voltage — watch for brownouts below 7V |
+| **Communication indicators** | Shows connection status to roboRIO, radio, and FMS |
+
+### Enabling the Robot Safely
+
+Before enabling, always follow this checklist:
+
+1. ✅ Robot is on a safe surface (wheels off the ground for drivetrain testing, or in an open area)
+2. ✅ Everyone near the robot knows you're about to enable
+3. ✅ Battery is charged (above 12V)
+4. ✅ E-stop is accessible (know where the space bar is — it's the emergency stop)
+5. ✅ You're in the correct mode (TeleOp for driver testing, Auto for autonomous testing)
+
+:::caution[Safety First]
+**Never enable the robot without announcing it to everyone nearby.** A robot that unexpectedly moves can cause serious injury. Always call out "Enabling!" before pressing the enable button, and make sure the area is clear.
+:::
+
+### Reading Console Output
+
+The DS console shows messages from your robot code. This is where `System.out.println()` output appears, along with error messages from WPILib and vendor libraries.
+
+Common messages to watch for:
+
+| Message | What It Means |
+|---------|-------------|
+| `Robot program has started` | Deploy was successful, code is running |
+| `Warning: X not found on CAN bus` | A motor controller or sensor is disconnected or has the wrong CAN ID |
+| `ERROR: Unhandled exception` | Your code threw an exception — read the stack trace to find the bug |
+| `Loop overrun` | Your robot code took longer than 20ms to execute one cycle — something is too slow |
+| `No robot code` | The roboRIO doesn't have a valid robot program — redeploy |
+
+---
+
+<Quiz client:load
+  question="You deploy code to the robot and the Driver Station shows 'No robot code' even though the deploy appeared to succeed. What should you check first?"
+  options={[
+    "The battery voltage",
+    "Whether the code has a runtime error that crashes on startup — check the DS console for exception messages",
+    "The joystick configuration",
+    "The WiFi signal strength"
+  ]}
+  correctIndex={1}
+  explanation="'No robot code' after a successful deploy usually means the robot program crashed immediately on startup. Check the DS console output for an unhandled exception or error message. Common causes: NullPointerException in a subsystem constructor (wrong CAN ID, missing hardware), or a configuration error that throws during initialization."
+/>
+
+---
+
+## Step 3: Troubleshooting When Things Go Wrong
+
+When the robot doesn't do what you expect after deploying, follow this systematic approach:
+
+### The Troubleshooting Flowchart
+
+```
+Robot doesn't respond after deploy
+│
+├─ DS shows "No robot code"?
+│  └─ Check DS console for crash/exception → Fix the code error
+│
+├─ DS shows "Communications" but robot won't enable?
+│  └─ Check if DS is in the right mode (TeleOp/Auto)
+│  └─ Check if joystick is connected and mapped correctly
+│
+├─ Robot enables but mechanism doesn't move?
+│  ├─ Check DS console for CAN errors → Wrong CAN ID or device disconnected
+│  ├─ Check if the command is actually running → Add logging to verify
+│  ├─ Check if the motor is configured correctly → Neutral mode, current limits
+│  └─ Check physical connections → Wires, breakers, CAN bus
+│
+└─ Robot moves but incorrectly?
+   ├─ Check motor direction → May need to invert
+   ├─ Check speed/position values → Log target vs actual
+   └─ Check PID tuning → Use AdvantageScope graphs
+```
+
+### The 60-Second Diagnosis
+
+At competition, you often have less than a minute to diagnose an issue. Here's the fastest approach:
+
+1. **Read the DS console** (5 seconds) — Is there an error message? If yes, that's your answer.
+2. **Check CAN status** (10 seconds) — Are all devices showing green in Phoenix Tuner X? If a device is missing, it's a hardware issue.
+3. **Check the code change** (15 seconds) — What did you change since the last working deploy? The bug is almost certainly in that change.
+4. **Revert if needed** (30 seconds) — If you can't find the bug quickly, `git stash` your changes and redeploy the last known working code. Fix the bug later.
+
+---
+
+## Competition-Day Scenarios
+
+### Scenario 1: Last-Minute Code Change
+
+You need to change an autonomous routine between matches. The safe approach:
+
+1. Make the change on a branch (not main)
+2. Deploy and test in the pit
+3. If it works, merge to main
+4. If it doesn't, switch back to main and deploy the original code
+
+### Scenario 2: Switching Auto Routines
+
+Your team wants to run a different auto for the next match:
+
+1. The auto chooser (via NetworkTables) lets you select routines from the DS
+2. Select the new auto in the DS dropdown
+3. Verify the selection shows correctly in the DS
+4. No redeploy needed — the auto chooser handles it at runtime
+
+### Scenario 3: Failed Deploy Before a Match
+
+The deploy fails and you're about to go on the field:
+
+1. **Don't panic.** The roboRIO still has the last successfully deployed code.
+2. Check if the old code is acceptable for this match
+3. If yes, go with the old code — a working robot is better than no robot
+4. If no, try deploying via USB (most reliable) one more time
+5. If it still fails, check the DS console for the specific error
+
+<AnswerReveal client:load label="Pro Tip: Git Stash Is Your Friend">
+At competition, `git stash` is the fastest way to undo changes:
+
+```bash
+git stash        # Saves your changes and reverts to the last commit
+gradlew deploy   # Deploys the last known working code
+```
+
+After the match, get your changes back:
+```bash
+git stash pop    # Restores your saved changes
+```
+
+This is faster than trying to debug under time pressure.
+</AnswerReveal>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Deploy-Test-Debug"
+  prompt="Describe the steps you would take in this scenario: You deploy a code change to fix the shooter speed, but when you enable the robot, the shooter doesn't spin at all (it was working before your change). Walk through your troubleshooting process step by step."
+>
+A strong troubleshooting process:
+
+1. **Check DS console** — Look for error messages. Is there a CAN error for the shooter motors (IDs 21, 22)? Is there a NullPointerException?
+
+2. **Verify the deploy succeeded** — Does the DS show "Robot program has started"? If it shows "No robot code", the program crashed on startup.
+
+3. **Check what you changed** — Look at your git diff. Did you accidentally change the CAN ID? Did you introduce a null reference? Did you change the motor configuration in a way that disables output?
+
+4. **Add logging** — If the console doesn't show an obvious error, add `SmartDashboard.putNumber("Shooter/Output", motor.get())` to verify the motor is receiving commands.
+
+5. **Revert and test** — If you can't find the bug in 60 seconds, `git stash` your changes, redeploy, and verify the shooter works with the old code. Then compare your changes carefully.
+
+6. **Fix on a branch** — Once you identify the bug, fix it on a branch, deploy, test, and only merge when confirmed working.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **gradlew deploy** | The Gradle command that compiles robot code, connects to the roboRIO, and uploads the compiled program |
+| **Driver Station** | The FRC application that connects to the robot, enables/disables operation, selects modes, and displays console output |
+| **roboRIO** | The National Instruments controller that runs the robot code on the physical robot |
+| **Enable/Disable** | The Driver Station controls that start or stop robot operation — always announce before enabling |
+| **Console Output** | Text messages from the robot code displayed in the Driver Station, including errors and debug prints |
+| **Brownout** | A voltage drop (below ~7V) that causes the roboRIO to disable motor outputs to protect the system |
+
+---
+
+## What's Next?
+
+You understand the deploy-test-debug cycle in theory. In **Activity 5.2: Deploy-Test-Fix Cycle**, you'll practice the cycle hands-on — deploying code with an intentional issue, diagnosing it using Driver Station output, and applying a fix.

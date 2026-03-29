@@ -1,0 +1,245 @@
+---
+title: "Activity 6.14: Write a Unit Test"
+description: "Write a JUnit test for a command or utility in your team's robot code using WPILib's simulation harness"
+sidebar:
+  order: 14
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Identified a testable piece of code in your team's robot project
+- Created a JUnit test file in the correct location
+- Written at least two passing unit tests
+- Run the tests using `./gradlew test` and verified they pass
+
+:::tip[Before You Start]
+Complete **Lesson 6.13: Unit Testing Robot Code**. Have your team's robot project open in your IDE. You'll need terminal access to run Gradle commands.
+:::
+
+---
+
+## Step 1: Choose What to Test
+
+Look through your team's codebase and pick one of these categories:
+
+| Category | What to Look For | Difficulty |
+|----------|-----------------|------------|
+| **Constants validation** | CAN IDs, PID gains, speed limits in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> | ⭐ Easiest |
+| **Math utility** | Any helper method that does calculations (angle math, conversions, interpolation) | ⭐⭐ Medium |
+| **Command structure** | Subsystem requirements, isFinished logic in a command file | ⭐⭐ Medium |
+| **State machine** | State transitions and guard conditions (if you built one in Activity 6.11) | ⭐⭐⭐ Advanced |
+
+Pick the category that matches your comfort level. If this is your first time writing tests, start with Constants validation.
+
+**I'm testing:** _______________
+**File under test:** _______________
+
+---
+
+## Step 2: Create the Test File
+
+Create a new test file in the `src/test/java/frc/robot/` directory. The file name should match the class you're testing with a `Test` suffix.
+
+### If testing Constants:
+
+Create `src/test/java/frc/robot/ConstantsTest.java`:
+
+```java
+package frc.robot;
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.*;
+
+class ConstantsTest {
+
+  // Your tests will go here
+}
+```
+
+### If testing a command:
+
+Create `src/test/java/frc/robot/commands/YourCommandTest.java`:
+
+```java
+package frc.robot.commands;
+
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+class YourCommandTest {
+
+  @BeforeEach
+  void setUp() {
+    CommandScheduler.getInstance().cancelAll();
+    CommandScheduler.getInstance().enable();
+  }
+
+  @AfterEach
+  void tearDown() {
+    CommandScheduler.getInstance().cancelAll();
+    CommandScheduler.getInstance().unregisterAllSubsystems();
+  }
+
+  // Your tests will go here
+}
+```
+
+---
+
+## Step 3: Write Your First Test
+
+Write a test that verifies something basic and obvious. This builds confidence that your test setup works.
+
+### Example: Constants Test
+
+```java
+@Test
+void allCanIdsShouldBeUnique() {
+  List<Integer> ids = new ArrayList<>();
+  // Add all CAN IDs from your Constants file
+  // ids.add(Constants.SHOOTER_LEFT_ID);
+  // ids.add(Constants.SHOOTER_RIGHT_ID);
+  // ... add all of them
+
+  Set<Integer> unique = new HashSet<>(ids);
+  assertEquals(ids.size(), unique.size(),
+    "Found duplicate CAN IDs — each device needs a unique ID");
+}
+```
+
+### Example: Command Test
+
+```java
+@Test
+void commandShouldRequireCorrectSubsystem() {
+  // Create the subsystem and command
+  // var subsystem = new YourSubsystem();
+  // var command = new YourCommand(subsystem);
+
+  // assertTrue(command.getRequirements().contains(subsystem),
+  //   "Command should require the subsystem it controls");
+}
+```
+
+Uncomment and adapt the code for your specific classes.
+
+---
+
+## Step 4: Write a Second Test
+
+Now write a test that checks something less obvious — an edge case or a specific behavior:
+
+**Ideas for a second test:**
+- CAN IDs are all within the valid range (1–62)
+- A speed constant is positive and below a safe maximum
+- A command's `isFinished()` returns the correct value
+- A math utility handles zero or negative inputs correctly
+
+```java
+@Test
+void speedConstantsShouldBeWithinSafeLimits() {
+  // Example: max shooter speed should be positive and under 7000 RPM
+  // assertTrue(Constants.MAX_SHOOTER_RPM > 0, "Max RPM should be positive");
+  // assertTrue(Constants.MAX_SHOOTER_RPM <= 7000, "Max RPM should not exceed 7000");
+}
+```
+
+---
+
+## Step 5: Run Your Tests
+
+Open a terminal in your project root and run:
+
+```bash
+./gradlew test
+```
+
+### If tests pass:
+
+You'll see output like:
+
+```
+BUILD SUCCESSFUL in 8s
+3 actionable tasks: 2 executed, 1 up-to-date
+```
+
+Congratulations — you've written your first robot code tests!
+
+### If tests fail:
+
+Read the error message carefully. Common issues:
+
+| Error | Fix |
+|-------|-----|
+| `ClassNotFoundException` | Check your package declaration matches the directory structure |
+| `AssertionError` | Your test found a real issue — investigate the failing assertion |
+| `NullPointerException` | You may need to initialize WPILib HAL for simulation: add `HAL.initialize(500, 0)` in `@BeforeEach` |
+| `Compilation error` | Check imports and class names match your actual code |
+
+<AnswerReveal client:load label="HAL Initialization Tip">
+If your tests involve WPILib classes (subsystems, commands, motors), you may need to initialize the Hardware Abstraction Layer:
+
+```java
+import edu.wpi.first.hal.HAL;
+
+@BeforeEach
+void setUp() {
+  HAL.initialize(500, 0);
+  CommandScheduler.getInstance().cancelAll();
+  CommandScheduler.getInstance().enable();
+}
+```
+
+This sets up the simulated hardware environment that WPILib classes expect.
+</AnswerReveal>
+
+---
+
+## Step 6: Review and Reflect
+
+Answer these questions about your testing experience:
+
+1. **What did you test?** Describe the class/method and what your tests verify.
+2. **Did any test reveal a surprise?** Sometimes tests expose bugs or unexpected behavior.
+3. **What would you test next?** Identify one more thing in your codebase that would benefit from a test.
+4. **How long did it take?** Compare the time to write the test vs. the time it would take to debug the same issue on the robot.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Your First Unit Test"
+  prompt="Share your test results: (1) What did you test? (2) How many tests did you write? (3) Did they all pass on the first try? If not, what did you learn from the failure? (4) What's one thing in your codebase that you now want to add a test for?"
+>
+Strong answers include:
+
+1. **Specific test target** — e.g., "I tested CAN ID uniqueness in Constants.java" or "I tested that IntakeCommand requires the IntakeSubsystem"
+2. **At least 2 tests** — the minimum for this activity
+3. **Honest reflection on failures** — e.g., "My first test failed because I forgot to initialize HAL. After adding HAL.initialize(), it passed." or "The CAN ID test actually found that we had two devices both using ID 24!"
+4. **Forward-looking** — e.g., "I want to test our angle wrapping utility because we've had bugs with it before"
+</Checkpoint>
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Unit Test** — an automated test that verifies a small, isolated piece of code behaves correctly
+- **JUnit** — the Java testing framework used to write and run unit tests for robot code
+- **Assertion** — a test statement that checks whether an expected condition is true (e.g., `assertEquals`, `assertTrue`)
+- **Test Fixture** — the setup code that creates objects and initial conditions needed before each test runs
+:::
+
+## What's Next?
+
+You've written your first automated tests for robot code. In **Lesson 6.15: Architecture Patterns from Top Teams**, you'll explore how elite FRC teams structure their codebases — IO layers, superstructure patterns, trigger-based architectures, and singleton patterns — and evaluate which patterns might benefit your team.

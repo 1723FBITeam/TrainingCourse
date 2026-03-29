@@ -1,0 +1,176 @@
+---
+title: "Activity 4.10: Explore Live NetworkTables"
+description: "Use OutlineViewer or AdvantageScope to discover and document live NetworkTables entries on your robot"
+sidebar:
+  order: 10
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Connected to a running robot (or simulation) and viewed live NetworkTables data
+- Identified at least 10 NetworkTables entries and traced where they come from in the code
+- Documented the tables, keys, and value types your robot publishes
+- Found the Limelight entries and autonomous chooser in the NetworkTables tree
+
+:::tip[Before You Start]
+Complete **Lesson 4.9: NetworkTables Basics** first. You need a running robot or a WPILib simulation to see live data. If you don't have access to the robot right now, you can run the robot code in simulation mode — ask your mentor or lead programmer for help with `Simulate Robot Code` in VS Code.
+:::
+
+---
+
+## Choose Your Tool
+
+You'll use one of these tools to browse NetworkTables. Pick whichever is available:
+
+| Tool | How to Open | Best For |
+|------|------------|---------|
+| **OutlineViewer** | WPILib VS Code → Command Palette → "Start Tool" → OutlineViewer | Simple text-based browsing of all entries |
+| **AdvantageScope** | Download from [docs.advantagescope.org](https://docs.advantagescope.org/) → connect to robot IP | Rich visualization with graphs and 3D views |
+| **Shuffleboard** | WPILib VS Code → Command Palette → "Start Tool" → Shuffleboard | Widget-based dashboard view |
+
+For this activity, **OutlineViewer** or **AdvantageScope** are recommended because they show the raw NetworkTables tree — every table, every key, every value.
+
+---
+
+## Step 1: Connect to the Robot
+
+1. Make sure the robot is powered on and connected to your computer (via USB, Ethernet, or WiFi)
+2. Open your chosen tool
+3. Connect to the robot's IP address:
+   - **USB**: `172.22.11.2`
+   - **WiFi/Ethernet**: `10.TE.AM.2` (replace TE.AM with your team number, e.g., `10.17.23.2`)
+   - **Simulation**: `localhost` or `127.0.0.1`
+
+
+Once connected, you should see a tree of tables and entries populate. If nothing appears, check that the robot code is running (the Driver Station should show "Communications" green).
+
+---
+
+## Step 2: Explore the SmartDashboard Table
+
+Expand the `SmartDashboard` table. This is where most of your team's published data lives. You should see entries like:
+
+- Motor speeds and sensor readings from subsystem `periodic()` methods
+- The autonomous chooser (look for "Auto Chooser" or similar)
+- Any custom values your team publishes for debugging
+
+**Document at least 5 SmartDashboard entries:**
+
+| Key | Value (current) | Type | Where in Code? |
+|-----|----------------|------|---------------|
+| Example: `Intake/Speed` | `0.0` | Double | IntakeSubsystem.periodic() |
+| | | | |
+| | | | |
+| | | | |
+| | | | |
+
+For the "Where in Code?" column, search your project for the key name (e.g., search for `"Intake/Speed"`) to find the `SmartDashboard.putNumber()` call that publishes it.
+
+---
+
+## Step 3: Find the Limelight Table
+
+Look for a table called `limelight` (or `limelight-front`, `limelight-back` if your team has multiple cameras). Expand it and find these key entries:
+
+| Key | What It Means | Current Value |
+|-----|--------------|--------------|
+| `tv` | Target visible (0 = no, 1 = yes) | |
+| `tx` | Horizontal offset to target (degrees) | |
+| `ty` | Vertical offset to target (degrees) | |
+| `ta` | Target area (% of image) | |
+| `botpose_wpiblue` | Robot pose estimate from AprilTags | |
+
+Try pointing the Limelight at an AprilTag and watch the values change in real time. The `tv` value should flip from 0 to 1, and `tx`/`ty` should show the offset.
+
+<AnswerReveal client:load label="What if I don't see a limelight table?">
+If there's no `limelight` table, the Limelight camera might not be connected or powered. Check:
+1. Is the Limelight plugged into the robot's network switch?
+2. Can you access the Limelight web interface at `http://limelight.local:5801`?
+3. Is the Limelight powered? (Check the LED indicator)
+
+If you're running in simulation, the Limelight won't be present — that's expected. Focus on the SmartDashboard and other tables instead.
+</AnswerReveal>
+
+---
+
+## Step 4: Find the FMSInfo Table
+
+Look for a table called `FMSInfo`. This contains match information published by the Field Management System (or the Driver Station in practice mode):
+
+| Key | What It Means |
+|-----|--------------|
+| `IsRedAlliance` | Whether the robot is on the red alliance |
+| `MatchNumber` | Current match number |
+| `EventName` | Name of the event |
+| `GameSpecificMessage` | Game-specific data (varies by year) |
+
+These values are read-only — they come from the FMS, not your robot code. Your code can read them using `DriverStation.getAlliance()` and similar methods.
+
+---
+
+## Step 5: Watch Values Change
+
+Now for the fun part. With the NetworkTables viewer open:
+
+1. **Enable the robot in teleop** (with the Driver Station)
+2. **Move the joysticks** — watch drivetrain-related values change
+3. **Press a button** — watch subsystem values change (intake speed, shooter RPM, etc.)
+4. **Disable the robot** — watch values return to zero or default states
+
+This real-time view is exactly what your drive team sees on the dashboard during a match. Understanding what data is available helps you build better dashboards and debug problems faster.
+
+<Checkpoint client:load
+  title="Checkpoint: NetworkTables Exploration"
+  prompt="Answer these questions based on your exploration: (1) How many total NetworkTables entries does your robot publish? (roughly) (2) Which table has the most entries? (3) Find one entry that you didn't expect — what is it and where does it come from?"
+>
+Answers will vary by team, but common observations:
+
+1. **Total entries:** Most FRC robots publish 50–200+ NetworkTables entries. The drivetrain alone can publish dozens (module states, odometry, speeds).
+
+2. **Most entries:** Usually `SmartDashboard` or the drivetrain-related table. CTRE's swerve drivetrain publishes a lot of telemetry data automatically.
+
+3. **Unexpected entries:** Common surprises include CTRE's automatic telemetry (module states, odometry), WPILib's built-in entries (like `/LiveWindow/` data), or FMS data you didn't know was available.
+</Checkpoint>
+
+---
+
+## Step 6: Document Your Findings
+
+Create a summary of your robot's NetworkTables landscape:
+
+| Table Name | # of Entries | Purpose | Published By |
+|-----------|-------------|---------|-------------|
+| SmartDashboard | | Team-published data | Subsystem periodic(), RobotContainer |
+| limelight | | Vision camera data | Limelight hardware |
+| FMSInfo | | Match/event info | Field Management System |
+| | | | |
+| | | | |
+
+Save this document — it's a reference for when you need to find specific data for debugging or dashboard building.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[NetworkTables](/reference-sheets/glossary)** — the WPILib publish/subscribe communication system connecting robot code, dashboards, and coprocessors
+- **Publish/Subscribe** — the pattern where code publishes data to a topic and other code subscribes to receive updates
+- **SmartDashboard** — a WPILib dashboard class that provides simple methods to send and display data via NetworkTables
+:::
+
+## What's Next?
+
+You've now seen the data layer that connects your robot to the outside world. Every value on the dashboard, every Limelight reading, and every auto selection flows through NetworkTables.
+
+In **Lesson 4.11: FRC Game Manual for Programmers**, you'll shift from code to rules — learning the parts of the FRC Game Manual that directly affect how you write robot code, from autonomous constraints to safety rules.
+
+
+
+In **Lesson 4.11: FRC Game Manual for Programmers**, you'll shift from code to rules — learning the parts of the FRC Game Manual that directly affect how you write robot code, from autonomous constraints to safety rules.

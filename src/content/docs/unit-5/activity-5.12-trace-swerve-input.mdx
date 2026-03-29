@@ -1,0 +1,209 @@
+---
+title: "Activity 5.12: Trace a Joystick Through Swerve Math"
+description: "Trace a joystick input through your team's swerve drivetrain code — from raw values to individual module motor commands"
+sidebar:
+  order: 12
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Traced a joystick input from the controller through the swerve drive code
+- Identified where field-relative transformation happens in your team's code
+- Found where kinematics converts desired motion into module states
+- Understood how module states become motor commands
+- Documented the complete data flow from joystick to wheel
+
+:::tip[Before You Start]
+Complete **Lesson 5.11: Swerve Drive Concepts**. Have your IDE open with these files ready:
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" />
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/generated/TunerConstants.java`} label="TunerConstants.java" />
+:::
+
+---
+
+## The Trace Scenario
+
+Imagine this moment during a match:
+
+- The robot is facing 45° to the right (toward a scoring position)
+- The driver pushes the joystick **straight forward** (Y axis = -1.0, X axis = 0.0)
+- The driver is not rotating (rotation axis = 0.0)
+
+Your job: trace this input through the code and determine what each swerve module does.
+
+---
+
+## Step 1: Find the Joystick Input
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and find where the drivetrain's default command is set up. Look for where joystick axes are read and passed to the drivetrain.
+
+Document what you find:
+
+| Question | Your Answer |
+|----------|------------|
+| Which joystick axes control translation? | |
+| Which joystick axis controls rotation? | |
+| Is there a deadband applied to the joystick values? | |
+| Are the values inverted (negated) anywhere? | |
+| What method on CommandSwerveDrivetrain receives these values? | |
+
+<AnswerReveal client:load label="Hint: What to Look For">
+Look for code like:
+```java
+drivetrain.setDefaultCommand(
+    drivetrain.applyRequest(() -> 
+        drive.withVelocityX(-controller.getLeftY() * maxSpeed)
+             .withVelocityY(-controller.getLeftX() * maxSpeed)
+             .withRotationalRate(-controller.getRightX() * maxAngularRate)
+    )
+);
+```
+
+The negative signs invert the joystick axes (WPILib convention: joystick Y is negative-forward, but robot forward is positive-X). The values are multiplied by max speed to convert from joystick range (-1 to 1) to velocity (m/s).
+</AnswerReveal>
+
+---
+
+## Step 2: Trace the Field-Relative Transform
+
+With our scenario (joystick forward, robot facing 45° right), trace what happens to the input values:
+
+### Raw Joystick Values
+- Left Y (forward/back): -1.0 (full forward)
+- Left X (left/right): 0.0 (no strafe)
+- Right X (rotation): 0.0 (no rotation)
+
+### After Inversion and Scaling
+Assuming max speed is 4.5 m/s:
+- vx (forward): 1.0 × 4.5 = 4.5 m/s (after negation of joystick Y)
+- vy (strafe): 0.0 × 4.5 = 0.0 m/s
+- omega (rotation): 0.0 rad/s
+
+### After Field-Relative Transform
+The robot is facing 45° right. Field-relative control rotates the velocity vector by the negative of the heading:
+
+Find in <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" /> where the field-relative transformation is applied. The CTRE swerve library handles this internally using the `FieldCentric` request type.
+
+<AnswerReveal client:load label="Field-Relative Math">
+The field-relative transform rotates the (vx, vy) vector by -45°:
+
+```
+vx_field = vx × cos(-45°) - vy × sin(-45°)
+         = 4.5 × 0.707 - 0.0 × (-0.707)
+         = 3.18 m/s
+
+vy_field = vx × sin(-45°) + vy × cos(-45°)
+         = 4.5 × (-0.707) + 0.0 × 0.707
+         = -3.18 m/s
+```
+
+So the robot-relative velocity is (3.18, -3.18) m/s — the robot drives diagonally forward-right in its own frame, which translates to straight forward on the field. This is field-relative control in action.
+</AnswerReveal>
+
+---
+
+## Step 3: Trace Through Kinematics
+
+The kinematics system takes the robot-relative velocities and converts them into four module states. Since there's no rotation in our scenario, all four modules should have the same state.
+
+Find in your code where `SwerveDriveKinematics` (or the CTRE equivalent) is used. The module positions are defined in <GitHubLink client:load path={`${robotConfig.projectRoot}/generated/TunerConstants.java`} label="TunerConstants.java" />.
+
+For our scenario (pure translation, no rotation):
+
+| Module | Expected Speed | Expected Angle |
+|--------|---------------|----------------|
+| Front Left | ~4.5 m/s | ~315° (or -45°) |
+| Front Right | ~4.5 m/s | ~315° (or -45°) |
+| Back Left | ~4.5 m/s | ~315° (or -45°) |
+| Back Right | ~4.5 m/s | ~315° (or -45°) |
+
+All modules point in the same direction (the robot-relative direction of travel) at the same speed. The angle is -45° because the robot needs to drive diagonally in its own frame to go straight forward on the field.
+
+<AnswerReveal client:load label="Why -45°?">
+The robot is facing 45° right on the field. To drive field-forward, the wheels need to point 45° to the left in the robot's frame. That's -45° (or equivalently 315°). The field-relative transform calculated this — the robot-relative velocity (3.18, -3.18) points at -45° from the robot's forward direction.
+</AnswerReveal>
+
+---
+
+## Step 4: Trace to Motor Commands
+
+Each module state (speed + angle) becomes two motor commands:
+
+1. **Steer motor** → commanded to the target angle using closed-loop position control
+2. **Drive motor** → commanded to the target speed using closed-loop velocity control (or duty cycle)
+
+The CTRE swerve library also applies **module optimization** — if the target angle is more than 90° from the current angle, it's faster to reverse the drive direction and steer to the supplementary angle. This prevents modules from spinning 180° when they could just reverse.
+
+Document the final motor commands for one module:
+
+| Motor | Command Type | Target Value |
+|-------|-------------|-------------|
+| Front Left Steer | Position control | -45° (or 315°) |
+| Front Left Drive | Velocity control | ~4.5 m/s equivalent |
+
+---
+
+## Step 5: Complete the Trace Summary
+
+Fill in the complete data flow:
+
+| Stage | Data | Value |
+|-------|------|-------|
+| 1. Joystick raw | Left Y, Left X, Right X | -1.0, 0.0, 0.0 |
+| 2. After inversion | vx, vy, omega | 4.5 m/s, 0.0 m/s, 0.0 rad/s |
+| 3. Gyro heading | Robot heading | 45° |
+| 4. Field-relative transform | Robot-frame vx, vy | 3.18 m/s, -3.18 m/s |
+| 5. Kinematics output | Module states (all 4) | 4.5 m/s @ -45° |
+| 6. Module optimization | Optimized states | (depends on current module angles) |
+| 7. Motor commands | Steer + Drive per module | Position: -45°, Velocity: 4.5 m/s |
+
+---
+
+## Step 6: Try a Different Scenario
+
+Now trace a more complex scenario on your own. Choose one:
+
+**Scenario A: Strafe Right While Rotating**
+- Joystick: Left Y = 0.0, Left X = 1.0, Right X = 0.5
+- Robot heading: 0° (facing field-forward)
+
+**Scenario B: Drive Forward-Left While Rotating**
+- Joystick: Left Y = -0.7, Left X = -0.7, Right X = 0.3
+- Robot heading: 90° (facing right)
+
+For your chosen scenario, trace through each stage and predict the module states. Then, if you have access to the robot, enable it and use AdvantageScope to verify your predictions by watching the actual module angles and speeds.
+
+<Checkpoint client:load
+  title="Checkpoint: Swerve Trace"
+  prompt="For the original scenario (joystick full forward, robot facing 45° right): (1) Why do all four modules have the same state when there's no rotation? (2) What would change if the driver also pushed the rotation stick to the right? (3) If the gyro was miscalibrated by 30°, how would the module states be different?"
+>
+Strong answers:
+
+1. **Same state with no rotation:** When there's only translation (no rotation), all four modules need to push the robot in the same direction at the same speed. Rotation is what makes each module different — modules farther from the center of rotation need different speeds and angles to contribute to the rotation.
+
+2. **Adding rotation:** Each module would now have a unique state. The rotation component adds a tangential velocity to each module based on its position relative to the robot center. Front-left and back-right would have different angles than front-right and back-left. The speeds would also differ slightly.
+
+3. **Gyro miscalibrated by 30°:** The field-relative transform would use the wrong heading (75° instead of 45°). The module angles would be off by 30° — the robot would drive 30° to the right of where the driver intended. The driver would notice that "forward" on the joystick doesn't go straight forward on the field.
+</Checkpoint>
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[Module State](/reference-sheets/glossary)** — the combination of drive speed and steering angle for a single swerve module
+- **[Field-Relative Control](/reference-sheets/glossary)** — a control mode where joystick inputs are interpreted relative to the field, not the robot's heading
+- **[Kinematics](/reference-sheets/glossary)** — the math that converts desired robot motion into individual module states
+:::
+
+## What's Next?
+
+You've traced a joystick input through the entire swerve drive pipeline. In **Lesson 5.13: Creating Paths and Named Commands**, you'll learn how to create autonomous paths in PathPlanner, register Named Commands in your code, and compose auto routines that use the swerve drive you now understand.

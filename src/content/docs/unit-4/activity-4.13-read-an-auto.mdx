@@ -1,0 +1,202 @@
+---
+title: "Activity 4.13: Read an Auto Routine"
+description: "Open the PathPlanner GUI, load your team's project, and trace an existing autonomous routine from start to finish"
+sidebar:
+  order: 13
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Opened the PathPlanner GUI and loaded your team's robot project
+- Identified all paths and autos in your team's PathPlanner directory
+- Visually traced one complete auto routine on the field map
+- Connected each Named Command in the auto to its Java code registration
+- Documented the auto routine's sequence of actions
+
+:::tip[Before You Start]
+Complete **Lesson 4.12: Reading Autonomous Routines** first. You need PathPlanner installed — download it from [pathplanner.dev](https://pathplanner.dev) if you haven't already. You also need the team's robot project cloned on your computer.
+:::
+
+---
+
+## Step 1: Open PathPlanner and Load the Project
+
+1. Launch the **PathPlanner** application
+2. Click **"Open Robot Project"** (or File → Open Project)
+3. Navigate to your team's robot project root directory (the folder containing `build.gradle`)
+4. PathPlanner will detect the `src/main/deploy/pathplanner/` directory and load all paths and autos
+
+You should see two panels in the sidebar:
+- **Paths** — all `.path` files
+- **Autos** — all `.auto` files
+
+
+---
+
+## Step 2: Inventory Your Team's Paths and Autos
+
+Before diving into a specific auto, get the big picture. List all the paths and autos your team has:
+
+**Paths:**
+
+| Path Name | Start Position (approx.) | End Position (approx.) |
+|-----------|-------------------------|----------------------|
+| | | |
+| | | |
+| | | |
+
+**Autos:**
+
+| Auto Name | # of Paths | # of Named Commands |
+|-----------|-----------|-------------------|
+| | | |
+| | | |
+
+Click on each path to see it drawn on the field. Click on each auto to see the complete routine with all paths connected.
+
+---
+
+## Step 3: Choose an Auto to Trace
+
+Pick one auto routine to trace in detail. Choose the one your team uses most often, or the one with the most steps if you want a challenge.
+
+**Selected auto:** _______________
+
+---
+
+## Step 4: Trace the Auto Visually
+
+With your chosen auto open in PathPlanner, trace through it step by step:
+
+1. **Starting pose** — Where does the robot start on the field? Note the x, y coordinates and heading.
+
+2. **First action** — Is it a path or a Named Command? If it's a path, watch the trajectory on the field map. If it's a Named Command, note the name.
+
+3. **Continue through each step** — For each action in the sequence, document:
+   - What type it is (path or named command)
+   - What it does (where the robot drives, or what mechanism activates)
+   - How long it approximately takes
+
+Fill in this table as you trace:
+
+| Step | Type | Name | What Happens |
+|------|------|------|-------------|
+| 1 | Starting Pose | — | Robot starts at (x, y) facing ___° |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
+| 6 | | | |
+
+---
+
+## Step 5: Connect Named Commands to Java Code
+
+For each Named Command in your auto, find the corresponding registration in the Java code.
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and search for `NamedCommands.registerCommand`. Match each name to the command it creates:
+
+| Named Command (from auto) | Java Command (from code) | What It Does |
+|---------------------------|-------------------------|-------------|
+| | | |
+| | | |
+| | | |
+
+<AnswerReveal client:load label="Hint: Common Named Commands">
+Common Named Commands in FRC teams include:
+
+- **"StartIntake"** or **"RunIntake"** — deploys and runs the intake to pick up game pieces
+- **"StopIntake"** — retracts the intake and stops rollers
+- **"ShootNote"** or **"Score"** — runs the shooting sequence (aim, spin up, feed)
+- **"AimTurret"** — starts the turret auto-aim
+- **"ResetOdometry"** — resets the robot's position estimate
+
+Your team's names may be different — check the actual registrations in the code.
+</AnswerReveal>
+
+---
+
+## Step 6: Analyze the Auto Strategy
+
+Now that you've traced the complete auto, think about the strategy:
+
+1. **What does this auto accomplish?** (How many game pieces does it score? Where does it end up?)
+2. **What's the total estimated time?** (Remember: autonomous is only 15 seconds)
+3. **What could go wrong?** (What if the robot misses a game piece? What if a path is slightly off?)
+4. **How does the starting position affect the auto?** (Could this auto work from a different starting spot?)
+
+<Checkpoint client:load
+  title="Checkpoint: Auto Routine Analysis"
+  prompt="For the auto you traced, answer: (1) How many paths and Named Commands does it contain? (2) What is the robot doing at the 7-8 second mark (roughly halfway through auto)? (3) If one Named Command failed silently, which one would cause the biggest problem and why?"
+>
+Answers depend on your team's specific auto, but here's what good answers look like:
+
+1. **Count:** A typical two-note auto has 2-3 paths and 3-4 Named Commands. A three-note auto might have 4-5 paths and 5-6 Named Commands.
+
+2. **Midpoint action:** At the halfway mark, the robot is usually either driving to a game piece or scoring its first pickup. If it's still on the first path, the auto might be too slow.
+
+3. **Critical Named Command:** Usually the scoring command (e.g., "ShootNote") — if it fails silently, the robot drives the entire route but never actually scores. The intake command failing is also bad — the robot drives to game pieces but never picks them up.
+</Checkpoint>
+
+---
+
+## Step 7: Explore a Path in Detail
+
+Pick one path from your auto and examine it closely in PathPlanner:
+
+1. **Click the path** to open it in the editor
+2. **Count the waypoints** — how many points define this trajectory?
+3. **Check the constraints** — what are the max velocity and acceleration?
+4. **Look for rotation targets** — does the robot change heading during this path?
+5. **Check for constraint zones** — are there sections where the robot slows down?
+
+Document your findings:
+
+| Property | Value |
+|----------|-------|
+| Path name | |
+| Number of waypoints | |
+| Max velocity (m/s) | |
+| Max acceleration (m/s²) | |
+| Rotation targets | |
+| Constraint zones | |
+
+---
+
+## Bonus: Compare Two Autos
+
+If your team has multiple auto routines, compare two of them:
+
+| Aspect | Auto 1: _______ | Auto 2: _______ |
+|--------|-----------------|-----------------|
+| Starting position | | |
+| Number of game pieces scored | | |
+| Total paths | | |
+| Estimated time | | |
+| Risk level (what could go wrong) | | |
+
+Understanding the tradeoffs between different autos helps you contribute to strategy discussions — "Auto A scores more but is riskier because it has tighter paths."
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **PathPlanner** — a GUI tool for creating autonomous paths and routines that the robot follows during the autonomous period
+- **Path** — a defined trajectory with waypoints that the robot drives along during autonomous
+- **Auto** — short for autonomous routine; a pre-programmed sequence the robot executes during the 15-second autonomous period
+- **Named Command** — a command registered with a string name so PathPlanner can trigger it at specific points along a path
+:::
+
+## What's Next?
+
+Congratulations — you've completed Unit 4! You can now navigate WPILib docs, read Java patterns, trace button bindings, understand NetworkTables, read the Game Manual, use Git workflows, and analyze autonomous routines. These are the foundational skills every FRC programmer needs.
+
+When you're ready to level up, **Unit 5: Community & Tools** starts with **Lesson 5.1: Deploy, Test, Debug** — where you'll master the deploy-test-debug cycle, learn CAN bus debugging, tap into the FRC community's collective knowledge, read top team code, and start building more advanced skills.

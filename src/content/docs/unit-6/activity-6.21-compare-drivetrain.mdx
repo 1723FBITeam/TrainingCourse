@@ -1,0 +1,251 @@
+---
+title: "Activity 6.21: Compare Drivetrain Implementations"
+description: "Compare your team's CommandSwerveDrivetrain to a top team's swerve implementation — architecture, features, and tradeoffs"
+sidebar:
+  order: 21
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Found and read a top team's swerve drivetrain implementation on GitHub
+- Analyzed their architecture, features, and design decisions
+- Compared their approach to your team's CommandSwerveDrivetrain
+- Documented the tradeoffs and identified ideas worth adopting
+
+:::tip[Before You Start]
+Complete **Activity 6.20: Simulated Competition Debugging**. Have your team's code open in your IDE and a browser ready for exploring top team GitHub repositories. Review Lesson 5.11 (Swerve Drive Concepts) if you need a refresher on swerve terminology.
+:::
+
+---
+
+## Step 1: Review Your Team's Drivetrain
+
+Before comparing to another team, make sure you understand your own drivetrain code.
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" /> and answer:
+
+| Question | Your Answer |
+|----------|-------------|
+| How many files make up the drivetrain? | |
+| What vendor library does it use? (CTRE, REV, etc.) | |
+| Does it use field-relative or robot-relative control? | |
+| How is odometry updated? | |
+| Does it integrate with vision/pose estimation? | |
+| How is the gyro accessed? | |
+| Where are swerve module configurations defined? | |
+
+Also open <GitHubLink client:load path={`${robotConfig.projectRoot}/generated/TunerConstants.java`} label="TunerConstants.java" /> — this auto-generated file contains the swerve module configurations (offsets, gear ratios, PID gains) from CTRE Tuner X.
+
+---
+
+## Step 2: Choose a Top Team to Study
+
+Pick a team known for excellent swerve drive implementations:
+
+| Team | GitHub | Swerve Approach | Language |
+|------|--------|----------------|----------|
+| **6328** Mechanical Advantage | [github.com/Mechanical-Advantage](https://github.com/Mechanical-Advantage) | IO layers with AdvantageKit, supports multiple hardware configs | Java |
+| **254** The Cheesy Poofs | [github.com/Team254](https://github.com/Team254) | Custom swerve with advanced odometry and path following | Java |
+| **1678** Citrus Circuits | [github.com/frc1678](https://github.com/frc1678) | Swerve with superstructure integration | Java |
+| **3015** Ranger Robotics | [github.com/FRC-3015](https://github.com/FRC-3015) | Clean command-based swerve with trigger composition | Java |
+
+Find their most recent season's robot code repository and locate the drivetrain/swerve files.
+
+**Team I'm studying:** _______________
+**Repository URL:** _______________
+**Drivetrain file(s):** _______________
+
+---
+
+## Step 3: Analyze Their Drivetrain Architecture
+
+Read through their swerve code and document what you find:
+
+### File Structure
+
+| Question | Their Team | Our Team |
+|----------|-----------|----------|
+| How many files for the drivetrain? | | |
+| Is there an IO layer (interface + implementations)? | | |
+| Where are module configurations? | | |
+| Is there a separate odometry thread? | | |
+| How is the gyro abstracted? | | |
+
+### Features
+
+| Feature | Their Team Has It? | Our Team Has It? |
+|---------|-------------------|-----------------|
+| Field-relative control | | |
+| Odometry (wheel-based position tracking) | | |
+| Vision-fused pose estimation | | |
+| Heading correction / snap-to-angle | | |
+| Wheel slip detection | | |
+| Module optimization (cosine scaling) | | |
+| Characterization support (SysId) | | |
+| Simulation support | | |
+| Logging / telemetry | | |
+
+<AnswerReveal client:load label="What to Look For in 6328's Code">
+**Team 6328 (Mechanical Advantage)** typically has:
+
+- **IO layer pattern:** `DriveIO.java` (interface), `DriveIOTalonFX.java` (real), `DriveIOSim.java` (simulated)
+- **Separate module class:** Each swerve module has its own IO layer
+- **Odometry thread:** A high-frequency thread (250Hz+) that updates odometry faster than the main robot loop
+- **AdvantageKit logging:** Every input and output is logged for replay
+- **Gyro abstraction:** `GyroIO` interface with real and simulated implementations
+- **Characterization:** Built-in support for SysId feedforward characterization
+
+Their drivetrain might be 8-15 files compared to your team's 1-2 files. The extra complexity enables simulation, replay, and hardware flexibility.
+</AnswerReveal>
+
+---
+
+## Step 4: Deep Dive — Pick Two Differences
+
+Choose two significant differences between their drivetrain and yours. For each one, analyze the tradeoff.
+
+### Difference 1
+
+**What's different:** _______________
+
+| Aspect | Their Approach | Our Approach |
+|--------|---------------|--------------|
+| How it works | | |
+| Benefit | | |
+| Cost/complexity | | |
+| Would it help our team? | | |
+
+### Difference 2
+
+**What's different:** _______________
+
+| Aspect | Their Approach | Our Approach |
+|--------|---------------|--------------|
+| How it works | | |
+| Benefit | | |
+| Cost/complexity | | |
+| Would it help our team? | | |
+
+---
+
+## Step 5: Complete the Comparison Exercise
+
+## 🔍 Comparison Exercise: Drivetrain Implementations
+
+**Team to study:** (fill in — e.g., Team 6328 Mechanical Advantage)
+**Repository:** (fill in — e.g., https://github.com/Mechanical-Advantage/RobotCode2024)
+**File/folder to examine:** (fill in — e.g., `src/main/java/org/littletonrobotics/frc2024/subsystems/drive/`)
+
+### Guiding Questions
+
+1. How does their drivetrain file structure compare to yours? Do they use IO layers, and if so, what benefit does that provide?
+2. How do they handle odometry? Is it on the main thread or a separate high-frequency thread? What's the advantage of their approach?
+3. How do they integrate vision data with wheel odometry for pose estimation? How does this compare to your team's approach?
+4. What features does their drivetrain have that yours doesn't? Which of those features would be most valuable for your team to adopt?
+
+### Document Your Findings
+
+| Aspect | Their Team | Our Team | Why the Difference? |
+|--------|-----------|----------|-------------------|
+| File count | (e.g., 12 files) | (e.g., 2 files) | |
+| Architecture pattern | (e.g., IO layers) | (e.g., Single class) | |
+| Odometry update rate | (e.g., 250Hz thread) | (e.g., 50Hz main loop) | |
+| Pose estimation | (e.g., Kalman filter fusion) | (e.g., Basic odometry) | |
+| Simulation support | (e.g., Full physics sim) | (e.g., None) | |
+| Logging detail | (e.g., Every motor input/output) | (e.g., Basic SmartDashboard) | |
+| Hardware abstraction | (e.g., Supports TalonFX + SparkMax) | (e.g., TalonFX only) | |
+| Code complexity | (e.g., High — needs experienced devs) | (e.g., Lower — accessible to new members) | |
+
+---
+
+## Step 6: Evaluate and Recommend
+
+Based on your comparison, make a recommendation for your team:
+
+### What to Adopt
+
+Pick 1-2 ideas from the top team's code that would benefit your team without overwhelming complexity:
+
+| Idea | Why It's Worth It | Effort to Implement |
+|------|-------------------|-------------------|
+| | | |
+| | | |
+
+### What to Skip (For Now)
+
+Identify features that are impressive but not practical for your team right now:
+
+| Feature | Why Skip It | When It Might Make Sense |
+|---------|------------|------------------------|
+| | | |
+| | | |
+
+<AnswerReveal client:load label="Common Recommendations">
+**Worth adopting for most teams:**
+- **Better logging** — adding more telemetry to the drivetrain is low-effort and high-value for debugging
+- **Heading correction** — a simple snap-to-angle feature improves driver experience significantly
+- **Odometry logging** — recording the robot's pose every cycle enables post-match analysis
+
+**Usually not worth it for smaller teams:**
+- **Full IO layer pattern** — tripling your file count is only worth it if you actively use simulation and replay
+- **High-frequency odometry thread** — the improvement over 50Hz is measurable but small for most competition scenarios
+- **Multi-hardware support** — unless you're actually switching motor controllers, the abstraction adds complexity without benefit
+</AnswerReveal>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Drivetrain Comparison"
+  prompt="After completing your comparison: (1) What was the most significant architectural difference between their drivetrain and yours? (2) What's one feature you'd recommend your team adopt, and how would you implement it? (3) What's one thing about your team's simpler approach that's actually an advantage?"
+>
+Strong answers include:
+
+1. **Specific architectural difference** — e.g., "Team 6328 uses IO layers with 12+ files for the drivetrain, while we have 2 files. Their approach enables simulation and hardware swaps, but ours is much easier for new team members to understand and modify."
+
+2. **Practical recommendation** — e.g., "I'd add comprehensive pose logging to our drivetrain — recording the robot's estimated pose, target pose, and pose error every cycle. This is maybe 10 lines of code but would make our post-match analysis much more effective. I'd add Logger.recordOutput calls in the periodic() method."
+
+3. **Honest advantage of simplicity** — e.g., "Our single-file drivetrain means any team member can open one file and understand the entire drive system. With 6328's approach, you need to understand interfaces, dependency injection, and the IO pattern before you can make any changes. For our 3-person programming team, simplicity is a real advantage."
+</Checkpoint>
+
+---
+
+## 🎉 Congratulations — You've Completed Unit 6!
+
+You've worked through the most advanced content in the training program:
+
+- **AdvantageKit** logging and replay debugging
+- **Simulation** tools for testing without hardware
+- **Control theory** — PID, feedforward, and motion profiling
+- **Vision processing** and pose estimation
+- **State machines** and the superstructure pattern
+- **Unit testing** robot code with JUnit
+- **Architecture patterns** from elite FRC teams
+- **Advanced PathPlanner** — on-the-fly paths, constraints, and AutoBuilder
+- **Competition readiness** — checklists, debugging, hotfixes, and post-match review
+- **Drivetrain comparison** — learning from top team implementations
+
+You now have the knowledge and skills to contribute at the highest level of FRC programming. The next step is to apply these skills to your team's robot — pick the ideas that matter most for your team and start implementing them.
+
+For a suggested timeline on when to tackle each topic during the FRC season, check the [Weekly Roadmap](/roadmap).
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[Module State](/reference-sheets/glossary)** — the combination of drive speed and steering angle for a single swerve module
+- **[Odometry](/reference-sheets/glossary)** — tracking the robot's position using wheel encoder measurements and gyro heading data
+- **IO Layer** — an abstraction layer that separates hardware access from subsystem logic, enabling simulation and testing
+- **[Pose Estimator](/reference-sheets/glossary)** — a WPILib component that fuses odometry and vision data for accurate robot positioning
+:::
+
+## What's Next?
+
+Congratulations — you've completed the entire training course! You now have the skills to read, understand, debug, and contribute to any FRC robot codebase. Keep learning, keep building, and keep pushing your team forward.

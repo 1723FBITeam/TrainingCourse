@@ -1,0 +1,219 @@
+---
+title: "Activity 6.2: Replay a Match"
+description: "Add AdvantageKit logging to a subsystem, record data during a test run, and replay it in AdvantageScope"
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Added structured logging to one subsystem in your team's code
+- Recorded data during a test run (on the robot or in simulation)
+- Opened the log file in AdvantageScope and explored the recorded data
+- Replayed the data to understand how the subsystem behaved over time
+
+:::tip[Before You Start]
+Complete **Lesson 6.1: AdvantageKit Logging and Replay**. Have your team's project open in your IDE, AdvantageScope installed, and access to either the physical robot or the WPILib simulator.
+:::
+
+---
+
+## Step 1: Choose a Subsystem to Instrument
+
+Pick one subsystem to add logging to. Start with something simple that has clear inputs and outputs:
+
+| Subsystem | Why It's a Good First Choice |
+|-----------|------------------------------|
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" /> | Few motors, clear states (deployed/retracted, rollers on/off) |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> | Flywheel velocity is easy to graph and verify |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ClimberSubsystem.java`} label="ClimberSubsystem.java" /> | Simple up/down motion with position tracking |
+
+**Subsystem I'm instrumenting:** _______________
+
+---
+
+## Step 2: Add Basic Logging
+
+You don't need the full IO abstraction to start logging. Begin with `Logger.recordOutput()` calls in your subsystem's `periodic()` method.
+
+### 2a: Add the AdvantageKit Import
+
+At the top of your subsystem file, add:
+
+```java
+import org.littletonrobotics.junction.Logger;
+```
+
+If your project doesn't have AdvantageKit installed yet, you'll need to add the vendordep first. Follow the installation guide at [docs.advantagekit.org](https://docs.advantagekit.org).
+
+### 2b: Log Key Values in periodic()
+
+Add logging calls to your subsystem's `periodic()` method. Log the values that matter most for debugging:
+
+```java
+@Override
+public void periodic() {
+  // Log motor data
+  Logger.recordOutput("YourSubsystem/MotorVelocity", motor.getVelocity().getValueAsDouble());
+  Logger.recordOutput("YourSubsystem/MotorCurrent", motor.getSupplyCurrent().getValueAsDouble());
+  Logger.recordOutput("YourSubsystem/MotorTemperature", motor.getDeviceTemp().getValueAsDouble());
+
+  // Log state data
+  Logger.recordOutput("YourSubsystem/TargetSpeed", targetSpeed);
+  Logger.recordOutput("YourSubsystem/IsRunning", isRunning);
+}
+```
+
+### 2c: Choose What to Log
+
+For your chosen subsystem, identify at least 5 values to log:
+
+| Value | Why Log It |
+|-------|-----------|
+| Motor velocity | See if the motor reaches target speed |
+| Motor current | Detect stalls or jams |
+| Target speed | Compare commanded vs actual |
+| Subsystem state | Track state transitions |
+| Sensor reading | Verify sensor data is correct |
+
+<AnswerReveal client:load label="Example: Logging an Intake">
+For the IntakeSubsystem, you might log:
+
+```java
+@Override
+public void periodic() {
+  Logger.recordOutput("Intake/RollerVelocity",
+    rollerMotor.getVelocity().getValueAsDouble());
+  Logger.recordOutput("Intake/RollerCurrent",
+    rollerMotor.getSupplyCurrent().getValueAsDouble());
+  Logger.recordOutput("Intake/DeployPosition",
+    deployMotor.getPosition().getValueAsDouble());
+  Logger.recordOutput("Intake/TargetState", currentState.toString());
+  Logger.recordOutput("Intake/NoteDetected", beamBreak.get());
+}
+```
+
+These five values tell you: is the roller spinning (velocity), is it stalling (current), is the intake deployed (position), what state is the code in (state), and does it see a game piece (sensor).
+</AnswerReveal>
+
+---
+
+## Step 3: Configure the Logger
+
+In your `Robot.java` file, configure the Logger to write data. Add this to `robotInit()`:
+
+```java
+Logger.recordMetadata("ProjectName", "MyRobot");
+
+if (isReal()) {
+  // Log to a USB drive on the roboRIO
+  Logger.addDataReceiver(new WPILOGWriter("/U/logs"));
+  // Also publish to NetworkTables for live viewing
+  Logger.addDataReceiver(new NT4Publisher());
+} else {
+  // In simulation, log to the project directory
+  Logger.addDataReceiver(new WPILOGWriter("logs"));
+  Logger.addDataReceiver(new NT4Publisher());
+}
+
+Logger.start();
+```
+
+This creates `.wpilog` files that AdvantageScope can open.
+
+---
+
+## Step 4: Record Data
+
+Now run your robot (or simulation) and exercise the subsystem:
+
+### On the Physical Robot
+1. Deploy your code with `./gradlew deploy`
+2. Connect to the robot and enable teleop in Driver Station
+3. Operate the subsystem — run the intake, spin the shooter, move the climber
+4. Disable after 30-60 seconds of operation
+5. Retrieve the log file from the USB drive (`/U/logs/`)
+
+### In Simulation
+1. Run `./gradlew simulateJava` (or use the WPILib simulate command)
+2. Open the simulation GUI and enable teleop
+3. Use keyboard controls or a connected gamepad to operate the subsystem
+4. Disable after 30-60 seconds
+5. Find the log file in your project's `logs/` directory
+
+**Log file location:** _______________
+
+---
+
+## Step 5: Explore the Log in AdvantageScope
+
+1. Open AdvantageScope
+2. Drag your `.wpilog` file into the window (or use File → Open)
+3. In the left panel, expand the tree to find your subsystem's logged values
+
+### Things to Try
+
+- **Graph motor velocity over time** — drag the velocity field onto a line graph. Does it match what you expected?
+- **Overlay target vs actual** — put both the target speed and actual velocity on the same graph. How quickly does the motor reach the target?
+- **Check current draw** — graph the motor current. Do you see spikes when the mechanism starts moving?
+- **Scrub the timeline** — move the playback cursor to different moments. Can you identify when you pressed buttons?
+
+---
+
+## Step 6: Analyze What You See
+
+<Checkpoint client:load
+  title="Checkpoint: Log Analysis"
+  prompt="After exploring your log file in AdvantageScope, answer: (1) What subsystem did you instrument and what values did you log? (2) Describe one thing you noticed in the data that you wouldn't have seen without logging (e.g., a current spike, a delay in reaching target speed, an unexpected state transition). (3) If this were match data from a competition, how would this logging help you debug an issue?"
+>
+Strong answers include:
+
+1. **Specific values logged** — e.g., "I logged roller velocity, roller current, deploy position, target state, and note detection for the IntakeSubsystem."
+
+2. **A specific observation** — e.g., "I noticed the roller motor takes about 200ms to reach target speed, and there's a current spike of 35A when it first starts. The current then settles to about 8A during steady-state operation."
+
+3. **A debugging scenario** — e.g., "If the intake wasn't picking up game pieces during a match, I could check the log to see: (a) was the roller actually spinning (velocity > 0)? (b) was the intake deployed (position at target)? (c) did the beam break ever trigger (note detected)? This narrows down whether it's a mechanical, electrical, or software issue."
+</Checkpoint>
+
+---
+
+## Step 7: Try Adding More Logging
+
+Now that you've seen the value of structured logging, add 2-3 more values to your subsystem. Think about:
+
+- **Computed values** — PID error, feedforward output, state machine transitions
+- **Timing data** — how long the subsystem stays in each state
+- **Command data** — which command is currently controlling the subsystem
+
+Re-run the test and compare the richer data in AdvantageScope.
+
+---
+
+## Bonus: Share a Log File
+
+AdvantageKit log files are portable. Try:
+- Sending the `.wpilog` file to a teammate and having them open it in their AdvantageScope
+- Comparing logs from different test runs to see how changes affected behavior
+- Saving logs from each practice session to build a history of robot performance
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **AdvantageKit** — a logging framework that records all robot inputs for deterministic replay and post-match debugging
+- **IO Abstraction** — separating hardware access into IO interfaces so subsystem logic can run with real or simulated hardware
+- **Logger** — the AdvantageKit component that records timestamped data from all IO inputs every loop cycle
+- **Replay Debugging** — re-running recorded match data through robot code to reproduce and diagnose issues after the fact
+:::
+
+## What's Next?
+
+You've experienced the power of structured logging and replay. In **Lesson 6.3: Simulation Tools**, you'll learn how to run your robot code in WPILib's simulation environment — testing autonomous routines, tuning PID loops, and verifying logic without a physical robot.

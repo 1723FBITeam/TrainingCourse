@@ -1,0 +1,238 @@
+---
+title: "Lesson 5.3: CAN Bus and Hardware Debugging"
+description: "Understand CAN bus architecture, use Phoenix Tuner X and REV Hardware Client, and diagnose hardware communication failures"
+sidebar:
+  order: 3
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain how the CAN bus connects the roboRIO to motor controllers and sensors
+- Use Phoenix Tuner X to identify, configure, and test CTRE devices
+- Use REV Hardware Client to identify and configure REV devices
+- Interpret Driver Station error messages related to hardware communication
+- Follow a troubleshooting flowchart to diagnose common CAN bus failures
+
+:::tip[Before You Start]
+Complete **Activity 5.2: Deploy-Test-Fix Cycle**. Have Phoenix Tuner X installed ([store.ctr-electronics.com/software](https://store.ctr-electronics.com/software)) and, if your team uses REV hardware, the REV Hardware Client ([docs.revrobotics.com](https://docs.revrobotics.com)). Access to the robot makes this lesson much more hands-on.
+:::
+
+---
+
+## What Is the CAN Bus?
+
+The **CAN bus** (Controller Area Network) is the communication highway that connects the roboRIO to every motor controller, sensor, and smart device on your robot. Think of it as a single wire that all devices share to send and receive messages.
+
+### How CAN Bus Works
+
+Every device on the CAN bus has a unique **CAN ID** — a number that identifies it. When your code says "set motor 21 to 50% power", the roboRIO sends a message on the CAN bus addressed to device 21. Only the motor controller with ID 21 responds.
+
+Your team's CAN IDs (from <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />):
+
+| Device | CAN ID | Subsystem |
+|--------|--------|-----------|
+| Shooter Left | {robotConfig.canIds.shooterLeft} | ShooterSubsystem |
+| Shooter Right | {robotConfig.canIds.shooterRight} | ShooterSubsystem |
+| Turret | {robotConfig.canIds.turret} | TurretSubsystem |
+| Feeder | {robotConfig.canIds.feeder} | ShooterSubsystem |
+| Spinner | {robotConfig.canIds.spinner} | ShooterSubsystem |
+| Intake Left | {robotConfig.canIds.intakeLeft} | IntakeSubsystem |
+| Intake Right | {robotConfig.canIds.intakeRight} | IntakeSubsystem |
+| Deploy Left | {robotConfig.canIds.deployLeft} | IntakeSubsystem |
+| Deploy Right | {robotConfig.canIds.deployRight} | IntakeSubsystem |
+| Climb Left | {robotConfig.canIds.climbLeft} | ClimberSubsystem |
+| Climb Right | {robotConfig.canIds.climbRight} | ClimberSubsystem |
+| Elevator | {robotConfig.canIds.elevator} | ClimberSubsystem |
+
+### CAN Bus Physical Layout
+
+The CAN bus is a daisy-chain — devices are connected one after another in a chain:
+
+```
+roboRIO → Motor 1 → Motor 2 → Motor 3 → ... → Last Device
+  (CAN H and CAN L wires run through each device)
+```
+
+This means if a wire breaks in the middle of the chain, every device after the break loses communication. This is the most common hardware failure at competition.
+
+---
+
+## Common CAN Bus Errors
+
+When something goes wrong with the CAN bus, the Driver Station console tells you. Here are the most common errors and what they mean:
+
+| Error Message | What It Means | Likely Cause |
+|--------------|---------------|-------------|
+| `Device X not found on CAN bus` | The roboRIO can't communicate with device X | Wrong CAN ID in code, device unpowered, broken wire, or device not on the bus |
+| `CAN utilization: XX%` (above 70%) | The bus is overloaded with messages | Too many status signals at high frequency, or too many devices |
+| `Firmware version mismatch` | Device firmware doesn't match the API version | Update firmware via Phoenix Tuner X or REV Hardware Client |
+| `CAN frame not received` | A specific message from a device was missed | Intermittent wiring issue, bus overload, or device resetting |
+| `HAL: CAN Timeout` | The roboRIO timed out waiting for a CAN response | Device disconnected or bus is severely overloaded |
+
+---
+
+## Phoenix Tuner X
+
+**Phoenix Tuner X** is CTRE's diagnostic tool for managing TalonFX, TalonFXS, Pigeon 2, and CANcoder devices. It's essential for hardware debugging.
+
+### What Phoenix Tuner X Can Do
+
+| Feature | How It Helps |
+|---------|-------------|
+| **Device discovery** | Shows all CTRE devices on the CAN bus with their IDs, firmware versions, and status |
+| **Self-test** | Runs a diagnostic on a device and reports any issues |
+| **Control testing** | Manually spin a motor from the computer — no robot code needed |
+| **Configuration** | Set CAN IDs, update firmware, configure device settings |
+| **Plot** | Real-time graphs of motor output, velocity, current, and temperature |
+
+### Using Phoenix Tuner X for Debugging
+
+1. **Connect** to the roboRIO via USB or WiFi
+2. **Scan for devices** — Tuner X will list all CTRE devices it finds
+3. **Check the device list** — Are all expected devices present? Compare to the CAN ID table above.
+4. **Run self-test** on any suspicious device — it reports faults, voltage, and communication status
+5. **Test a motor** — Use the control tab to manually spin a motor and verify it responds
+
+### Common Phoenix Tuner X Findings
+
+| Finding | What It Means | Action |
+|---------|---------------|--------|
+| Device missing from list | Not on the CAN bus | Check wiring, power, and CAN connections |
+| Device shows wrong ID | ID was changed or device was swapped | Reconfigure the ID to match your code |
+| Firmware out of date | Orange warning icon | Update firmware through Tuner X |
+| Self-test shows faults | Hardware issue detected | Read the fault description and address it |
+| Motor doesn't respond to control test | Motor or controller issue | Check motor wiring, breaker, and controller LED status |
+
+---
+
+<Quiz client:load
+  question="You open Phoenix Tuner X and see 10 CTRE devices listed, but your robot should have 12. Two devices are missing. What's the most likely cause?"
+  options={[
+    "The two devices have the same CAN ID as other devices",
+    "The CAN bus wiring is broken somewhere in the chain, disconnecting the last two devices",
+    "Phoenix Tuner X can only show 10 devices at a time",
+    "The two devices need a firmware update before they'll appear"
+  ]}
+  correctIndex={1}
+  explanation="Since the CAN bus is a daisy-chain, a broken wire in the middle of the chain disconnects every device after the break. If the last two devices in the chain are missing, the break is likely between device 10 and device 11. Check the CAN wiring at that point in the chain. Duplicate CAN IDs would cause different symptoms (erratic behavior, not missing devices)."
+/>
+
+---
+
+## REV Hardware Client
+
+If your team uses REV hardware (SPARK MAX, SPARK Flex), the **REV Hardware Client** serves a similar purpose to Phoenix Tuner X.
+
+### Key REV Hardware Client Features
+
+| Feature | How It Helps |
+|---------|-------------|
+| **Device discovery** | Lists all REV devices connected via USB or CAN |
+| **Configuration** | Set CAN IDs, PID values, current limits, and other parameters |
+| **Firmware updates** | Update SPARK MAX/Flex firmware |
+| **Run/test** | Manually control a motor for testing |
+| **Status LEDs** | The docs explain what each LED color/pattern means |
+
+### REV SPARK LED Status Codes
+
+SPARK MAX and SPARK Flex controllers have status LEDs that indicate their state:
+
+| LED Pattern | Meaning |
+|------------|---------|
+| **Solid cyan** | Brake mode, no signal |
+| **Solid magenta** | Coast mode, no signal |
+| **Blinking green/red** | Forward/reverse output |
+| **Solid orange** | Device needs firmware update |
+| **Blinking orange** | CAN bus communication issue |
+| **Solid red** | Fault condition — check Hardware Client for details |
+
+---
+
+## The CAN Bus Troubleshooting Flowchart
+
+When a device isn't responding, follow this flowchart:
+
+```
+Device not responding
+│
+├─ Is the device listed in Phoenix Tuner X / REV Hardware Client?
+│  ├─ YES → Device is on the bus but code may have wrong ID
+│  │        → Check CAN ID in code matches the device
+│  │        → Run self-test to check for faults
+│  │
+│  └─ NO → Device is not communicating
+│          │
+│          ├─ Is the device powered? (LED on?)
+│          │  ├─ YES → CAN wiring issue
+│          │  │        → Check CAN H and CAN L connections
+│          │  │        → Check for broken wires in the daisy-chain
+│          │  │
+│          │  └─ NO → Power issue
+│          │          → Check breaker (is it tripped?)
+│          │          → Check power wires to the device
+│          │          → Check PDP/PDH slot
+│
+├─ Device is listed but motor doesn't spin?
+│  ├─ Can you control it from Tuner X / Hardware Client?
+│  │  ├─ YES → Code issue — motor works but code isn't commanding it
+│  │  │        → Check your subsystem code and command bindings
+│  │  │
+│  │  └─ NO → Hardware issue
+│  │          → Check motor wires (phase wires for brushless)
+│  │          → Check if motor is mechanically jammed
+│  │          → Try a different motor controller
+│
+└─ Device works but behaves erratically?
+   ├─ Check CAN utilization (should be below 70%)
+   ├─ Check for duplicate CAN IDs
+   ├─ Check for loose CAN connections (intermittent contact)
+   └─ Check firmware versions (all devices should match)
+```
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: CAN Bus Debugging"
+  prompt="Your team's shooter suddenly stops working during practice. The intake and drivetrain still work fine. The DS console shows 'TalonFX ID 21 not found on CAN bus'. Walk through the troubleshooting flowchart: (1) What does this error tell you? (2) What would you check first? (3) What's the most likely physical cause? (4) How would you verify your diagnosis?"
+>
+A systematic troubleshooting response:
+
+1. **The error tells you** that the roboRIO can't communicate with the shooter left motor (CAN ID 21). The device is either disconnected, unpowered, or has a wiring issue.
+
+2. **Check first:** Open Phoenix Tuner X and scan for devices. Is device 21 listed? If not, check if the shooter right motor (ID 22) is also missing — if both shooter motors are gone but intake motors (IDs 31, 32) work, the break is likely in the CAN chain between the intake and shooter sections.
+
+3. **Most likely physical cause:** A loose or broken CAN wire connection at or near the shooter motor controllers. Since the intake and drivetrain still work, the CAN bus is intact up to those devices — the break is between the last working device and the shooter.
+
+4. **Verify:** Check the physical CAN connections at the shooter motor controllers. Look for loose Weidmuller connectors, broken wires, or disconnected CAN cables. If the LED on the TalonFX is off, it's a power issue (check the breaker). If the LED is on but blinking orange, it's a CAN communication issue.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **CAN Bus** | Controller Area Network — the communication bus connecting the roboRIO to motor controllers, sensors, and other smart devices on the robot |
+| **CAN ID** | A unique number (0-62) assigned to each device on the CAN bus, used to address messages to specific devices |
+| **Phoenix Tuner X** | CTRE's diagnostic tool for discovering, configuring, testing, and updating CTRE devices on the CAN bus |
+| **REV Hardware Client** | REV Robotics' diagnostic tool for discovering, configuring, and updating REV devices |
+| **Daisy-Chain** | The CAN bus wiring topology where devices are connected in series — a break anywhere disconnects all downstream devices |
+| **CAN Utilization** | The percentage of the CAN bus bandwidth being used — should stay below 70% to avoid communication issues |
+
+---
+
+## What's Next?
+
+You now understand the CAN bus and how to diagnose hardware communication issues. In **Activity 5.4: Inspect CAN Devices**, you'll use Phoenix Tuner X (and REV Hardware Client if applicable) to inspect every device on your team's robot and document their status.

@@ -1,0 +1,307 @@
+---
+title: "Lesson 6.3: Simulation Tools"
+description: "Learn to use WPILib's simulation environment to test robot code, tune parameters, and verify autonomous routines without hardware"
+sidebar:
+  order: 3
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what WPILib simulation is and why it's valuable for FRC development
+- Launch the simulation environment and interact with simulated robot inputs
+- Understand how physics simulation models motor and mechanism behavior
+- Use Glass and Shuffleboard in simulation mode to visualize robot state
+- Identify which parts of your code work in simulation and which need hardware
+
+:::tip[Before You Start]
+Complete **Activity 6.2: Replay a Match**. Have your team's project open in your IDE with WPILib installed. You'll be launching the simulator during this lesson.
+:::
+
+---
+
+## What Is Robot Simulation?
+
+WPILib includes a built-in simulation framework that lets you run your robot code on your development computer — no roboRIO, no motors, no physical robot needed.
+
+> **[docs.wpilib.org/en/stable/docs/software/wpilib-tools/robot-simulation/introduction.html](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/robot-simulation/introduction.html)**
+
+When you run simulation, WPILib:
+1. Starts your `Robot.java` just like it would on the roboRIO
+2. Runs the command scheduler at 50Hz (every 20ms), same as on the real robot
+3. Provides simulated versions of hardware classes (motors, encoders, gyros)
+4. Opens a GUI where you can control inputs (joysticks, buttons) and see outputs
+
+This means your command-based logic, state machines, and autonomous routines all execute normally. The only difference is that motor commands go to simulated physics instead of real hardware.
+
+---
+
+## Why Simulate?
+
+Simulation solves several practical problems that every FRC team faces:
+
+| Problem | How Simulation Helps |
+|---------|---------------------|
+| **Limited robot access** | Test code at home, at school, or anywhere with a laptop |
+| **Dangerous to test** | Verify logic before running on a real robot — no risk of damage |
+| **Auto development** | Iterate on autonomous routines 10x faster than on the field |
+| **Off-season development** | Write and test code before the robot is built |
+| **Parallel development** | Multiple programmers can test simultaneously |
+
+Simulation isn't a replacement for testing on the real robot — physics models are approximations, and real-world conditions (carpet friction, battery voltage, mechanical slop) matter. But simulation catches logic errors, command sequencing bugs, and path planning issues before you ever deploy.
+
+---
+
+## Launching the Simulator
+
+There are two ways to launch simulation:
+
+### From the Command Line
+
+```bash
+./gradlew simulateJava
+```
+
+### From VS Code
+
+1. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+2. Type "WPILib: Simulate Robot Code"
+3. Select "Sim GUI" when prompted
+
+Both methods start your robot code and open the simulation GUI.
+
+---
+
+## The Simulation GUI
+
+When simulation launches, you'll see the **Sim GUI** window with several panels:
+
+### Robot State Panel
+Shows the current robot mode (Disabled, Autonomous, Teleop, Test) and lets you switch between them. This replaces the Driver Station.
+
+### Joystick Panel
+Simulates gamepad inputs. You can:
+- Map keyboard keys to joystick axes and buttons
+- Connect a real gamepad to your computer (it works in sim!)
+- Set specific axis values by dragging sliders
+
+### System Panel
+Shows all simulated hardware devices — motors, encoders, digital inputs, analog inputs. You can see the values being sent to each device and override sensor inputs.
+
+### Timing Panel
+Controls simulation speed. You can run at normal speed (1x), slow down for debugging, or pause to inspect state.
+
+---
+
+<Quiz client:load
+  question="You're developing a new autonomous routine but the robot is being used by the mechanical team for testing. What's the best approach?"
+  options={[
+    "Wait until the robot is available — you can't test auto code without hardware",
+    "Write the code and deploy it untested when the robot is free",
+    "Run the auto in WPILib simulation to verify the logic and path following, then do final testing on the robot",
+    "Ask the mechanical team to stop so you can test"
+  ]}
+  correctIndex={2}
+  explanation="Simulation lets you develop and test autonomous routines without the physical robot. You can verify that paths are correct, commands trigger at the right times, and the logic handles edge cases. Final testing on the real robot is still needed for tuning, but simulation catches most logic errors first."
+/>
+
+---
+
+## Physics Simulation
+
+WPILib provides physics simulation classes that model how mechanisms behave. These aren't just dummy values — they use real physics equations to simulate motor response, inertia, and gravity.
+
+### Available Physics Models
+
+| Model | What It Simulates | Use Case |
+|-------|------------------|----------|
+| `DCMotorSim` | A motor driving a simple load | Flywheels, rollers |
+| `SingleJointedArmSim` | An arm rotating around a pivot | Intake deploy, hood angle |
+| `ElevatorSim` | A linear mechanism with gravity | Climber, elevator |
+| `DifferentialDrivetrainSim` | Tank drive physics | Differential drivetrains |
+| `SwerveDrivetrainSim` | Swerve drive physics | Swerve drivetrains (via CTRE or custom) |
+
+### How Physics Sim Works
+
+You create a simulation object that models your mechanism's physical properties:
+
+```java
+// In a simulation-specific class or subsystem
+private final DCMotorSim flywheelSim = new DCMotorSim(
+  DCMotor.getFalcon500(1),  // Motor type
+  1.0,                       // Gear ratio
+  0.004                      // Moment of inertia (kg*m²)
+);
+```
+
+Each simulation cycle, you:
+1. Set the motor voltage (from your subsystem's output)
+2. Update the simulation (advance physics by 20ms)
+3. Read the simulated sensor values (velocity, position)
+
+```java
+public void simulationPeriodic() {
+  flywheelSim.setInputVoltage(motorOutput * 12.0);
+  flywheelSim.update(0.02);  // 20ms timestep
+  // Feed simulated values back to the motor sim
+  simEncoder.setVelocity(flywheelSim.getAngularVelocityRPM());
+}
+```
+
+This creates a feedback loop: your code commands a motor → physics sim calculates the response → simulated sensors report back → your code reacts.
+
+---
+
+## Using Glass for Visualization
+
+**Glass** is WPILib's simulation visualization tool. It connects to your running simulation via NetworkTables and provides:
+
+- **2D Field View** — shows the robot's position on the field (great for auto development)
+- **Mechanism Visualization** — renders arms, elevators, and other mechanisms
+- **Graphs** — plot any NetworkTables value over time
+- **Sendable Widgets** — PID controllers, motor controllers, and other WPILib objects
+
+### Launching Glass
+
+Glass starts automatically with the simulation GUI, or you can launch it separately:
+
+1. Press `Ctrl+Shift+P` in VS Code
+2. Type "WPILib: Start Tool"
+3. Select "Glass"
+
+### The 2D Field View
+
+The field view is the most useful Glass feature for autonomous development. It shows:
+- The robot's current pose (position + heading) as a rectangle on the field
+- The target pose (where the robot is trying to go)
+- The path the robot has traveled
+
+To set it up, publish your robot's pose to NetworkTables:
+
+```java
+field2d.setRobotPose(drivetrain.getPose());
+SmartDashboard.putData("Field", field2d);
+```
+
+---
+
+## Simulation with AdvantageKit
+
+If your team uses AdvantageKit (from Lesson 6.1), simulation becomes even more powerful. The IO abstraction pattern means you can create simulation-specific IO implementations:
+
+```java
+// Real robot: uses TalonFX hardware
+new Intake(new IntakeIOTalonFX());
+
+// Simulation: uses physics model
+new Intake(new IntakeIOSim());
+
+// Replay: reads from log file
+new Intake(new IntakeIOReplay());
+```
+
+Your subsystem logic is identical in all three cases. Only the IO layer changes. This is one of the biggest benefits of the IO abstraction — your simulation is testing the exact same logic that runs on the real robot.
+
+---
+
+## What Works in Simulation (and What Doesn't)
+
+Not everything works perfectly in simulation. Here's a realistic assessment:
+
+### Works Well
+- **Command scheduling** — commands start, end, and interrupt correctly
+- **Autonomous logic** — path following, named commands, sequential/parallel groups
+- **State machines** — state transitions and guard conditions
+- **PID controllers** — tuning with simulated physics (approximate but useful)
+- **NetworkTables** — all NT operations work normally
+
+### Works with Caveats
+- **Motor physics** — approximations of real behavior; actual robot will differ
+- **Swerve odometry** — works but doesn't model carpet friction, wheel slip, or mechanical play
+- **Sensor simulation** — you need to manually set simulated sensor values or use physics models
+
+### Doesn't Work
+- **Real CAN communication** — no CAN bus in simulation
+- **Camera vision** — no real camera feed (though you can simulate AprilTag detections)
+- **Physical interactions** — game piece pickup, collisions, field elements
+
+<Quiz client:load
+  question="You've tuned a PID controller in simulation and it works perfectly. When you deploy to the real robot, the mechanism oscillates wildly. What's the most likely explanation?"
+  options={[
+    "The simulation is broken and should never be trusted",
+    "The physics model doesn't perfectly match the real mechanism — friction, backlash, and inertia differ",
+    "PID controllers don't work on real robots",
+    "The roboRIO runs code differently than the simulator"
+  ]}
+  correctIndex={1}
+  explanation="Physics simulations are approximations. The real mechanism has friction, backlash, belt stretch, and other properties that the simulation model may not capture accurately. Simulation gets you in the right ballpark for PID gains, but final tuning always happens on the real robot. The code execution is identical — it's the physics that differ."
+/>
+
+---
+
+## A Practical Simulation Workflow
+
+Here's how to integrate simulation into your development process:
+
+### For New Features
+1. **Write the code** — subsystem, commands, bindings
+2. **Test in simulation** — verify the logic works, commands sequence correctly
+3. **Deploy to robot** — test with real hardware
+4. **Tune on robot** — adjust PID gains, timing, thresholds
+
+### For Autonomous Routines
+1. **Create paths in PathPlanner** — design the route
+2. **Register Named Commands** — wire up mechanism actions
+3. **Run in simulation** — watch the robot follow the path on the 2D field view
+4. **Iterate** — adjust waypoints, timing, constraints
+5. **Deploy and test** — verify on the real field
+
+### For Bug Fixes
+1. **Reproduce in simulation** — if possible, trigger the bug in sim
+2. **Fix the code** — make the change
+3. **Verify in simulation** — confirm the fix works
+4. **Deploy** — test on the real robot
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Simulation Understanding"
+  prompt="Explain the difference between simulation and replay (from Lesson 6.1). Then describe a scenario where simulation would be more useful than replay, and a scenario where replay would be more useful than simulation."
+>
+**Simulation vs Replay:**
+- **Simulation** runs your code with physics models generating fake sensor data. It's for testing new code and features before deploying.
+- **Replay** runs your code with real sensor data recorded from a match. It's for debugging what happened during a specific match.
+
+**Simulation is better when:** You're developing a new autonomous routine and want to verify the path and command sequencing before the robot is available. There's no match data to replay — you need to generate new scenarios.
+
+**Replay is better when:** The robot behaved unexpectedly during a match and you need to figure out why. You have the actual sensor data from that moment, which is more accurate than any simulation model.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Robot Simulation** | Running robot code on a development computer with simulated hardware, using WPILib's simulation framework |
+| **Physics Simulation** | Mathematical models (DCMotorSim, ElevatorSim, etc.) that approximate how mechanisms respond to motor commands |
+| **Glass** | WPILib's simulation visualization tool that provides 2D field views, mechanism displays, and real-time graphs |
+| **Sim GUI** | The WPILib simulation graphical interface for controlling robot state, joystick inputs, and viewing simulated hardware |
+| **simulationPeriodic()** | A method called every cycle during simulation that updates physics models and feeds simulated sensor values back to the code |
+
+---
+
+## What's Next?
+
+Now that you understand simulation tools, it's time to use them. In **Activity 6.4: Simulate an Auto Routine**, you'll run one of your team's PathPlanner autonomous routines in simulation, watch the robot follow the path on the 2D field view, and iterate on the routine without needing the physical robot.

@@ -1,0 +1,216 @@
+---
+title: "Activity 5.2: Deploy-Test-Fix Cycle"
+description: "Practice the deploy-test-debug cycle by deploying code with an intentional issue, diagnosing it, and applying a fix"
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Practiced deploying code to the roboRIO (or simulated the process)
+- Diagnosed an intentional code issue using Driver Station output
+- Applied a fix and verified it with a second deploy
+- Built confidence in the deploy-test-fix cycle under time pressure
+
+:::tip[Before You Start]
+Complete **Lesson 5.1: Deploying and Testing on the Robot**. Ideally, have the robot powered on and connected via USB. If the robot isn't available, you can still practice the diagnosis steps by reading the error scenarios below and working through them mentally.
+:::
+
+---
+
+## Step 1: Set Up a Practice Branch
+
+Before making any intentional changes, create a safe branch:
+
+```bash
+git checkout -b practice/deploy-test-fix
+```
+
+This ensures you can always get back to working code with `git checkout main`.
+
+---
+
+## Step 2: Introduce an Intentional Issue
+
+Choose one of these exercises. Each introduces a common bug that you'll diagnose and fix.
+
+### Exercise A: Wrong CAN ID (Hardware Communication Error)
+
+1. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />
+2. Find where the intake motor CAN IDs are defined (should reference CAN IDs {robotConfig.canIds.intakeLeft} and {robotConfig.canIds.intakeRight})
+3. Change one CAN ID to an unused number (e.g., change {robotConfig.canIds.intakeLeft} to 99)
+4. Save the file
+
+**What to expect:** The code will compile and deploy successfully, but the intake won't work correctly. The Driver Station console should show a warning about a device not found on the CAN bus.
+
+### Exercise B: Inverted Motor Direction
+
+1. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />
+2. Find the `runIntake()` method
+3. Change the speed from positive to negative: `intakeLeftMotor.set(-speed)` instead of `intakeLeftMotor.set(speed)`
+4. Save the file
+
+**What to expect:** The code will compile, deploy, and the motor will spin — but in the wrong direction. The intake will push game pieces out instead of pulling them in.
+
+### Exercise C: Null Command (Runtime Crash)
+
+1. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />
+2. Find one of the button bindings
+3. Comment out the command but leave the binding: `controller.x().toggleOnTrue(null);`
+4. Save the file
+
+**What to expect:** The code may compile but will crash at runtime when the button is pressed. The DS console will show a NullPointerException.
+
+**Exercise I'm doing:** _______________
+
+---
+
+## Step 3: Deploy the Buggy Code
+
+Deploy the code with your intentional bug:
+
+```bash
+./gradlew deploy
+```
+
+Watch the deploy output carefully:
+- Did it compile successfully? (Exercise C might fail at compile time depending on null checks)
+- Did it connect to the roboRIO?
+- Did the upload complete?
+
+Document what happened:
+
+| Deploy Stage | Result |
+|-------------|--------|
+| Compile | ✅ / ❌ |
+| Connect | ✅ / ❌ |
+| Upload | ✅ / ❌ |
+| Robot program started | ✅ / ❌ |
+
+---
+
+## Step 4: Diagnose the Issue
+
+Now enable the robot and observe the behavior. Use the Driver Station to gather information:
+
+1. **Check the DS console** — Are there any error messages or warnings?
+2. **Try the affected mechanism** — Does it respond at all? Does it behave incorrectly?
+3. **Check other mechanisms** — Do unrelated subsystems still work? (This helps isolate the problem)
+
+Document your diagnosis:
+
+| Observation | What I Saw |
+|------------|-----------|
+| DS console messages | |
+| Mechanism behavior | |
+| Other subsystems affected? | |
+| My diagnosis | |
+
+<AnswerReveal client:load label="Diagnosis Hints">
+**Exercise A (Wrong CAN ID):**
+- DS console will show: "Warning: TalonFX ID 99 not found on CAN bus" (or similar)
+- The intake motor on the wrong ID won't respond
+- Other motors will work fine
+- Diagnosis: CAN ID mismatch — the code is looking for a device that doesn't exist
+
+**Exercise B (Inverted Motor):**
+- DS console won't show any errors — the code is technically correct
+- The intake will spin backwards when activated
+- Diagnosis: Motor direction is inverted — need to negate the speed or invert the motor configuration
+
+**Exercise C (Null Command):**
+- DS console will show a NullPointerException stack trace when the button is pressed
+- The robot may continue running but the button won't work
+- Diagnosis: Null command passed to a trigger binding — need to provide a valid command
+</AnswerReveal>
+
+---
+
+## Step 5: Fix the Issue
+
+Now fix the bug you introduced:
+
+1. Open the file you modified
+2. Revert your intentional change (or fix it properly)
+3. Save the file
+4. Deploy again:
+
+```bash
+./gradlew deploy
+```
+
+5. Enable the robot and verify the mechanism works correctly
+
+**Alternatively**, practice the fast revert approach:
+
+```bash
+git stash          # Instantly reverts all changes
+./gradlew deploy   # Deploys the original working code
+```
+
+---
+
+## Step 6: Time Yourself
+
+Now do the entire cycle again, but time yourself. At competition, speed matters.
+
+**The challenge:** Introduce a bug, deploy, diagnose, fix, and redeploy — all within 3 minutes.
+
+| Step | Target Time | Your Time |
+|------|------------|-----------|
+| Introduce bug | 15 seconds | |
+| Deploy buggy code | 30-60 seconds | |
+| Diagnose the issue | 30 seconds | |
+| Fix the bug | 15 seconds | |
+| Redeploy fixed code | 30-60 seconds | |
+| Verify the fix | 15 seconds | |
+| **Total** | **~3 minutes** | |
+
+<Checkpoint client:load
+  title="Checkpoint: Deploy-Test-Fix"
+  prompt="After completing the exercise, answer: (1) Which exercise did you do (A, B, or C)? (2) What was the first clue that told you something was wrong? (3) How long did it take you to diagnose the issue? (4) What would you do differently if this happened at competition with 2 minutes before your match?"
+>
+Strong answers include:
+
+1. **The specific exercise** and what you changed.
+
+2. **The first diagnostic clue** — e.g., "The DS console showed a CAN warning immediately after enabling" or "The intake spun but game pieces flew out instead of in."
+
+3. **Diagnosis time** — Ideally under 30 seconds for these simple bugs. At competition, you need to be even faster.
+
+4. **Competition strategy** — e.g., "I would immediately `git stash` and redeploy the last working code. I'd fix the bug after the match when there's no time pressure. A working robot with old code is better than a broken robot with new code."
+</Checkpoint>
+
+---
+
+## Bonus: Partner Exercise
+
+Pair up with a teammate. Have them introduce a bug in the code without telling you what it is. Then:
+
+1. They deploy the buggy code
+2. You diagnose the issue using only the DS console and robot behavior
+3. You fix the bug and redeploy
+4. Switch roles and repeat
+
+This simulates real competition debugging where you don't always know what changed.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **gradlew deploy** — the Gradle command that compiles robot code and deploys it to the roboRIO over USB or network
+- **Driver Station** — the FRC software that connects to the robot, enables/disables it, and displays diagnostic information
+- **Console Output** — text messages printed by robot code (via `System.out.println` or WPILib logging) visible in the Driver Station or Riolog
+:::
+
+## What's Next?
+
+You've practiced the deploy-test-fix cycle that you'll use throughout the season. In **Lesson 5.3: CAN Bus and Hardware Debugging**, you'll go deeper into hardware communication — understanding the CAN bus architecture, using Phoenix Tuner X and REV Hardware Client, and interpreting the error messages that appear when hardware goes wrong.

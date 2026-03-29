@@ -1,0 +1,225 @@
+---
+title: "Activity 6.18: Test and Iterate an Auto"
+description: "Practice the full autonomous development cycle — run, observe, adjust, and re-test until your auto is competition-ready"
+sidebar:
+  order: 18
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Selected an autonomous routine to iterate on
+- Run the auto at least three times, logging data each run
+- Identified and fixed at least one issue through observation and data analysis
+- Documented the iteration cycle and improvements made
+
+:::tip[Before You Start]
+Complete **Activity 6.17: Implement an Advanced Auto Feature**. You need either a physical robot with a safe testing area or a working simulation environment. Have AdvantageScope ready for reviewing logged data.
+:::
+
+---
+
+## Step 1: Choose Your Auto Routine
+
+Pick an autonomous routine to iterate on. This can be:
+
+- The auto you built in Activity 6.17
+- An existing team auto that needs improvement
+- A new auto you want to develop for competition
+
+**Auto routine I'm iterating on:** _______________
+**Testing environment:** ☐ Simulation ☐ Physical robot
+
+---
+
+## Step 2: Prepare Your Logging
+
+Before running the auto, make sure you're logging the data you need to diagnose issues:
+
+### Essential Data to Log
+
+```java
+// Add these to your drivetrain's periodic() if not already present
+Logger.recordOutput("Auto/ActualPose", drivetrain.getPose());
+Logger.recordOutput("Auto/TargetPose", pathFollower.getTargetPose());
+Logger.recordOutput("Auto/PoseErrorMeters", poseError.getTranslation().getNorm());
+Logger.recordOutput("Auto/HeadingErrorDeg", poseError.getRotation().getDegrees());
+Logger.recordOutput("Auto/VelocityMps", chassisSpeeds.vxMetersPerSecond);
+```
+
+### Pre-Run Checklist
+
+| Check | Done? |
+|-------|-------|
+| Logging is enabled and saving data | |
+| Auto routine is selected in the auto chooser | |
+| Robot starting position matches the path's starting pose | |
+| All Named Commands are registered | |
+| Battery is charged (if on real robot) | |
+| Testing area is clear of obstacles and people | |
+
+---
+
+## Step 3: Run #1 — Baseline
+
+Run the auto routine and observe. Don't try to fix anything yet — just collect data.
+
+### What to Watch For
+
+- Does the robot start moving immediately or is there a delay?
+- Does the robot follow the expected path shape?
+- Does the robot reach each waypoint?
+- Do mechanism actions (intake, shooter) fire at the right times?
+- Does the robot end in the expected position and orientation?
+
+### Run #1 Log
+
+| Observation | What Happened |
+|-------------|---------------|
+| Starting behavior | |
+| Path following accuracy | |
+| Mechanism timing | |
+| End position accuracy | |
+| Total time | |
+| Issues noticed | |
+
+---
+
+## Step 4: Analyze Run #1 Data
+
+Open the log file in AdvantageScope and examine:
+
+1. **Pose tracking** — overlay the actual pose on the target pose. Where does the robot deviate?
+2. **Velocity profile** — is the robot reaching the expected speeds? Are there sudden changes?
+3. **Heading error** — does the robot maintain the correct orientation throughout?
+4. **Event timing** — do mechanism actions start at the right path positions?
+
+### Common Issues and Adjustments
+
+| Issue | What You See in Data | Adjustment |
+|-------|---------------------|------------|
+| Robot overshoots turns | Large heading error after turns | Reduce max angular velocity in constraints |
+| Robot doesn't reach waypoints | Pose error grows over time | Check odometry calibration, tune translation PID |
+| Mechanism fires too early/late | Event marker timing off | Move the event marker position on the path |
+| Robot is too slow | Total time exceeds target | Increase max velocity (if safe) |
+| Robot oscillates on path | Pose error oscillates around zero | Reduce translation PID P gain |
+| Robot drifts sideways | Consistent lateral offset | Check gyro calibration, wheel alignment |
+
+---
+
+## Step 5: Make Adjustments
+
+Based on your analysis, make ONE change at a time. This is critical — if you change multiple things, you won't know which change fixed (or broke) something.
+
+**Adjustment I'm making:** _______________
+**Why:** _______________
+**What I expect to change:** _______________
+
+### Types of Adjustments
+
+| Category | Examples |
+|----------|---------|
+| **Waypoint positions** | Move a waypoint to give the robot more room for a turn |
+| **Constraints** | Reduce max velocity near scoring, increase on straightaways |
+| **Event marker timing** | Move a marker earlier so the intake deploys before arrival |
+| **PID tuning** | Adjust path following PID gains for tighter tracking |
+| **Starting position** | Adjust the auto's starting pose to match where the robot actually sits |
+
+---
+
+## Step 6: Run #2 — After First Adjustment
+
+Run the auto again with your change applied.
+
+### Run #2 Log
+
+| Observation | What Happened | Better/Worse/Same? |
+|-------------|---------------|---------------------|
+| Starting behavior | | |
+| Path following accuracy | | |
+| Mechanism timing | | |
+| End position accuracy | | |
+| Total time | | |
+| Issues noticed | | |
+
+**Did the adjustment help?** _______________
+**Next adjustment needed:** _______________
+
+---
+
+## Step 7: Run #3 — After Second Adjustment
+
+Make your second adjustment and run again.
+
+### Run #3 Log
+
+| Observation | What Happened | Better/Worse/Same? |
+|-------------|---------------|---------------------|
+| Starting behavior | | |
+| Path following accuracy | | |
+| Mechanism timing | | |
+| End position accuracy | | |
+| Total time | | |
+
+---
+
+## Step 8: Compare Runs
+
+Fill in the summary comparison:
+
+| Metric | Run #1 | Run #2 | Run #3 |
+|--------|--------|--------|--------|
+| End position error (meters) | | | |
+| End heading error (degrees) | | | |
+| Total time (seconds) | | | |
+| Mechanism actions successful? | | | |
+| Overall quality (1–5) | | | |
+
+<AnswerReveal client:load label="Iteration Tips from Experienced Teams">
+**Start slow, then speed up.** Run the auto at 50% speed first to verify the path shape is correct. Then gradually increase to full speed.
+
+**Log everything.** You can always ignore extra data, but you can't go back and log something you didn't capture.
+
+**One change at a time.** It's tempting to fix three things at once, but disciplined iteration is faster in the long run.
+
+**Save your logs.** Name log files with the run number and what changed. You'll want to compare them later.
+
+**Battery matters.** On a real robot, a low battery changes motor behavior. Always test with a charged battery and note the voltage.
+</AnswerReveal>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Auto Iteration"
+  prompt="Describe your iteration process: (1) What was the biggest issue you found in Run #1? (2) What adjustment fixed it? (3) How much did the auto improve from Run #1 to Run #3? (4) What would you do differently next time you iterate on an auto?"
+>
+Strong answers include:
+
+1. **Specific issue** — e.g., "The robot was overshooting the turn near the scoring position by about 0.3 meters, causing it to miss the target."
+
+2. **Targeted fix** — e.g., "I added a constraint zone on the last 25% of the path with max velocity reduced from 3.5 to 1.5 m/s. This gave the robot time to decelerate before the turn."
+
+3. **Measurable improvement** — e.g., "End position error went from 0.4m to 0.08m. Total time increased by 0.3 seconds due to the slower approach, but the accuracy improvement is worth it."
+
+4. **Process learning** — e.g., "Next time I'd start by running at 50% speed to verify the path shape before testing at full speed. I wasted Run #1 debugging a path shape issue that would have been obvious at low speed."
+</Checkpoint>
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Path Constraints** — limits on velocity, acceleration, and other parameters that control how fast the robot drives a path
+- **Constraint Zone** — a section of a path where different constraints apply (e.g., slowing down near a scoring position)
+- **Auto Routine** — a complete autonomous sequence combining paths, Named Commands, and event markers
+:::
+
+## What's Next?
+
+You've practiced the full auto iteration cycle — the same process teams use at competition to refine their autonomous routines between matches. In **Lesson 6.19: Competition Readiness**, you'll learn the complete competition preparation toolkit — pre-match checklists, pit debugging flowcharts, match log analysis, and hotfix branching strategies.

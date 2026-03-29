@@ -1,0 +1,214 @@
+---
+title: "Activity 6.12: Compare State Machine Implementations"
+description: "Examine how a top FRC team implements state machines and compare their approach to your team's command-based structure"
+sidebar:
+  order: 12
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Found and read a state machine implementation in a top team's GitHub repository
+- Analyzed their state definitions, transitions, and coordination patterns
+- Compared their approach to your team's command-based structure
+- Documented the tradeoffs between the two approaches
+
+:::tip[Before You Start]
+Complete **Activity 6.11: Design a State Machine**. Have your team's code open in your IDE and a browser tab ready for exploring top team GitHub repositories.
+:::
+
+---
+
+## Step 1: Choose a Top Team to Study
+
+Pick a team known for using state machines or superstructure patterns:
+
+| Team | GitHub | What to Look For |
+|------|--------|-----------------|
+| **254** The Cheesy Poofs | [github.com/Team254](https://github.com/Team254) | Superstructure class with centralized state management |
+| **1678** Citrus Circuits | [github.com/frc1678](https://github.com/frc1678) | Superstructure pattern, enum-based states |
+| **6328** Mechanical Advantage | [github.com/Mechanical-Advantage](https://github.com/Mechanical-Advantage) | State machines within AdvantageKit IO layers |
+| **971** Spartan Robotics | [github.com/frc971](https://github.com/frc971) | State machines in C++ (different language, same concepts) |
+
+Find their most recent season's robot code repository.
+
+**Team I'm studying:** _______________
+**Repository URL:** _______________
+
+---
+
+## Step 2: Find Their State Machine Code
+
+Search the repository for state machine patterns. Look for:
+
+1. **Enum definitions** — search for `enum` in Java files, especially in subsystem or command directories
+2. **"Superstructure"** — search for files named `Superstructure.java` or similar
+3. **"State"** — search for classes or variables with "State" in the name
+4. **Switch statements** — look for `switch` statements in `periodic()` or `execute()` methods
+
+### What to Document
+
+| Item | What You Found |
+|------|---------------|
+| File name(s) containing state machines | |
+| Number of states defined | |
+| How states are represented (enum, int, string) | |
+| Where the switch/transition logic lives | |
+| How many subsystems are coordinated | |
+
+<AnswerReveal client:load label="Where to Look in Common Team Repos">
+**Team 254:** Look for `Superstructure.java` in their subsystems directory. They typically have a large enum of system states and a `periodic()` method with a switch statement that coordinates all mechanisms.
+
+**Team 1678:** Similar to 254 — look for a superstructure or coordinator class. They often have separate state enums for different mechanism groups.
+
+**Team 6328:** They may use state machines within individual subsystems rather than a centralized superstructure. Look in subsystem classes for enum definitions and switch statements.
+
+**General tip:** Search for `enum.*State` or `switch.*state` in the repository's search bar on GitHub.
+</AnswerReveal>
+
+---
+
+## Step 3: Analyze Their State Machine
+
+Read through their state machine code and answer these questions:
+
+### Architecture Questions
+
+1. **Is it centralized or distributed?**
+   - Centralized: One superstructure class manages all mechanisms
+   - Distributed: Each subsystem has its own state machine
+
+2. **How do they define states?**
+   - Simple enum (IDLE, INTAKING, SHOOTING)
+   - Nested enums (IntakeState, ShooterState within a SuperState)
+   - State objects with behavior attached
+
+3. **How do transitions work?**
+   - Guard conditions in the switch statement
+   - Transition methods that validate before changing state
+   - Automatic transitions based on sensor data
+
+4. **How do they handle errors?**
+   - Timeout states
+   - Error/fault states
+   - Automatic recovery
+
+### Code Quality Questions
+
+5. **How readable is the state machine?** Can you understand what the robot does by reading the state names?
+
+6. **How is the state machine tested?** Do they have unit tests for state transitions?
+
+7. **How do they log state information?** Do they log the current state for debugging?
+
+---
+
+## Step 4: Analyze Your Team's Approach
+
+Now look at how your team handles the same coordination:
+
+1. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/commands/AutoShootCommand.java`} label="AutoShootCommand.java" /> — how does your team coordinate the shooting sequence?
+2. Look at your team's <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> — how are complex sequences composed? (SequentialCommandGroup, ParallelCommandGroup, etc.)
+3. Check for any existing state machines in your subsystems
+
+### Document Your Team's Approach
+
+| Aspect | Your Team's Approach |
+|--------|---------------------|
+| How multi-step sequences are coordinated | |
+| How subsystem conflicts are prevented | |
+| How errors/timeouts are handled | |
+| How the current "state" is logged | |
+| Number of files involved in a complex sequence | |
+
+---
+
+## Step 5: Complete the Comparison
+
+## 🔍 Comparison Exercise: State Machine Implementations
+
+**Team to study:** (fill in — e.g., Team 254 The Cheesy Poofs)
+**Repository:** (fill in — e.g., https://github.com/Team254/FRC-2024-Public)
+**File/folder to examine:** (fill in — e.g., `src/main/java/com/team254/frc2024/subsystems/Superstructure.java`)
+
+### Guiding Questions
+
+1. How does their state machine architecture differ from your team's command-based approach? Is theirs centralized (superstructure) or distributed (per-subsystem)?
+2. How do they prevent impossible states (e.g., intaking while shooting)? How does your team prevent the same conflicts?
+3. How does their approach to error handling and timeouts compare to your team's? Do they have explicit error states?
+4. If your team adopted their state machine pattern, what would be the biggest benefit? What would be the biggest cost?
+
+### Document Your Findings
+
+| Aspect | Their Team | Our Team | Why the Difference? |
+|--------|-----------|----------|-------------------|
+| Coordination pattern | (e.g., Superstructure) | (e.g., Command groups) | |
+| State representation | (e.g., Enum with 12 states) | (e.g., Boolean flags) | |
+| Number of coordinating files | (e.g., 1 Superstructure) | (e.g., 5+ command files) | |
+| Conflict prevention | (e.g., State machine prevents) | (e.g., Subsystem requirements) | |
+| Error handling | (e.g., Explicit ERROR state) | (e.g., Command timeouts) | |
+| Debugging visibility | (e.g., Log state name) | (e.g., Log individual flags) | |
+| Code complexity | (e.g., One large file) | (e.g., Many small files) | |
+| Testability | (e.g., Unit tests per state) | (e.g., Integration tests) | |
+
+---
+
+## Step 6: Evaluate the Tradeoffs
+
+Neither approach is universally better. Consider these tradeoffs for your team:
+
+| Factor | Superstructure / Explicit SM | Command-Based |
+|--------|------------------------------|---------------|
+| **Best for** | Complex robots with many interacting mechanisms | Simpler robots or independent mechanisms |
+| **Team size** | Needs experienced programmers to maintain | Easier for new members to contribute |
+| **Debugging** | Single state to check | Multiple commands to trace |
+| **Flexibility** | Harder to add ad-hoc behaviors | Easy to compose new sequences |
+| **Safety** | Prevents impossible states by design | Relies on subsystem requirements |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: State Machine Comparison"
+  prompt="After completing your comparison, answer: (1) What was the most significant architectural difference between their state machine approach and your team's command-based approach? (2) What's one thing from their implementation that you'd want to adopt? (3) What's one thing about your team's approach that you think is actually better for your team's situation?"
+>
+Strong answers include:
+
+1. **A specific architectural difference** — e.g., "Team 254 uses a single Superstructure class with 15 states that coordinates the intake, shooter, turret, and climber. Our team uses separate commands for each sequence, composed with SequentialCommandGroup. Their approach means one file controls everything; ours spreads the logic across many files."
+
+2. **Something to adopt** — e.g., "Their explicit state logging — they log the current SuperState every cycle, so in AdvantageScope you can see exactly what the robot was doing at any moment. We only log individual motor values, which makes it harder to understand the high-level behavior."
+
+3. **Something your team does better** — e.g., "Our command-based approach is much easier for new team members to understand. Each command is self-contained and does one thing. The superstructure pattern requires understanding the entire state machine before you can modify any behavior, which would be a barrier for our newer programmers."
+</Checkpoint>
+
+---
+
+## Bonus: Sketch a Superstructure for Your Robot
+
+As a thought exercise, sketch what a superstructure would look like for your team's robot:
+
+1. List all the non-drivetrain subsystems
+2. Define the high-level states (IDLE, INTAKING, SCORING, CLIMBING, etc.)
+3. For each state, define what each subsystem should be doing
+4. Identify the transitions and guard conditions
+
+You don't have to implement it — just designing it on paper helps you think about coordination patterns.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[State Machine](/reference-sheets/glossary)** — a design pattern where a system is modeled as discrete states with defined transitions between them
+- **[Superstructure Pattern](/reference-sheets/glossary)** — an architecture pattern where a single class coordinates all non-drivetrain subsystem interactions
+- **Enum + Switch Pattern** — implementing a state machine using a Java enum for states and a switch statement in the periodic loop to handle each state
+:::
+
+## What's Next?
+
+You've now compared state machine approaches across teams and understand the tradeoffs. In **Lesson 6.13: Unit Testing Robot Code**, you'll learn how to write automated tests for your robot code — testing commands, state machines, and math utilities using JUnit and WPILib's simulation harness.

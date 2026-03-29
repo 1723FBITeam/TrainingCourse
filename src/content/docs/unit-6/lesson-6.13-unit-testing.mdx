@@ -1,0 +1,480 @@
+---
+title: "Lesson 6.13: Unit Testing Robot Code"
+description: "Learn to write automated tests for FRC robot code using JUnit and WPILib's simulation harness — testing commands, math utilities, and state machines"
+sidebar:
+  order: 13
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain why automated testing matters for FRC robot code
+- Set up and run JUnit tests in a WPILib project
+- Write unit tests for math utilities and helper methods
+- Test commands using WPILib's simulation harness
+- Test state machine logic with controlled inputs
+- Understand the difference between unit tests, integration tests, and simulation tests
+
+:::tip[Before You Start]
+Complete **Activity 6.12: Compare State Machine Implementations**. Have your team's code open in your IDE. You'll be examining testable parts of your codebase throughout this lesson.
+:::
+
+---
+
+## Why Test Robot Code?
+
+Most FRC teams don't write automated tests. They test by deploying to the robot and watching what happens. This works — until it doesn't:
+
+- You change a constant and accidentally break autonomous
+- A merge conflict silently corrupts a math calculation
+- A new team member modifies a command without understanding the side effects
+- It's 11 PM before competition and you're not sure if your "quick fix" broke something else
+
+Automated tests catch these problems *before* you deploy. They run in seconds on your laptop — no robot required.
+
+> **[WPILib Unit Testing Documentation](https://docs.wpilib.org/en/stable/docs/software/wpilib-tools/robot-simulation/unit-testing.html)** covers the official testing setup. This lesson builds on that foundation with practical FRC examples.
+
+---
+
+## What Can You Test Without a Robot?
+
+Not all robot code needs hardware. A surprising amount of your codebase is pure logic that runs perfectly on a laptop:
+
+| Testable Without Hardware | Examples from Your Code |
+|--------------------------|------------------------|
+| **Math utilities** | Angle wrapping, unit conversions, interpolation tables |
+| **State machine logic** | State transitions, guard conditions, timeout behavior |
+| **Command sequencing** | Command groups execute in the right order |
+| **Kinematics calculations** | Swerve module state math, pose transformations |
+| **Configuration validation** | CAN IDs are unique, PID gains are within range |
+| **Auto routine structure** | Named commands are registered, paths exist |
+
+The key insight: **separate logic from hardware**. If a method takes numbers in and returns numbers out, you can test it.
+
+---
+
+## Setting Up JUnit in a WPILib Project
+
+WPILib projects come with JUnit 5 pre-configured. Your `build.gradle` already includes the test dependency. Tests live in `src/test/java/` and mirror the package structure of your main code.
+
+### Project Structure
+
+```
+src/
+├── main/java/frc/robot/
+│   ├── Robot.java
+│   ├── RobotContainer.java
+│   ├── Constants.java
+│   ├── subsystems/
+│   └── commands/
+└── test/java/frc/robot/
+    ├── ConstantsTest.java
+    ├── subsystems/
+    └── commands/
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+./gradlew test
+
+# Run tests with output
+./gradlew test --info
+
+# Run a specific test class
+./gradlew test --tests "frc.robot.ConstantsTest"
+```
+
+Tests run in the WPILib simulation environment — no roboRIO needed.
+
+---
+
+## Your First Test: Testing Constants
+
+The simplest tests validate your configuration. Let's start with something every team should test: making sure CAN IDs don't collide.
+
+```java
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.*;
+
+class ConstantsTest {
+
+  @Test
+  void canIdsShouldBeUnique() {
+    // Collect all CAN IDs from Constants
+    List<Integer> ids = List.of(
+      Constants.SHOOTER_LEFT_ID,   // 21
+      Constants.SHOOTER_RIGHT_ID,  // 22
+      Constants.TURRET_ID,         // 23
+      Constants.FEEDER_ID,         // 24
+      Constants.SPINNER_ID,        // 25
+      Constants.INTAKE_LEFT_ID,    // 31
+      Constants.INTAKE_RIGHT_ID,   // 32
+      Constants.DEPLOY_LEFT_ID,    // 33
+      Constants.DEPLOY_RIGHT_ID,   // 34
+      Constants.CLIMB_LEFT_ID,     // 41
+      Constants.CLIMB_RIGHT_ID,    // 42
+      Constants.ELEVATOR_ID        // 43
+    );
+
+    Set<Integer> unique = new HashSet<>(ids);
+    assertEquals(ids.size(), unique.size(),
+      "Duplicate CAN IDs found! Each device must have a unique ID.");
+  }
+
+  @Test
+  void canIdsShouldBeInValidRange() {
+    List<Integer> ids = List.of(
+      Constants.SHOOTER_LEFT_ID,
+      Constants.SHOOTER_RIGHT_ID,
+      Constants.TURRET_ID
+      // ... all IDs
+    );
+
+    for (int id : ids) {
+      assertTrue(id >= 1 && id <= 62,
+        "CAN ID " + id + " is outside valid range (1-62)");
+    }
+  }
+}
+```
+
+This test runs instantly and catches a common mistake: accidentally assigning the same CAN ID to two devices (which causes mysterious hardware failures that are painful to debug at competition).
+
+---
+
+<Quiz client:load
+  question="Your team has 12 CAN devices. A new member adds a 13th device with CAN ID 24, which is already used by the feeder motor. Without a unit test, when would you most likely discover this bug?"
+  options={[
+    "Immediately when you compile the code",
+    "When you run the code in simulation",
+    "When you deploy to the robot and one motor doesn't respond correctly",
+    "The Java compiler catches duplicate integer values automatically"
+  ]}
+  correctIndex={2}
+  explanation="Duplicate CAN IDs are valid Java code — the compiler won't catch it. Simulation doesn't use real CAN hardware, so it won't catch it either. You'd only discover the problem when you deploy to the robot and one of the two devices sharing ID 24 behaves erratically. A unit test catches this instantly, before you ever deploy."
+/>
+
+---
+
+## Testing Math Utilities
+
+Many FRC teams have utility methods for angle math, unit conversions, or interpolation. These are perfect for unit testing because they're pure functions — input in, output out, no hardware.
+
+### Example: Angle Wrapping
+
+```java
+class MathUtilsTest {
+
+  @Test
+  void wrapAngleShouldNormalizeTo0To360() {
+    assertEquals(0.0, MathUtils.wrapAngle(0.0), 1e-9);
+    assertEquals(90.0, MathUtils.wrapAngle(90.0), 1e-9);
+    assertEquals(0.0, MathUtils.wrapAngle(360.0), 1e-9);
+    assertEquals(270.0, MathUtils.wrapAngle(-90.0), 1e-9);
+    assertEquals(180.0, MathUtils.wrapAngle(540.0), 1e-9);
+  }
+
+  @Test
+  void rpmToMetersPerSecondShouldConvertCorrectly() {
+    double wheelRadiusMeters = 0.0508; // 2-inch wheel
+    double gearRatio = 6.75;
+
+    double result = MathUtils.rpmToMps(6000, wheelRadiusMeters, gearRatio);
+
+    // 6000 RPM / 6.75 gear ratio = 888.9 wheel RPM
+    // 888.9 RPM * 2π * 0.0508m / 60s = 4.73 m/s
+    double expected = (6000.0 / gearRatio) * (2 * Math.PI * wheelRadiusMeters) / 60.0;
+    assertEquals(expected, result, 1e-6);
+  }
+}
+```
+
+### Testing Tips for Math
+
+- Use `assertEquals(expected, actual, delta)` for floating-point comparisons — never compare doubles with `==`
+- Test boundary values: 0, 360, negative angles, very large numbers
+- Test the math by hand first, then encode your hand calculation as the expected value
+- If the test fails, the bug might be in your test *or* your code — verify both
+
+---
+
+## Testing Commands with WPILib Simulation
+
+WPILib provides a simulation harness that lets you run commands without hardware. The key class is `CommandScheduler`.
+
+### Setting Up Command Tests
+
+```java
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+
+class CommandTestBase {
+
+  @BeforeEach
+  void setUp() {
+    // Reset the command scheduler before each test
+    CommandScheduler.getInstance().cancelAll();
+    CommandScheduler.getInstance().enable();
+  }
+
+  @AfterEach
+  void tearDown() {
+    CommandScheduler.getInstance().cancelAll();
+    CommandScheduler.getInstance().unregisterAllSubsystems();
+  }
+}
+```
+
+### Testing a Simple Command
+
+```java
+class IntakeCommandTest extends CommandTestBase {
+
+  @Test
+  void intakeCommandShouldRequireIntakeSubsystem() {
+    // Create a mock or simulated intake subsystem
+    IntakeSubsystem intake = new IntakeSubsystem();
+    IntakeCommand cmd = new IntakeCommand(intake);
+
+    assertTrue(cmd.getRequirements().contains(intake),
+      "IntakeCommand should require the IntakeSubsystem");
+  }
+
+  @Test
+  void intakeCommandShouldRunUntilCancelled() {
+    IntakeSubsystem intake = new IntakeSubsystem();
+    IntakeCommand cmd = new IntakeCommand(intake);
+
+    cmd.initialize();
+    cmd.execute();
+
+    assertFalse(cmd.isFinished(),
+      "IntakeCommand should run until cancelled (not self-terminating)");
+  }
+}
+```
+
+### Simulating Time in Tests
+
+Commands often depend on time (timeouts, delays). WPILib's simulation lets you advance time manually:
+
+```java
+@Test
+void commandShouldTimeoutAfter3Seconds() {
+  var cmd = new MyCommand().withTimeout(3.0);
+
+  CommandScheduler scheduler = CommandScheduler.getInstance();
+  scheduler.schedule(cmd);
+
+  // Simulate 2.9 seconds of robot loops (each loop is 20ms)
+  for (int i = 0; i < 145; i++) {
+    scheduler.run();
+  }
+  assertTrue(scheduler.isScheduled(cmd), "Command should still be running at 2.9s");
+
+  // Simulate 10 more loops (200ms more = 3.1 seconds total)
+  for (int i = 0; i < 10; i++) {
+    scheduler.run();
+  }
+  assertFalse(scheduler.isScheduled(cmd), "Command should have timed out by 3.1s");
+}
+```
+
+---
+
+## Testing State Machines
+
+State machines (from Lesson 6.10) are highly testable because they have well-defined states and transitions. You can verify that:
+
+1. The machine starts in the correct initial state
+2. Transitions happen when guard conditions are met
+3. Transitions don't happen when guards are not met
+4. Error states are reached on timeouts
+5. The machine reaches the terminal state correctly
+
+```java
+class ShootStateMachineTest {
+
+  @Test
+  void shouldStartInIdleState() {
+    ShootStateMachine sm = new ShootStateMachine(
+      mockTurret, mockShooter, mockFeeder
+    );
+    assertEquals(ShootState.IDLE, sm.getState());
+  }
+
+  @Test
+  void shouldTransitionToAimingOnStart() {
+    ShootStateMachine sm = new ShootStateMachine(
+      mockTurret, mockShooter, mockFeeder
+    );
+    sm.start();
+    sm.execute(); // One cycle
+    assertEquals(ShootState.AIMING, sm.getState());
+  }
+
+  @Test
+  void shouldNotFeedUntilBothReady() {
+    ShootStateMachine sm = new ShootStateMachine(
+      mockTurret, mockShooter, mockFeeder
+    );
+    sm.start();
+
+    // Turret on target but flywheel not ready
+    when(mockTurret.isOnTarget()).thenReturn(true);
+    when(mockShooter.isAtSpeed()).thenReturn(false);
+
+    sm.execute();
+    assertNotEquals(ShootState.FEEDING, sm.getState(),
+      "Should not feed when flywheel isn't at speed");
+  }
+
+  @Test
+  void shouldTransitionToReadyWhenBothReady() {
+    ShootStateMachine sm = new ShootStateMachine(
+      mockTurret, mockShooter, mockFeeder
+    );
+    sm.start();
+    sm.execute(); // → AIMING
+
+    when(mockTurret.isOnTarget()).thenReturn(true);
+    when(mockShooter.isAtSpeed()).thenReturn(true);
+
+    sm.execute(); // → READY
+    assertEquals(ShootState.READY, sm.getState());
+  }
+}
+```
+
+### State Machine Testing Strategy
+
+| What to Test | Why |
+|-------------|-----|
+| Initial state | Ensures the machine doesn't start in an unexpected state |
+| Each valid transition | Confirms the happy path works |
+| Guard conditions (false) | Confirms the machine doesn't transition prematurely |
+| Timeout/error transitions | Confirms error handling works |
+| Terminal state | Confirms the machine reaches completion |
+
+---
+
+<Quiz client:load
+  question="You're writing a test for a state machine that should transition from AIMING to READY when both the turret is on target and the flywheel is at speed. Your test sets turret.isOnTarget() to true but forgets to set shooter.isAtSpeed(). What should happen?"
+  options={[
+    "The test should pass because one condition is enough",
+    "The test should fail because the state machine should stay in AIMING",
+    "The test should throw a NullPointerException",
+    "The test should skip because it's incomplete"
+  ]}
+  correctIndex={1}
+  explanation="The guard condition requires BOTH turret on target AND flywheel at speed. If only one is true, the state machine should remain in AIMING. If your test expects READY and the machine stays in AIMING, the test fails — which is correct behavior! This is exactly the kind of bug that unit tests catch: partial conditions that shouldn't trigger transitions."
+/>
+
+---
+
+## What to Test (and What Not To)
+
+### Good Candidates for Unit Tests
+
+| Category | Examples |
+|----------|---------|
+| **Pure math** | Angle calculations, unit conversions, interpolation |
+| **Configuration** | CAN ID uniqueness, PID gain ranges, constant validity |
+| **State logic** | State machine transitions, guard conditions |
+| **Command structure** | Subsystem requirements, isFinished conditions |
+| **Data processing** | Pose filtering, sensor data validation |
+
+### Poor Candidates for Unit Tests
+
+| Category | Why | Better Approach |
+|----------|-----|----------------|
+| **Motor output values** | Depends on real hardware response | Test on robot, log with AdvantageKit |
+| **Sensor readings** | Requires physical sensors | Simulation or hardware-in-the-loop |
+| **Full autonomous routines** | Too many dependencies | Simulation testing (Lesson 6.3) |
+| **Driver experience** | Subjective, depends on feel | Practice sessions |
+
+The goal isn't 100% test coverage — it's testing the things that are most likely to break and hardest to debug on the robot.
+
+---
+
+## Organizing Your Tests
+
+### File Naming Convention
+
+```
+src/test/java/frc/robot/
+├── ConstantsTest.java          # Configuration tests
+├── utils/
+│   └── MathUtilsTest.java      # Math utility tests
+├── subsystems/
+│   └── ShooterSubsystemTest.java
+└── commands/
+    ├── AutoShootCommandTest.java
+    └── IntakeCommandTest.java
+```
+
+### Test Naming Convention
+
+Use descriptive names that explain what the test verifies:
+
+```java
+// Good: describes the scenario and expected outcome
+@Test void shouldTransitionToReadyWhenBothSubsystemsReady() { }
+@Test void shouldTimeoutAfter3SecondsInAimingState() { }
+@Test void canIdsShouldBeUniqueAcrossAllSubsystems() { }
+
+// Bad: vague, doesn't explain what's being tested
+@Test void test1() { }
+@Test void testShooter() { }
+@Test void itWorks() { }
+```
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Unit Testing"
+  prompt="Look at your team's codebase and identify three things you could write unit tests for today — without needing the physical robot. For each one, describe: (1) what you'd test, (2) what the expected behavior is, and (3) what bug the test would catch."
+>
+Strong answers include specific, testable items from the team's code:
+
+1. **CAN ID uniqueness** — Test that all CAN IDs in Constants.java are unique. Expected: no duplicates. Catches: accidentally reusing a CAN ID when adding a new device.
+
+2. **Angle wrapping utility** — Test that the angle normalization function handles negative angles, angles > 360°, and exact boundary values. Expected: all angles normalized to [0, 360). Catches: off-by-one errors in modular arithmetic.
+
+3. **AutoShootCommand requirements** — Test that AutoShootCommand requires the turret, shooter, and feeder subsystems. Expected: all three in getRequirements(). Catches: forgetting a subsystem requirement, which could allow conflicting commands to run simultaneously.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Unit Test** | An automated test that verifies a small, isolated piece of code (a method, class, or function) behaves correctly for given inputs |
+| **JUnit** | The standard Java testing framework used in WPILib projects for writing and running automated tests |
+| **Test Harness** | The infrastructure that sets up, runs, and reports results for automated tests — WPILib provides a simulation-based harness |
+| **Assertion** | A statement in a test that checks whether an expected condition is true (e.g., `assertEquals`, `assertTrue`) |
+| **Test Fixture** | The setup code that creates the objects and conditions needed for a test (often in `@BeforeEach` methods) |
+| **Simulation Harness** | WPILib's testing environment that allows commands and subsystems to run without physical hardware |
+| **Guard Condition** | A boolean check that must be true for a state transition to occur — highly testable in isolation |
+
+---
+
+## What's Next?
+
+You now know how to write automated tests for your robot code — from simple configuration checks to command and state machine testing. In **Activity 6.14: Write a Unit Test**, you'll put this into practice by writing a real JUnit test for a command or utility in your team's codebase.

@@ -1,0 +1,287 @@
+---
+title: "Lesson 4.12: Reading Autonomous Routines"
+description: "Learn to read PathPlanner JSON files, identify paths and Named Commands, and understand how auto routines are structured"
+sidebar:
+  order: 12
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain how PathPlanner organizes autonomous routines into paths and autos
+- Read a PathPlanner JSON path file and identify waypoints, constraints, and rotation targets
+- Identify Named Commands in your team's code and explain how they connect to PathPlanner events
+- Describe how the auto chooser selects and runs an autonomous routine
+- Navigate the PathPlanner documentation at [pathplanner.dev](https://pathplanner.dev)
+
+:::tip[Before You Start]
+Complete **Activity 4.3: Create a Pull Request** first. You should be comfortable navigating the project structure. Have the team's robot project open in your IDE and a browser tab open to [pathplanner.dev](https://pathplanner.dev) for reference.
+:::
+
+---
+
+## What Is PathPlanner?
+
+**PathPlanner** is the tool most FRC teams use to create autonomous routines. Instead of writing code that says "drive forward 2 meters, turn left 90 degrees," you draw paths on a field map and PathPlanner generates the math to follow them smoothly.
+
+PathPlanner has two parts:
+
+1. **The GUI** — a desktop application where you draw paths on a field image
+2. **The library** — a Java/C++/Python library that your robot code uses to follow those paths
+
+Your team's PathPlanner files live in the `src/main/deploy/pathplanner/` directory. Let's explore what's in there.
+
+
+---
+
+## Paths vs. Autos
+
+PathPlanner organizes autonomous routines into two types of files:
+
+| Type | Location | What It Contains |
+|------|----------|-----------------|
+| **Path** | `deploy/pathplanner/paths/` | A single trajectory — a series of waypoints the robot drives through |
+| **Auto** | `deploy/pathplanner/autos/` | A complete routine — a sequence of paths and commands that runs during autonomous |
+
+Think of it like a road trip:
+- A **path** is a single road segment (e.g., "drive from the starting zone to the first game piece")
+- An **auto** is the complete trip itinerary (e.g., "drive to piece 1, pick it up, drive to the scoring zone, score, drive to piece 2...")
+
+### The File Structure
+
+```
+src/main/deploy/pathplanner/
+├── paths/
+│   ├── StartToNote1.path       ← JSON file defining a single trajectory
+│   ├── Note1ToScore.path       ← Another trajectory
+│   ├── ScoreToNote2.path       ← And another
+│   └── ...
+├── autos/
+│   ├── TwoNoteAuto.auto        ← Combines paths + commands into a routine
+│   ├── ThreeNoteAuto.auto      ← Another complete routine
+│   └── ...
+└── settings.json               ← Robot dimensions, max speed, etc.
+```
+
+---
+
+## Reading a Path File
+
+Path files are JSON — structured text that describes waypoints, constraints, and rotation targets. Let's read one.
+
+Open any `.path` file in your team's `deploy/pathplanner/paths/` directory. You'll see something like:
+
+```json title="Example: StartToNote1.path"
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": { "x": 1.35, "y": 5.55 },
+      "prevControl": null,
+      "nextControl": { "x": 2.0, "y": 5.55 }
+    },
+    {
+      "anchor": { "x": 2.85, "y": 5.55 },
+      "prevControl": { "x": 2.2, "y": 5.55 },
+      "nextControl": null
+    }
+  ],
+  "rotationTargets": [
+    { "waypointRelativePos": 0.5, "rotationDegrees": 0.0 }
+  ],
+  "constraintZones": [],
+  "globalConstraints": {
+    "maxVelocity": 3.0,
+    "maxAcceleration": 2.5,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0
+  }
+}
+```
+
+### Breaking Down the JSON
+
+| Field | What It Means |
+|-------|--------------|
+| `waypoints` | The points the robot drives through. Each has an `anchor` (the point itself) and control points (that shape the curve) |
+| `anchor` | The x, y position on the field in meters. (0,0) is the bottom-left corner of the field |
+| `prevControl` / `nextControl` | Bezier curve control points — they determine how the robot curves into and out of each waypoint |
+| `rotationTargets` | Where the robot should be facing at specific points along the path |
+| `globalConstraints` | Speed limits — max velocity (m/s), max acceleration (m/s²), and angular limits (deg/s) |
+| `constraintZones` | Sections of the path with different speed limits (e.g., slow down near a scoring position) |
+
+You don't need to memorize the JSON format — the PathPlanner GUI handles creating and editing these files. But being able to *read* them helps you understand what the robot will do and debug issues.
+
+<Quiz client:load
+  question="In a PathPlanner path file, what do the 'globalConstraints' control?"
+  options={[
+    "Which subsystems the path can use",
+    "The maximum speed and acceleration the robot can reach while following the path",
+    "The field zones where the robot is allowed to drive",
+    "The motor current limits during autonomous"
+  ]}
+  correctIndex={1}
+  explanation="globalConstraints set the maximum velocity (m/s), maximum acceleration (m/s²), and angular velocity/acceleration limits for the path. These prevent the robot from trying to drive faster than it physically can, which would cause path tracking errors."
+/>
+
+---
+
+## Reading an Auto File
+
+Auto files combine paths and commands into a complete autonomous routine. Open any `.auto` file:
+
+```json title="Example: TwoNoteAuto.auto"
+{
+  "version": "2025.0",
+  "startingPose": {
+    "position": { "x": 1.35, "y": 5.55 },
+    "rotation": 0.0
+  },
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        { "type": "named", "data": { "name": "StartIntake" } },
+        { "type": "path", "data": { "pathName": "StartToNote1" } },
+        { "type": "named", "data": { "name": "StopIntake" } },
+        { "type": "path", "data": { "pathName": "Note1ToScore" } },
+        { "type": "named", "data": { "name": "ShootNote" } }
+      ]
+    }
+  }
+}
+```
+
+### Breaking Down the Auto
+
+| Field | What It Means |
+|-------|--------------|
+| `startingPose` | Where the robot starts on the field (position + heading) |
+| `command` | The sequence of actions to perform |
+| `type: "sequential"` | Run commands one after another (like SequentialCommandGroup) |
+| `type: "path"` | Follow a PathPlanner path |
+| `type: "named"` | Run a Named Command registered in your Java code |
+
+Reading this auto: the robot starts the intake, drives to Note 1, stops the intake, drives to the scoring position, and shoots. Each step happens in order.
+
+
+---
+
+## Named Commands — The Bridge Between PathPlanner and Java
+
+**Named Commands** are the connection point between PathPlanner's auto files and your Java code. When PathPlanner sees `"type": "named", "data": { "name": "StartIntake" }`, it looks up a command registered with that name in your Java code.
+
+### Where Named Commands Are Registered
+
+Search your project for `NamedCommands.registerCommand` — you'll find registrations in RobotContainer or a dedicated auto configuration method:
+
+```java title="RobotContainer.java — Registering Named Commands"
+// Register commands that PathPlanner autos can reference by name
+NamedCommands.registerCommand("StartIntake",
+    new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem)
+        .andThen(new RunCommand(() -> intakeSubsystem.runIntake(0.5), intakeSubsystem))
+);
+
+NamedCommands.registerCommand("StopIntake",
+    new InstantCommand(() -> {
+        intakeSubsystem.stopIntake();
+        intakeSubsystem.deployIn();
+    })
+);
+
+NamedCommands.registerCommand("ShootNote",
+    new AutoShootCommand(shooterSubsystem, turretSubsystem)
+);
+```
+
+The string name (`"StartIntake"`, `"StopIntake"`, `"ShootNote"`) must match exactly what's in the `.auto` file. If there's a typo, PathPlanner won't find the command and that step will be skipped silently.
+
+### The Complete Flow
+
+```
+PathPlanner GUI          .auto JSON file           Java Code
+───────────────         ────────────────          ──────────
+Draw paths        →     "pathName": "StartToNote1"  →  PathPlanner library follows path
+Add named command →     "name": "StartIntake"       →  NamedCommands.registerCommand("StartIntake", ...)
+Set starting pose →     "startingPose": {...}       →  Robot resets odometry to this position
+```
+
+---
+
+## The Auto Chooser Connection
+
+Remember the autonomous chooser from Lesson 4.9? PathPlanner integrates with it. Most teams use PathPlanner's `AutoBuilder` to automatically create the chooser:
+
+```java title="RobotContainer.java — PathPlanner auto chooser"
+// AutoBuilder reads all .auto files and creates a chooser
+autoChooser = AutoBuilder.buildAutoChooser();
+SmartDashboard.putData("Auto Chooser", autoChooser);
+```
+
+This scans the `deploy/pathplanner/autos/` directory, creates a command for each `.auto` file, and adds them to a `SendableChooser`. The drive team selects which auto to run from the dashboard before the match.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Autonomous Routines"
+  prompt="Answer these questions: (1) What's the difference between a .path file and an .auto file? (2) How do Named Commands connect PathPlanner autos to your Java code? (3) What happens if a Named Command name in the .auto file doesn't match any registered command in Java?"
+>
+1. **Path vs Auto:** A `.path` file defines a single trajectory (waypoints, constraints, rotation targets). An `.auto` file defines a complete autonomous routine that combines multiple paths and Named Commands in a sequence.
+
+2. **Named Commands connection:** In Java, you call `NamedCommands.registerCommand("name", command)` to register a command with a string name. In the `.auto` file, `"type": "named", "data": { "name": "name" }` references that registered command. PathPlanner looks up the name at runtime and runs the corresponding Java command.
+
+3. **Name mismatch:** If the name doesn't match, PathPlanner won't find the command and that step will be **skipped silently** — no error, no crash, just a missing action. This is a common bug source. Always double-check that names match exactly (case-sensitive).
+</Checkpoint>
+
+---
+
+## Navigating PathPlanner Documentation
+
+The PathPlanner documentation at [pathplanner.dev](https://pathplanner.dev) is your reference for everything auto-related. Key sections:
+
+| Section | What You'll Find |
+|---------|-----------------|
+| **Getting Started** | Installation, project setup, basic path creation |
+| **GUI Overview** | How to use the PathPlanner desktop application |
+| **Path Following** | How the robot follows paths (PID tuning, feedforward) |
+| **Named Commands** | How to register and use Named Commands |
+| **Auto Builder** | How AutoBuilder creates the auto chooser |
+| **Event Markers** | How to trigger commands at specific points along a path |
+
+For now, focus on understanding the structure. In Unit 5 (Lesson 5.13), you'll learn to *create* paths and autos. In Unit 6 (Lesson 6.16), you'll explore advanced features like on-the-fly path generation.
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **PathPlanner** | An FRC tool for creating autonomous paths and routines, consisting of a GUI for drawing paths and a library for following them |
+| **Path** | A single trajectory defined by waypoints, constraints, and rotation targets, stored as a `.path` JSON file |
+| **Auto** | A complete autonomous routine combining paths and Named Commands in a sequence, stored as an `.auto` JSON file |
+| **Named Command** | A command registered with a string name in Java code, referenced by PathPlanner autos to trigger robot actions during path following |
+| **Waypoint** | A point on the field that the robot drives through, with control points that shape the curve of the trajectory |
+| **AutoBuilder** | A PathPlanner utility that automatically creates an auto chooser from all `.auto` files in the deploy directory |
+
+---
+
+## What's Next?
+
+You can now read PathPlanner files and understand how autonomous routines are structured — from JSON waypoints to Named Commands to the auto chooser. This is the foundation for working with autonomous code.
+
+In **Activity 4.13: Read an Auto Routine**, you'll open the PathPlanner GUI, load your team's project, and visually trace an existing auto routine from start to finish — seeing the paths on the field and connecting them to the Named Commands in your Java code.
+
+
+
+In **Activity 4.13: Read an Auto Routine**, you'll open the PathPlanner GUI, load your team's project, and visually trace an existing auto routine from start to finish — seeing the paths on the field and connecting them to the Named Commands in your Java code.

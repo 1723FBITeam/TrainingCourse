@@ -1,0 +1,232 @@
+---
+title: "Activity 6.9: Analyze Pose Estimator Data"
+description: "Review match logs in AdvantageScope, evaluate pose estimator accuracy, and suggest standard deviation tuning changes"
+sidebar:
+  order: 9
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Opened a match log (or test run log) in AdvantageScope
+- Graphed the pose estimator output alongside raw odometry and vision data
+- Identified moments where the estimator corrected drift or introduced jumps
+- Proposed specific standard deviation changes based on your observations
+
+:::tip[Before You Start]
+Complete **Lesson 6.8: Pose Estimation and Localization**. You'll need a `.wpilog` file from a match or test run that includes pose estimator data. If you don't have one, run your robot (or simulation) for 60+ seconds while driving around and collecting vision data. Have AdvantageScope installed and your team's code open for reference.
+:::
+
+---
+
+## Step 1: Open the Log File
+
+1. Launch AdvantageScope
+2. Open your log file (File → Open or drag the `.wpilog` file into the window)
+3. Browse the data tree on the left to find pose-related entries
+
+### What to Look For in the Data Tree
+
+| Entry | What It Contains |
+|-------|-----------------|
+| `Drive/Pose` or `Odometry/Pose` | The fused pose estimator output (x, y, heading) |
+| `Drive/OdometryPose` | Raw odometry without vision corrections |
+| `Vision/Pose` or `Limelight/BotPose` | Raw vision pose measurements |
+| `Vision/TagCount` or similar | Number of AprilTags detected per frame |
+| `Vision/Distance` or similar | Distance to the nearest detected tag |
+
+If your team uses AdvantageKit, the entries will be well-organized under subsystem names. If using SmartDashboard, look for the keys your code publishes.
+
+**Log file I'm analyzing:** _______________
+
+---
+
+## Step 2: Create a 2D Field View
+
+1. In AdvantageScope, create an **Odometry** tab
+2. Add the fused pose estimator output as the primary robot pose
+3. Add the raw odometry pose as a secondary "ghost" robot
+4. If available, add raw vision poses as point markers
+
+This gives you a visual comparison: the main robot shows where the estimator thinks you are, and the ghost shows where odometry alone thinks you are. The difference between them is the vision correction.
+
+---
+
+## Step 3: Analyze the Autonomous Period
+
+Focus on the autonomous period first (the first 15 seconds of the match):
+
+### Questions to Answer
+
+1. **How far apart are the fused pose and raw odometry at the end of auto?**
+   - If they're close (less than 5 cm), odometry is accurate and vision corrections are small
+   - If they're far apart (more than 15 cm), odometry drifted significantly and vision corrections were important
+
+2. **Are there sudden jumps in the fused pose?**
+   - Jumps indicate vision corrections that are too large — the estimator is trusting vision too much
+   - Smooth corrections indicate well-tuned standard deviations
+
+3. **Does the robot follow the expected path?**
+   - Compare the actual path to the planned PathPlanner path
+   - Deviations indicate either poor localization or poor path following
+
+Document your observations:
+
+| Observation | Value |
+|-------------|-------|
+| Odometry drift at end of auto (cm) | |
+| Number of visible pose jumps | |
+| Largest single correction (cm) | |
+| Did the robot follow the planned path? | |
+
+---
+
+## Step 4: Analyze the Teleop Period
+
+During teleop, the robot moves more unpredictably. Look for:
+
+1. **Drift during fast driving** — does odometry diverge from the fused pose when the robot drives quickly?
+2. **Corrections when tags become visible** — when the robot turns toward AprilTags, do you see the fused pose shift?
+3. **Heading accuracy** — does the heading stay consistent, or does it jump when vision updates arrive?
+
+<AnswerReveal client:load label="What Good vs Bad Pose Estimation Looks Like">
+**Good pose estimation:**
+- The fused pose moves smoothly without visible jumps
+- When the robot stops, the fused pose and vision pose agree closely
+- The odometry ghost gradually diverges but the fused pose stays accurate
+- Heading is stable and consistent
+
+**Poor pose estimation (vision SDs too low):**
+- The fused pose jumps noticeably when vision updates arrive
+- The robot appears to teleport small distances on the field view
+- Heading flickers between odometry and vision values
+
+**Poor pose estimation (vision SDs too high):**
+- The fused pose follows the odometry ghost closely, ignoring vision
+- After driving across the field, the fused pose is clearly in the wrong position
+- Vision corrections are too small to overcome accumulated drift
+</AnswerReveal>
+
+---
+
+## Step 5: Graph Key Values Over Time
+
+Create line graphs for deeper analysis:
+
+### Graph 1: Position Error
+If you have both the fused pose and a "ground truth" (e.g., known scoring position), graph the error over time.
+
+### Graph 2: Vision Tag Count
+Graph the number of detected AprilTags over time. Correlate with pose accuracy:
+- More tags visible → better corrections
+- No tags visible → relying on odometry alone
+
+### Graph 3: Vision Measurement Frequency
+How often do vision measurements arrive? Look for gaps where no vision data is available.
+
+| Time Period | Tags Visible | Pose Accuracy |
+|-------------|-------------|---------------|
+| Auto start (0-3s) | | |
+| Auto middle (3-10s) | | |
+| Auto end (10-15s) | | |
+| Teleop driving | | |
+| Teleop scoring | | |
+
+---
+
+## Step 6: Propose Standard Deviation Changes
+
+Based on your analysis, propose changes to the standard deviations:
+
+### Current Values
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" /> and find the current standard deviation values.
+
+| Parameter | Current Value |
+|-----------|--------------|
+| Odometry X SD | |
+| Odometry Y SD | |
+| Odometry Heading SD | |
+| Vision X SD | |
+| Vision Y SD | |
+| Vision Heading SD | |
+
+### Proposed Changes
+
+Based on what you observed in the log:
+
+| Parameter | Current | Proposed | Reasoning |
+|-----------|---------|----------|-----------|
+| Odometry X SD | | | |
+| Odometry Y SD | | | |
+| Odometry Heading SD | | | |
+| Vision X SD | | | |
+| Vision Y SD | | | |
+| Vision Heading SD | | | |
+
+### Decision Guide
+
+| If You Observed... | Then Consider... |
+|-------------------|-----------------|
+| Pose jumps when vision updates arrive | Increasing vision SDs (trust vision less) |
+| Significant drift even with tags visible | Decreasing vision SDs (trust vision more) |
+| Heading instability from vision | Increasing vision heading SD |
+| Smooth but inaccurate position | Decreasing odometry SDs or vision SDs |
+| Good accuracy with occasional jumps | Adding dynamic SDs based on tag distance |
+
+---
+
+## Step 7: Test Your Changes (Optional)
+
+If you have access to the robot or simulation:
+
+1. Update the standard deviations in your code
+2. Run the same test scenario
+3. Record a new log
+4. Compare the before and after in AdvantageScope
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Pose Data Analysis"
+  prompt="After analyzing your log data, answer: (1) How much did odometry drift during the autonomous period? (2) Were the vision corrections smooth or jumpy? What does this tell you about the current standard deviations? (3) What specific SD change would you recommend and why?"
+>
+Strong answers include:
+
+1. **Quantified drift** — e.g., "Odometry drifted about 12cm to the left and 8cm forward during the 15-second auto. The fused pose stayed within 3cm of the expected path thanks to vision corrections."
+
+2. **Correction quality assessment** — e.g., "The corrections were mostly smooth, but there were two noticeable jumps of about 5cm each when the robot turned and suddenly saw tags after a period of no visibility. This suggests the vision SDs might be slightly too low for the first measurement after a gap."
+
+3. **Specific recommendation** — e.g., "I'd increase the vision X and Y SDs from 0.3 to 0.5 to reduce the jump size when tags first become visible. Alternatively, I'd implement dynamic SDs that start higher when tags haven't been seen recently and decrease as consistent detections continue."
+</Checkpoint>
+
+---
+
+## Bonus: Compare Multiple Matches
+
+If you have logs from multiple matches:
+- Do the same drift patterns appear consistently?
+- Does the pose estimator perform differently on different parts of the field?
+- Are there specific starting positions where localization is better or worse?
+
+This analysis helps your team choose optimal starting positions and camera placements.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[Pose Estimator](/reference-sheets/glossary)** — a WPILib component that fuses odometry and vision data using a Kalman filter for accurate robot positioning
+- **[Kalman Filter](/reference-sheets/glossary)** — a mathematical algorithm that optimally blends noisy measurements based on their uncertainty levels
+- **[Standard Deviation](/reference-sheets/glossary)** — a measure of measurement uncertainty used to determine how much to trust odometry vs vision data
+:::
+
+## What's Next?
+
+You've now analyzed real pose estimation data and understand how to tune the system. In **Lesson 6.10: State Machines**, you'll learn a powerful design pattern for coordinating complex robot behaviors — managing states, transitions, and guards to build reliable multi-step sequences.

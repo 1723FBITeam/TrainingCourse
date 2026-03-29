@@ -1,0 +1,333 @@
+---
+title: "Lesson 6.19: Competition Readiness"
+description: "Prepare for competition day — pre-match checklists, pit debugging flowcharts, match log analysis, hotfix branches, and post-match review"
+sidebar:
+  order: 19
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Use a pre-match software checklist to verify the robot is ready before each match
+- Follow a five-minute debugging flowchart to diagnose issues under time pressure
+- Analyze match logs in AdvantageScope to identify what went wrong (or right)
+- Create and deploy hotfix branches safely during competition
+- Run a structured post-match review to capture lessons learned
+
+:::tip[Before You Start]
+Complete **Activity 6.18: Test and Iterate an Auto**. This lesson brings together skills from across all three tiers. You should be comfortable with deploying code, reading logs, using Git, and debugging with data.
+:::
+
+---
+
+## The Competition Mindset
+
+Competition is different from practice. You have limited time between matches, the pressure is high, and mistakes are costly. The difference between a team that thrives at competition and one that struggles often comes down to *preparation and process*, not raw programming skill.
+
+This lesson gives you the processes that experienced teams use to stay calm and effective under pressure.
+
+---
+
+## Pre-Match Software Checklist
+
+Before every match, run through this checklist. Print it out and keep it in the pit.
+
+### 🔋 Before Leaving the Pit
+
+| # | Check | How to Verify | ✓ |
+|---|-------|--------------|---|
+| 1 | Correct code version is deployed | Check DS "Robot Code" indicator — should show the build timestamp | |
+| 2 | Correct auto routine is selected | Verify in SmartDashboard/Shuffleboard auto chooser | |
+| 3 | No error messages in DS console | Open DS console, check for red text | |
+| 4 | All CAN devices are detected | Check DS diagnostics — device count matches expected | |
+| 5 | Gyro is calibrated | Robot should be stationary during power-on; check heading reads ~0° | |
+| 6 | Battery voltage is above 12.5V | Check DS battery indicator | |
+| 7 | Vision system is connected | Check NetworkTables for camera data | |
+| 8 | Radio is connected and stable | Check DS connection indicator — should be solid green | |
+
+### 🏟️ On the Field (Before Match Starts)
+
+| # | Check | How to Verify | ✓ |
+|---|-------|--------------|---|
+| 9 | Robot is in correct starting position | Align with field markings, match auto starting pose | |
+| 10 | Alliance color is correct in code | Check DS alliance indicator matches your station | |
+| 11 | Joystick/controller is connected | Check DS joystick indicators | |
+| 12 | Robot code is running (not disabled) | DS shows "Robot Code" with no errors | |
+
+:::caution[The Most Common Competition Bug]
+The #1 software issue at competition: **deploying the wrong auto routine**. Always double-check the auto chooser before every match. Many teams have lost matches because they ran a practice auto instead of their competition auto.
+:::
+
+---
+
+## The Five-Minute Debugging Flowchart
+
+Between matches, you might have only five minutes to diagnose and fix an issue. This flowchart helps you triage quickly.
+
+```
+START: Robot had a problem in the last match
+  │
+  ├─ Did the robot move at all?
+  │   ├─ NO → Check: Is code deployed? Is DS connected? Is robot enabled?
+  │   │        └─ Still no? → Check CAN bus, battery, breakers
+  │   │
+  │   └─ YES → Continue below
+  │
+  ├─ Was it a software or hardware problem?
+  │   ├─ HARDWARE (motor smoking, mechanism broken, wires loose)
+  │   │   └─ Hand off to mechanical/electrical team
+  │   │
+  │   └─ SOFTWARE → Continue below
+  │
+  ├─ Was it an auto problem or teleop problem?
+  │   ├─ AUTO
+  │   │   ├─ Robot didn't follow the path → Check starting position, gyro, odometry
+  │   │   ├─ Mechanism didn't fire → Check Named Command registration
+  │   │   └─ Wrong auto ran → Check auto chooser selection
+  │   │
+  │   └─ TELEOP
+  │       ├─ A button doesn't work → Check binding in RobotContainer
+  │       ├─ Mechanism runs but wrong behavior → Check command logic
+  │       └─ Intermittent issues → Check CAN bus, check for exceptions in DS console
+  │
+  └─ Can you fix it in 5 minutes?
+      ├─ YES → Make the fix, deploy, test briefly, go to match
+      └─ NO → Disable the broken feature, use a safe fallback auto, fix after the match
+```
+
+### The Golden Rule: Don't Make It Worse
+
+If you can't confidently fix the issue in the time available, **disable the broken feature** rather than attempting a risky fix. A robot that drives but can't shoot is better than a robot that crashes during autonomous because of a half-finished fix.
+
+---
+
+<Quiz client:load
+  question="Your robot's auto routine didn't work in the last match — the robot drove the wrong path. You have 6 minutes before the next match. What should you check FIRST?"
+  options={[
+    "Rewrite the auto routine from scratch",
+    "Check if the correct auto was selected in the auto chooser",
+    "Reflash the roboRIO firmware",
+    "Check the PathPlanner GUI for path errors"
+  ]}
+  correctIndex={1}
+  explanation="The most common cause of 'wrong path' is selecting the wrong auto in the chooser. This takes 5 seconds to check and fix. Rewriting the auto is too risky under time pressure. Reflashing firmware is almost never the issue. Checking the PathPlanner GUI takes too long for a 6-minute window. Always check the simplest explanation first."
+/>
+
+---
+
+## Match Log Analysis
+
+After every match, review the logs. This is how you turn a bad match into useful information.
+
+### What to Look For in AdvantageScope
+
+1. **Auto performance** — overlay actual pose vs. target pose. Where did the robot deviate?
+2. **Mechanism timing** — did the intake, shooter, and other mechanisms activate at the right times?
+3. **Error spikes** — look for sudden jumps in pose error, motor current, or CAN bus errors
+4. **Brownouts** — check battery voltage. Did it drop below 7V? (This causes the roboRIO to reboot)
+5. **Communication drops** — look for gaps in the data. These indicate DS disconnections
+
+### Match Log Review Template
+
+| Question | Finding |
+|----------|---------|
+| Did auto run correctly? | |
+| Were there any DS errors? | |
+| Did any mechanism fail? | |
+| Was battery voltage stable? | |
+| Were there communication drops? | |
+| What was the biggest issue? | |
+| What's the fix? | |
+| Priority: fix now or fix later? | |
+
+### Prioritizing Fixes
+
+Not every issue needs an immediate fix. Prioritize:
+
+| Priority | Criteria | Action |
+|----------|---------|--------|
+| 🔴 Critical | Robot can't drive or auto doesn't work | Fix before next match |
+| 🟡 Important | A mechanism is unreliable | Fix if time allows |
+| 🟢 Nice to have | Performance could be better | Fix between events |
+
+---
+
+## Hotfix Branches
+
+When you need to make a quick fix at competition, use a hotfix branch to keep your changes organized and reversible.
+
+### The Hotfix Workflow
+
+```bash
+# 1. Create a hotfix branch from main
+git checkout main
+git pull
+git checkout -b hotfix/fix-auto-chooser
+
+# 2. Make your fix (keep it minimal!)
+# Edit the file...
+
+# 3. Commit with a descriptive message
+git add .
+git commit -m "hotfix: fix auto chooser default to 2-piece"
+
+# 4. Deploy and test
+./gradlew deploy
+
+# 5. If it works, merge back to main
+git checkout main
+git merge hotfix/fix-auto-chooser
+git push
+
+# 6. If it doesn't work, revert
+git checkout main
+# The hotfix branch still exists if you need to revisit it
+```
+
+### Hotfix Rules
+
+| Rule | Why |
+|------|-----|
+| **One fix per branch** | If the fix breaks something, you can revert just that change |
+| **Minimal changes** | Don't refactor code at competition — fix the bug and nothing else |
+| **Always branch from main** | Don't stack hotfixes on top of each other |
+| **Test before the match** | Deploy, enable, verify the fix works — even a 30-second test is better than nothing |
+| **Commit with clear messages** | Future you (or your teammate) needs to understand what changed and why |
+
+:::caution[Never Deploy Untested Code to a Match]
+It's tempting to make a fix and go straight to the field. Always take 30 seconds to enable the robot in the pit and verify the fix works. A broken deploy is worse than the original bug.
+:::
+
+---
+
+## Post-Match Review Process
+
+After each match (or at the end of each day), run a structured review. This turns experience into improvement.
+
+### The 5-Question Review
+
+Answer these five questions after every match:
+
+1. **What worked?** — Identify what went well so you can keep doing it
+2. **What didn't work?** — Identify failures without blame
+3. **What data do we have?** — What do the logs show? What did the drivers observe?
+4. **What's the root cause?** — Don't just fix symptoms. Why did the problem happen?
+5. **What's our action item?** — One specific thing to fix or improve before the next match
+
+### Example Post-Match Review
+
+| Question | Answer |
+|----------|--------|
+| What worked? | Teleop scoring was consistent — 8/10 shots landed |
+| What didn't work? | Auto only scored 1 piece instead of 2 |
+| What data do we have? | Logs show the robot reached the second game piece but the intake didn't deploy |
+| Root cause? | The event marker for "deployIntake" was at 80% of the path — too late. The robot arrived before the intake was ready |
+| Action item | Move the event marker to 60% of the path so the intake deploys earlier. Test in pit before next match |
+
+### Keeping a Competition Log
+
+Create a simple document (Google Doc, notebook, whatever works) and log every match:
+
+```
+Match 14 — Qual 7
+Result: Win 85-62
+Auto: 1/2 pieces scored (intake timing issue)
+Teleop: Good, 8/10 shots
+Issues: Event marker timing on path 2
+Fix: Moved marker from 80% to 60%
+Status: Fixed and tested in pit
+```
+
+This log is invaluable for:
+- Tracking recurring issues
+- Briefing alliance partners on your capabilities
+- Post-event analysis to improve for the next competition
+
+---
+
+<Quiz client:load
+  question="During a competition, your auto routine works perfectly in matches 1-3 but fails in match 4. The robot doesn't move at all during auto. What's the most likely cause?"
+  options={[
+    "The code has a bug that only appears on the 4th run",
+    "The battery voltage dropped too low, causing a brownout during auto",
+    "Someone accidentally changed the auto chooser selection between matches",
+    "The PathPlanner paths corrupted themselves"
+  ]}
+  correctIndex={2}
+  explanation="If the auto worked three times and then stopped, the code itself is probably fine. The most common cause is human error — someone changed the auto chooser (maybe while testing something in the pit) and forgot to set it back. Battery brownout is possible but would show other symptoms (robot rebooting, motors cutting out). Always check the auto chooser first."
+/>
+
+---
+
+## Competition Day Timeline
+
+Here's how experienced teams structure their competition day from a software perspective:
+
+### Before Matches Start
+
+- [ ] Deploy the latest tested code from `main` branch
+- [ ] Run through the full pre-match checklist once
+- [ ] Verify all auto routines work (run each one briefly in the pit)
+- [ ] Set up AdvantageScope for log review
+- [ ] Charge all batteries, label them with voltage
+
+### Between Matches (5–15 minutes)
+
+- [ ] Review match logs in AdvantageScope
+- [ ] Run the 5-question post-match review
+- [ ] If a fix is needed: create hotfix branch, fix, test, deploy
+- [ ] Run pre-match checklist before heading to the field
+- [ ] Swap to a freshly charged battery
+
+### End of Day
+
+- [ ] Full post-match review of the day's matches
+- [ ] Merge any hotfix branches to main
+- [ ] Push all code to GitHub (backup!)
+- [ ] Document known issues and planned fixes for tomorrow
+- [ ] Charge all batteries overnight
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Competition Readiness"
+  prompt="(1) Your robot's shooter stopped working mid-match. You have 8 minutes before the next match. Walk through the five-minute debugging flowchart — what do you check and in what order? (2) You need to make a quick fix to the auto chooser default. Describe the hotfix branch workflow you'd follow. (3) What's the single most important thing you can do to prevent software issues at competition?"
+>
+Strong answers include:
+
+1. **Systematic debugging** — "First: did the robot move at all? Yes, drivetrain worked. Is it hardware or software? Check DS console for errors — if there are CAN errors for the shooter motors, it's hardware (hand off to electrical). If no errors, it's software. Check: is the shooter command being scheduled? Is the button binding correct? Did someone change RobotContainer? Check the most recent deploy timestamp."
+
+2. **Hotfix workflow** — "git checkout main, git pull, git checkout -b hotfix/auto-chooser-default. Change the default auto in RobotContainer. git add, git commit -m 'hotfix: set default auto to 2-piece'. ./gradlew deploy. Enable robot in pit, verify the correct auto is selected. If it works: git checkout main, git merge hotfix/auto-chooser-default, git push."
+
+3. **Prevention** — "The single most important thing is the pre-match checklist. Most competition software issues are preventable — wrong auto selected, code not deployed, CAN device disconnected. A 60-second checklist catches these before they cost you a match."
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Pre-Match Checklist** | A systematic list of software and hardware checks performed before every match to verify the robot is ready |
+| **Hotfix Branch** | A short-lived Git branch created to make a minimal, targeted fix during competition, then merged back to main |
+| **Match Log** | Data recorded during a match (poses, motor outputs, sensor readings, errors) that can be reviewed afterward in tools like AdvantageScope |
+| **Brownout** | A voltage drop (typically below 7V) that causes the roboRIO to reboot or behave unpredictably, usually caused by high current draw on a low battery |
+| **Post-Match Review** | A structured process for analyzing what happened in a match, identifying root causes of issues, and planning fixes |
+| **Triage** | The process of quickly assessing and prioritizing issues based on severity and available time |
+
+---
+
+## What's Next?
+
+You now have the complete competition toolkit — checklists, debugging flowcharts, log analysis, hotfix workflows, and review processes. In **Activity 6.20: Simulated Competition Debugging**, you'll put these skills to the test in a time-pressured scenario where you must diagnose and fix issues under a strict time limit.

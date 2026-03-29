@@ -1,0 +1,279 @@
+---
+title: "Lesson 4.2: Git & GitHub Team Workflow"
+description: "Learn the branching strategy, pull request process, code review, and merge conflict resolution your team uses"
+sidebar:
+  order: 2
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain why FRC teams use branches instead of committing directly to main
+- Describe the feature branch workflow used by most FRC teams
+- Create a branch, make commits, and push to GitHub
+- Explain what a pull request is and why code review matters
+- Identify and resolve a simple merge conflict
+
+:::tip[Before You Start]
+Complete **Lesson 0.1: Git & GitHub** (Unit 0) if you haven't already — you should know how to clone, commit, and push. This lesson builds on those basics with team collaboration workflows. Have your terminal and the team's <GitHubLink client:load path="" label={robotConfig.repoName + " repository"} /> ready.
+:::
+
+---
+
+## Why Branches Matter
+
+In Unit 0 you learned to clone the repo and make commits. But on a real team, multiple programmers work on the code at the same time. If everyone commits directly to the `main` branch, chaos ensues:
+
+- Alice changes the intake speed while Bob rewrites the intake subsystem
+- Their changes conflict, and the code breaks
+- Nobody knows whose change caused the problem
+- The robot doesn't work at practice, and the team loses valuable testing time
+
+**Branches** solve this by giving each person (or each feature) their own copy of the code to work on. When the work is done and tested, it gets merged back into `main` through a **pull request** with code review.
+
+
+---
+
+## The Feature Branch Workflow
+
+Most FRC teams use a simple workflow called **feature branching**:
+
+```
+main ─────────────────────────────────────────────────
+       \                              /
+        feature/intake-speed ────────   (merged via PR)
+       \                                      /
+        feature/auto-two-note ───────────────   (merged via PR)
+```
+
+### The Rules
+
+1. **`main` is always deployable** — the code on `main` should always compile and work on the robot. Never commit broken code to `main`.
+2. **Create a branch for each change** — whether it's a bug fix, a new feature, or a tuning adjustment.
+3. **Name branches descriptively** — `feature/intake-speed`, `fix/shooter-timeout`, `tune/auto-timing`. The name should tell teammates what the branch is about.
+4. **Merge through pull requests** — never push directly to `main`. Always create a PR so someone can review your changes.
+
+### Branch Naming Conventions
+
+| Prefix | When to Use | Example |
+|--------|------------|---------|
+| `feature/` | Adding new functionality | `feature/auto-three-note` |
+| `fix/` | Fixing a bug | `fix/intake-not-retracting` |
+| `tune/` | Adjusting constants or parameters | `tune/shooter-rpm` |
+| `refactor/` | Reorganizing code without changing behavior | `refactor/constants-cleanup` |
+
+---
+
+## Creating and Using Branches
+
+Here's the step-by-step workflow for making a change:
+
+### Step 1: Start from an Updated Main
+
+```bash
+git checkout main          # Switch to main branch
+git pull origin main       # Get the latest code from GitHub
+```
+
+Always start from the latest `main`. If you branch from an old version, you'll have more merge conflicts later.
+
+### Step 2: Create Your Branch
+
+```bash
+git checkout -b feature/intake-speed
+```
+
+This creates a new branch called `feature/intake-speed` and switches to it. You're now working on your own copy of the code.
+
+### Step 3: Make Your Changes and Commit
+
+```bash
+# Edit files in your IDE...
+git add .                                    # Stage all changes
+git commit -m "Increase intake roller speed to 0.7"  # Commit with a clear message
+```
+
+**Commit messages matter.** Write messages that explain *what* you changed and *why*. Your teammates (and future you) will thank you.
+
+| Bad Message | Good Message |
+|------------|-------------|
+| `fixed stuff` | `Fix intake not retracting after toggle off` |
+| `changes` | `Increase shooter RPM from 3000 to 3500 for longer shots` |
+| `asdf` | `Add two-note auto routine for left starting position` |
+
+### Step 4: Push to GitHub
+
+```bash
+git push origin feature/intake-speed
+```
+
+This uploads your branch to GitHub. Your code is now backed up and visible to teammates.
+
+### Step 5: Create a Pull Request
+
+On GitHub, you'll see a banner saying "feature/intake-speed had recent pushes." Click **"Compare & pull request"** to create a PR.
+
+
+<Quiz client:load
+  question="Why should you run 'git pull origin main' before creating a new branch?"
+  options={[
+    "To delete old branches from your computer",
+    "To make sure you're starting from the latest code, reducing merge conflicts later",
+    "To automatically merge your changes into main",
+    "To check if your code compiles"
+  ]}
+  correctIndex={1}
+  explanation="Running 'git pull origin main' downloads the latest changes from GitHub. If you create a branch from an outdated main, your branch will be missing recent changes from teammates, leading to more merge conflicts when you try to merge your PR."
+/>
+
+---
+
+## Pull Requests and Code Review
+
+A **pull request (PR)** is a request to merge your branch into `main`. It's also a conversation — your teammates review your changes, ask questions, and suggest improvements before the code is merged.
+
+### What Makes a Good PR
+
+| Element | What to Include |
+|---------|----------------|
+| **Title** | Clear summary: "Increase intake speed to 0.7 for faster pickup" |
+| **Description** | What you changed, why, and how to test it |
+| **Small scope** | One logical change per PR — don't mix unrelated changes |
+| **Tests** | "I tested this by deploying to the robot and running intake 10 times" |
+
+### The Code Review Process
+
+1. **You create the PR** on GitHub
+2. **Request a reviewer** — tag a teammate or your programming lead
+3. **The reviewer reads your changes** — GitHub shows a diff (what you added/removed)
+4. **The reviewer leaves comments** — questions, suggestions, or approval
+5. **You address feedback** — make additional commits to your branch if needed
+6. **The reviewer approves** — they click "Approve"
+7. **You merge the PR** — click "Merge pull request" on GitHub
+8. **Delete the branch** — GitHub offers to delete the branch after merging. Do it — keeps things clean.
+
+### Why Code Review Matters for FRC
+
+Code review isn't just a formality. On an FRC team, it catches:
+
+- **Safety issues** — "This motor speed is too high, it could damage the mechanism"
+- **Logic bugs** — "This auto routine turns left when it should turn right"
+- **Constants mistakes** — "You used CAN ID 31 but the intake left motor is CAN ID {robotConfig.canIds.intakeLeft}"
+- **Style issues** — "This should be a constant in Constants.java, not a magic number"
+
+Even a quick 5-minute review by a teammate can catch bugs that would waste hours of testing time.
+
+---
+
+## Handling Merge Conflicts
+
+A **merge conflict** happens when two people change the same lines in the same file. Git can't automatically decide which change to keep, so it asks you to resolve it manually.
+
+### When Conflicts Happen
+
+```
+main:    intake speed = 0.5
+Alice:   intake speed = 0.7  (on feature/faster-intake)
+Bob:     intake speed = 0.6  (on feature/tune-intake)
+```
+
+If Alice merges first, Bob's PR will have a conflict on the intake speed line. Git doesn't know if the answer should be 0.6, 0.7, or something else.
+
+### What a Conflict Looks Like
+
+When you pull or merge and there's a conflict, Git marks the file:
+
+```java
+<<<<<<< HEAD
+    private static final double INTAKE_SPEED = 0.7;  // Alice's change (already in main)
+=======
+    private static final double INTAKE_SPEED = 0.6;  // Bob's change (on his branch)
+>>>>>>> feature/tune-intake
+```
+
+### How to Resolve
+
+1. **Open the conflicted file** in your IDE (VS Code highlights conflicts with colors)
+2. **Choose which change to keep** — or combine them if both are needed
+3. **Remove the conflict markers** (`<<<<<<<`, `=======`, `>>>>>>>`)
+4. **Save, commit, and push**
+
+```java
+// After resolving — Bob decides Alice's value is better:
+    private static final double INTAKE_SPEED = 0.7;
+```
+
+:::tip[Prevent Conflicts]
+The best way to handle merge conflicts is to prevent them:
+- **Pull from main frequently** — `git pull origin main` into your branch
+- **Keep PRs small** — fewer changed files = fewer potential conflicts
+- **Communicate** — if two people are editing the same file, coordinate
+:::
+
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Git Workflow"
+  prompt="Walk through the complete workflow for making a change to the robot code: (1) What commands do you run before starting? (2) How do you create and name your branch? (3) How does your change get into main? (4) What do you do if there's a merge conflict?"
+>
+1. **Before starting:** `git checkout main` then `git pull origin main` — switch to main and get the latest code from GitHub.
+
+2. **Create a branch:** `git checkout -b feature/descriptive-name` — creates a new branch with a descriptive name using the appropriate prefix (feature/, fix/, tune/).
+
+3. **Getting into main:** Make changes → `git add .` → `git commit -m "Clear message"` → `git push origin feature/descriptive-name` → Create a Pull Request on GitHub → Request code review → Address feedback → Reviewer approves → Merge the PR → Delete the branch.
+
+4. **Merge conflict:** Open the conflicted file in your IDE → find the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) → choose which change to keep (or combine them) → remove the markers → save → `git add .` → `git commit` → `git push`.
+</Checkpoint>
+
+---
+
+## Git Commands Quick Reference
+
+| Command | What It Does |
+|---------|-------------|
+| `git checkout main` | Switch to the main branch |
+| `git pull origin main` | Download latest changes from GitHub |
+| `git checkout -b branch-name` | Create and switch to a new branch |
+| `git add .` | Stage all changed files for commit |
+| `git commit -m "message"` | Save staged changes with a description |
+| `git push origin branch-name` | Upload your branch to GitHub |
+| `git status` | See which files are changed/staged |
+| `git log --oneline` | See recent commit history |
+| `git diff` | See what you've changed but not yet staged |
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Branch** | A separate line of development in Git, allowing you to work on changes without affecting the main codebase |
+| **Feature Branch** | A branch created for a specific change (feature, fix, or tune), named descriptively with a prefix |
+| **Pull Request (PR)** | A GitHub request to merge a branch into main, including a description and code review process |
+| **Code Review** | The process of a teammate reading your changes, leaving feedback, and approving before merge |
+| **Merge Conflict** | A situation where two branches change the same lines, requiring manual resolution |
+| **Main Branch** | The primary branch that should always contain working, deployable code |
+
+---
+
+## What's Next?
+
+You now understand the Git workflow your team uses to collaborate safely on robot code. Branches keep everyone's work separate, pull requests ensure quality through review, and merge conflicts are manageable with the right approach.
+
+In **Activity 4.3: Create a Pull Request**, you'll practice this workflow hands-on — creating a branch, making a safe edit, pushing to GitHub, and opening your first PR with a code review request.
+
+
+
+In **Activity 4.3: Create a Pull Request**, you'll practice this workflow hands-on — creating a branch, making a safe edit, pushing to GitHub, and opening your first PR with a code review request.

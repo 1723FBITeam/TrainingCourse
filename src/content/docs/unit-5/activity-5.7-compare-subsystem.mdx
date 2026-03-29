@@ -1,0 +1,169 @@
+---
+title: "Activity 5.7: Compare a Subsystem"
+description: "Pick a subsystem from a top team's GitHub repository, compare it to your team's equivalent, and document the differences"
+sidebar:
+  order: 7
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Selected a subsystem from a top team's GitHub repository to study
+- Analyzed its structure, patterns, and design decisions
+- Compared it side-by-side with your team's equivalent subsystem
+- Documented your findings in a structured comparison table
+
+:::tip[Before You Start]
+Complete **Lesson 5.6: Reading Top Team Code**. Have both your team's code and a top team's GitHub repo open in separate browser tabs. You'll need your IDE open to your team's project as well.
+:::
+
+---
+
+## Step 1: Choose a Top Team Repository
+
+Pick one of these repositories to study:
+
+| Team | Repository | Language |
+|------|-----------|----------|
+| **254** The Cheesy Poofs | [github.com/Team254](https://github.com/Team254) | Java |
+| **6328** Mechanical Advantage | [github.com/Mechanical-Advantage](https://github.com/Mechanical-Advantage) | Java |
+| **1678** Citrus Circuits | [github.com/frc1678](https://github.com/frc1678) | Java |
+
+Find their most recent season's robot code repository and open it in your browser.
+
+**Team I'm studying:** _______________
+**Repository URL:** _______________
+
+---
+
+## Step 2: Choose a Subsystem to Compare
+
+Pick a subsystem that exists on both the top team's robot and your team's robot. Good choices:
+
+| Your Team's Subsystem | What to Search For in Their Repo |
+|----------------------|--------------------------------|
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" /> | "Intake", "Roller", "Feeder" |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> | "Shooter", "Launcher", "Flywheel" |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/TurretSubsystem.java`} label="TurretSubsystem.java" /> | "Turret", "Aimer", "Hood" |
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ClimberSubsystem.java`} label="ClimberSubsystem.java" /> | "Climber", "Elevator", "Endgame" |
+
+**Subsystem I'm comparing:** _______________
+
+---
+
+## Step 3: Read Their Subsystem
+
+Open the top team's subsystem file(s) and answer these questions. Take notes as you go.
+
+1. **How many files make up this subsystem?** (Your team uses one file per subsystem. Do they use multiple?)
+
+2. **What motors and sensors does it use?** (List the hardware — motor types, encoders, limit switches, etc.)
+
+3. **What are the public methods?** (These define what the subsystem can do — list them all)
+
+4. **How do they handle constants?** (Are constants in the file, in a separate Constants class, or somewhere else?)
+
+5. **Do they use an IO layer?** (Look for interfaces like `IntakeIO` or `ShooterIO`)
+
+6. **What happens in their `periodic()` method?** (What data do they read or log every cycle?)
+
+<AnswerReveal client:load label="Hint: What to Look For">
+When reading their subsystem, focus on these specific things:
+
+- **Constructor:** What gets passed in? (IO objects? Constants? Other subsystems?)
+- **State variables:** What private fields track the subsystem's state?
+- **Control methods:** How do they set motor speeds? Do they use PID, feedforward, or simple percent output?
+- **Logging:** Do they log sensor values? How? (SmartDashboard, AdvantageKit Logger, etc.)
+- **Safety:** Do they have any safety checks (soft limits, current limits, timeout logic)?
+</AnswerReveal>
+
+---
+
+## Step 4: Read Your Team's Equivalent
+
+Now open your team's equivalent subsystem in your IDE. Answer the same questions:
+
+1. **How many files?** (Probably one — e.g., `IntakeSubsystem.java`)
+2. **What motors and sensors?**
+3. **What are the public methods?**
+4. **How are constants handled?**
+5. **Is there an IO layer?** (Probably not — your team accesses hardware directly)
+6. **What happens in `periodic()`?**
+
+---
+
+## Step 5: Complete the Comparison
+
+## 🔍 Comparison Exercise: Subsystem Architecture
+
+**Team to study:** (fill in the team you chose — e.g., Team 6328 Mechanical Advantage)
+**Repository:** (fill in the GitHub URL — e.g., https://github.com/Mechanical-Advantage/RobotCode2025)
+**File/folder to examine:** (fill in the path — e.g., `src/main/java/frc/robot/subsystems/intake/`)
+
+### Guiding Questions
+
+1. How does their subsystem's file organization differ from your team's single-file approach? What are the advantages of each?
+2. What patterns do they use that your team doesn't? (IO layers, state machines, command factories, etc.)
+3. How does their approach to logging and debugging compare to your team's? Would their approach help you debug faster?
+4. If you could adopt one thing from their subsystem design, what would it be and why?
+
+### Document Your Findings
+
+| Aspect | Their Team | Our Team | Why the Difference? |
+|--------|-----------|----------|-------------------|
+| File count per subsystem | | | |
+| Hardware abstraction | | | |
+| Constants organization | | | |
+| Public method count | | | |
+| Logging approach | | | |
+| Control strategy (PID vs % output) | | | |
+| Safety checks | | | |
+| Code complexity | | | |
+
+---
+
+## Step 6: Reflect on What You Learned
+
+<Checkpoint client:load
+  title="Checkpoint: Subsystem Comparison"
+  prompt="After completing your comparison, answer: (1) What was the biggest structural difference between their subsystem and yours? (2) What's one pattern from their code that you think would improve your team's code? (3) What's one thing your team's code does that you think is actually better or simpler than their approach?"
+>
+Strong answers will include:
+
+1. **A specific structural difference** — e.g., "They split their intake into 3 files (Intake.java, IntakeIO.java, IntakeIOTalonFX.java) while ours is one file. Their approach separates the logic from the hardware, making it testable."
+
+2. **A specific adoptable pattern** — e.g., "Their periodic() method logs every sensor value using AdvantageKit. We don't log anything in periodic(), which makes it hard to debug issues after the fact."
+
+3. **Something your team does well** — e.g., "Our IntakeSubsystem is much easier to read because it's all in one file. A new team member can understand the whole intake in 5 minutes. Their 3-file approach has a steeper learning curve."
+</Checkpoint>
+
+---
+
+## Bonus: Share Your Findings
+
+Consider sharing your comparison with your team:
+- Post your findings table in your team's Slack/Discord
+- Present it at a team meeting (5 minutes is enough)
+- Add it to your team's engineering notebook
+
+Teaching others what you learned reinforces your own understanding and helps your whole team level up.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **IO Layer** — an abstraction layer that separates hardware access from subsystem logic, enabling simulation and testing
+- **[Superstructure Pattern](/reference-sheets/glossary)** — an architecture pattern where a single class coordinates all non-drivetrain subsystem interactions
+- **Command Factory** — a method that creates and returns a command, keeping command construction organized within the subsystem or a factory class
+:::
+
+## What's Next?
+
+You've now compared real code from a top team to your own. In **Lesson 5.8: Debugging with Shuffleboard & AdvantageScope**, you'll learn how to use data visualization tools to debug your robot — logging values, reading graphs, and replaying matches to find issues faster than print statements ever could.

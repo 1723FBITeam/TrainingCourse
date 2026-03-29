@@ -1,0 +1,421 @@
+---
+title: "Lesson 4.5: Java Patterns in FRC Code"
+description: "Understand lambdas, method references, enums, static final, inheritance, and interfaces as they appear in robot code"
+sidebar:
+  order: 5
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeReading } from '../../../components/CodeReading';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Read and explain lambda expressions in robot code
+- Recognize method references and understand when they're used instead of lambdas
+- Explain how enums organize related constants in FRC code
+- Identify `static final` constants and why they're used in Constants.java
+- Describe how inheritance (`extends`) connects subsystems to the WPILib framework
+- Explain how interfaces define contracts that classes must follow
+
+:::tip[Before You Start]
+Complete **Activity 4.4: Explore Your Own Robot Code** first. You've already seen these patterns in the files you read — this lesson puts names to them and explains how they work. Have <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> open in your IDE.
+:::
+
+---
+
+## Why Java Patterns Matter in FRC
+
+When you first opened RobotContainer.java, you probably saw lines like this and thought "what is that?":
+
+```java
+controller.x().toggleOnTrue(
+    new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem)
+);
+```
+
+The `() -> intakeSubsystem.deployOut()` part is a **lambda expression** — one of several Java patterns that FRC code uses heavily. These patterns aren't FRC-specific; they're standard Java. But FRC code uses them in very specific ways, and once you recognize them, the code becomes much easier to read.
+
+Let's go through each pattern with real examples from your team's code.
+
+:::caution[🤔 Before You Read On]
+Look at this line from your team's RobotContainer: `() -> intakeSubsystem.deployOut()`. Before reading the explanation below, write down what you *think* this does in plain English. Even if you're wrong, making a prediction first helps you learn faster.
+:::
+
+---
+
+## Pattern 1: Lambda Expressions
+
+A **lambda** is a short, anonymous function — a piece of code you can pass around like a value. In FRC code, lambdas appear everywhere because the command-based framework needs to know *what to do* when a button is pressed or a command runs.
+
+### The Syntax
+
+```java
+// Lambda syntax:
+() -> expression           // No parameters, returns expression
+() -> { statements; }      // No parameters, runs statements
+(x) -> expression          // One parameter
+(x, y) -> expression       // Two parameters
+```
+
+### Real Example: Your Intake Binding
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and find the X button binding. You'll see several lambdas:
+
+```java title="RobotContainer.java — Lambdas in the intake binding"
+// Lambda 1: no parameters, calls deployOut()
+() -> intakeSubsystem.deployOut()
+
+// Lambda 2: no parameters, calls runIntake with a speed value
+() -> intakeSubsystem.runIntake(0.5)
+
+// Lambda 3: no parameters, runs two statements (needs curly braces)
+() -> {
+    intakeSubsystem.stopIntake();
+    intakeSubsystem.deployIn();
+}
+```
+
+### How to Read a Lambda
+
+Read `() -> intakeSubsystem.deployOut()` as: **"a function that takes no inputs and calls `deployOut()` on the intake subsystem."**
+
+The `()` means "no parameters." The `->` means "do this." The right side is what gets executed.
+
+### Why Lambdas?
+
+Without lambdas, you'd need to create a whole new class just to say "call this one method." Lambdas let you write that inline — right where the button binding is defined. Compare:
+
+```java
+// Without lambdas (verbose):
+new InstantCommand(new Runnable() {
+    @Override
+    public void run() {
+        intakeSubsystem.deployOut();
+    }
+}, intakeSubsystem);
+
+// With lambdas (clean):
+new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem);
+```
+
+Same behavior, much less code. That's why FRC code uses lambdas everywhere.
+
+---
+
+<Quiz client:load
+  question="What does the lambda () -> intakeSubsystem.runIntake(0.5) do?"
+  options={[
+    "It creates a new IntakeSubsystem with speed 0.5",
+    "It defines a function that, when called, runs the intake at 50% speed",
+    "It immediately runs the intake at 50% speed",
+    "It returns the value 0.5 to the intake subsystem"
+  ]}
+  correctIndex={1}
+  explanation="A lambda DEFINES a function — it doesn't run it immediately. The lambda () -> intakeSubsystem.runIntake(0.5) creates a function that, when called later (by the command scheduler), will call runIntake(0.5). The command framework decides WHEN to call it."
+/>
+
+---
+
+## Pattern 2: Method References
+
+A **method reference** is a shorthand for a lambda that just calls a single method. Instead of writing `() -> object.method()`, you can write `object::method`.
+
+### The Syntax
+
+```java
+// Lambda version:
+() -> intakeSubsystem.stopIntake()
+
+// Method reference version (equivalent):
+intakeSubsystem::stopIntake
+```
+
+Both mean the same thing: "a function that calls `stopIntake()` on the intake subsystem." The `::` syntax is just shorter.
+
+### When You'll See Method References
+
+Method references appear in your team's code in places like:
+
+```java title="Common method reference patterns in FRC code"
+// Passing a method as a supplier (provides a value)
+this::getSmartTarget    // equivalent to () -> this.getSmartTarget()
+
+// Passing a method as a consumer (accepts a value)
+shooter::setSpeed       // equivalent to (speed) -> shooter.setSpeed(speed)
+```
+
+You might see method references in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + ".java"} /> or in the drivetrain configuration. They're especially common when passing getter methods as suppliers to commands or control loops.
+
+### Lambda vs. Method Reference — When to Use Which
+
+| Use a Lambda When... | Use a Method Reference When... |
+|----------------------|-------------------------------|
+| You need to pass arguments: `() -> intake.runIntake(0.5)` | The method takes no arguments: `intake::stopIntake` |
+| You need multiple statements: `() -> { a(); b(); }` | You're just calling one method with matching parameters |
+| The logic is more complex | The call is simple and direct |
+
+:::note[Don't Stress About Choosing]
+Both lambdas and method references work. Method references are slightly more concise, but lambdas are always valid. Use whichever is clearer to you. Most FRC teams use a mix of both.
+:::
+
+---
+
+## Pattern 3: Enums
+
+An **enum** (short for "enumeration") is a type that has a fixed set of possible values. Think of it as a list of named options.
+
+### Real Example: LED Modes
+
+If your team's code controls LEDs or has different operating modes, you might see something like:
+
+```java title="Example enum pattern in FRC code"
+public enum LEDMode {
+    OFF,
+    SOLID_GREEN,
+    BLINKING_RED,
+    RAINBOW
+}
+```
+
+This defines four possible LED modes. You can't create a fifth mode accidentally — the compiler enforces the list.
+
+### Where Enums Appear in FRC Code
+
+Enums are common in:
+
+- **Limelight pipeline modes** — `LimelightHelpers` uses integer constants, but many teams define enums for pipeline selection
+- **Robot state tracking** — `IDLE`, `INTAKING`, `AIMING`, `SHOOTING`
+- **Auto routine selection** — naming each autonomous routine
+- **Alliance color** — WPILib's `DriverStation.Alliance` is an enum with `Red` and `Blue`
+
+### Why Enums Instead of Strings or Numbers?
+
+```java
+// BAD: using strings (typos cause silent bugs)
+if (state.equals("shoting")) { ... }  // typo! No compiler error.
+
+// BAD: using numbers (what does 3 mean?)
+if (mode == 3) { ... }  // Magic number. Unclear.
+
+// GOOD: using enums (compiler catches mistakes)
+if (state == RobotState.SHOOTING) { ... }  // Clear, typo-proof.
+```
+
+Enums give you autocomplete in your IDE, compiler-checked spelling, and self-documenting code.
+
+---
+
+## Pattern 4: Static Final Constants
+
+You've already worked with `Constants.java` in Unit 3. Now let's understand the Java keywords that make it work.
+
+### What `static final` Means
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> and look at any constant:
+
+```java title="Constants.java"
+public static final int SHOOTER_LEFT_MOTOR = {robotConfig.canIds.shooterLeft};
+public static final int SHOOTER_RIGHT_MOTOR = {robotConfig.canIds.shooterRight};
+public static final double HOOD_MIN = 0.0;
+public static final double HOOD_MAX = 0.85;
+```
+
+Each keyword has a specific meaning:
+
+| Keyword | Meaning |
+|---------|---------|
+| `public` | Any file in the project can access this value |
+| `static` | Belongs to the class itself, not to an instance — you access it as `ShootingConstants.SHOOTER_LEFT_MOTOR` |
+| `final` | Cannot be changed after initialization — it's a true constant |
+| `int` / `double` | The data type (whole number vs. decimal number) |
+
+### Why `static final`?
+
+The combination of `static` and `final` means: **"this value belongs to the class, and it never changes."** That's exactly what you want for CAN IDs, motor speeds, and field measurements. If someone accidentally tries to write `SHOOTER_LEFT_MOTOR = 99;` somewhere in the code, the compiler will refuse — `final` prevents reassignment.
+
+### The Naming Convention
+
+Notice the `ALL_CAPS_WITH_UNDERSCORES` naming? That's a Java convention for constants. When you see a variable in ALL_CAPS, you immediately know it's a constant that never changes. This convention is used across all Java projects, not just FRC.
+
+---
+
+<Quiz client:load
+  question="In Constants.java, what does the 'final' keyword prevent?"
+  options={[
+    "Other files from reading the value",
+    "The value from being changed after it's set",
+    "The value from being used in math expressions",
+    "The class from being imported"
+  ]}
+  correctIndex={1}
+  explanation="The 'final' keyword means the value cannot be reassigned after initialization. This is exactly what you want for constants like CAN IDs — they should never change at runtime. If someone tries to write SHOOTER_LEFT_MOTOR = 99, the compiler will produce an error."
+/>
+
+---
+
+## Pattern 5: Inheritance (`extends`)
+
+**Inheritance** is how your subsystem classes connect to the WPILib framework. When a class `extends` another class, it inherits all the parent's methods and can override them with custom behavior.
+
+### Real Example: Your Subsystems
+
+Every subsystem in your project extends a base class:
+
+```java title="IntakeSubsystem.java"
+public class IntakeSubsystem extends SubsystemBase {
+    // IntakeSubsystem inherits everything from SubsystemBase
+    // and adds intake-specific methods and hardware
+}
+```
+
+This means `IntakeSubsystem`:
+- **Gets** all of `SubsystemBase`'s built-in behavior (registering with the command scheduler, the `periodic()` hook, default command support)
+- **Adds** its own methods (`runIntake()`, `deployOut()`, `stopIntake()`)
+- **Can override** parent methods (like `periodic()`) to add custom behavior
+
+### The Inheritance Chain
+
+Your team's subsystems follow this pattern:
+
+```
+SubsystemBase (WPILib)
+├── IntakeSubsystem (your team)
+├── ShooterSubsystem (your team)
+├── TurretSubsystem (your team)
+└── ClimberSubsystem (your team)
+
+SwerveDrivetrain (CTRE Phoenix 6)
+└── CommandSwerveDrivetrain (your team)
+```
+
+Notice that `CommandSwerveDrivetrain` extends a CTRE class instead of `SubsystemBase` directly. That's because CTRE provides a swerve-specific base class with built-in kinematics, odometry, and module control. Your team's class adds team-specific customizations on top.
+
+### Why Inheritance Matters
+
+Without inheritance, every subsystem would need to manually implement command scheduler registration, periodic callbacks, and default command handling. That's hundreds of lines of boilerplate code. Inheritance lets WPILib handle the framework plumbing while your team focuses on the robot-specific logic.
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label={robotConfig.subsystems[0].name + ".java"} /> and find the class declaration at the top. You'll see `extends SubsystemBase` — that's inheritance in action.
+
+---
+
+## Pattern 6: Interfaces
+
+An **interface** defines a contract — a set of methods that a class promises to implement. Unlike inheritance (where you get code from a parent), an interface just says "you must have these methods" without providing the implementation.
+
+### Where Interfaces Appear in FRC Code
+
+The most common interface you'll see is `Subsystem` (which `SubsystemBase` implements). But interfaces also appear in:
+
+- **Command factories** — `Supplier<Command>` is an interface that says "this thing can provide a Command"
+- **Functional interfaces** — `Runnable` (no parameters, no return), `Supplier<T>` (no parameters, returns T), `Consumer<T>` (takes T, no return)
+- **Lambdas are interfaces** — when you write `() -> intake.deployOut()`, you're actually creating an anonymous implementation of the `Runnable` interface
+
+### Real Example: Supplier and Consumer
+
+In your team's code, you might see patterns like:
+
+```java title="Interfaces in action"
+// Supplier<Double> — a function that provides a double value
+Supplier<Double> speedSupplier = () -> controller.getLeftY();
+
+// Consumer<Double> — a function that accepts a double value
+Consumer<Double> speedSetter = (speed) -> shooter.setSpeed(speed);
+
+// Runnable — a function with no inputs and no outputs
+Runnable stopAll = () -> {
+    intake.stopIntake();
+    shooter.stopShooter();
+};
+```
+
+These functional interfaces are what make lambdas possible. When a method parameter is typed as `Runnable`, you can pass a lambda like `() -> doSomething()` because the lambda automatically implements the `Runnable` interface.
+
+### Interface vs. Inheritance — Quick Comparison
+
+| Feature | Inheritance (`extends`) | Interface (`implements`) |
+|---------|------------------------|-------------------------|
+| Provides code? | Yes — parent class has method bodies | No — just method signatures (usually) |
+| How many? | One parent only (`extends SubsystemBase`) | Multiple interfaces (`implements A, B, C`) |
+| Purpose | Share common behavior | Define a contract/capability |
+| FRC example | `IntakeSubsystem extends SubsystemBase` | `Runnable`, `Supplier<T>`, `Consumer<T>` |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Java Patterns Recap"
+  prompt="For each code snippet below, identify which Java pattern it uses and explain what it does: (1) () -> intakeSubsystem.deployOut() (2) public static final int TURRET_MOTOR = 23; (3) public class ShooterSubsystem extends SubsystemBase (4) intakeSubsystem::stopIntake"
+>
+1. **Lambda expression** — Defines an anonymous function that takes no parameters and calls `deployOut()` on the intake subsystem. It doesn't run immediately; it's passed to a command that will call it later.
+
+2. **Static final constant** — Declares a constant integer value (CAN ID 23 for the turret motor) that belongs to the class (`static`), can be accessed from anywhere (`public`), and cannot be changed (`final`). The ALL_CAPS name follows Java constant naming convention.
+
+3. **Inheritance** — `ShooterSubsystem` extends `SubsystemBase`, inheriting all WPILib subsystem framework behavior (command scheduler registration, periodic callbacks, default commands) and adding shooter-specific methods and hardware control.
+
+4. **Method reference** — A shorthand for `() -> intakeSubsystem.stopIntake()`. The `::` syntax creates a reference to the `stopIntake` method that can be passed as a `Runnable` parameter.
+</Checkpoint>
+
+---
+
+## Putting It All Together
+
+Here's a single block of code from RobotContainer that uses almost every pattern we covered:
+
+```java title="RobotContainer.java — Multiple patterns in one binding"
+controller.x()                                          // Method call
+    .toggleOnTrue(                                      // Method call on Trigger
+        new SequentialCommandGroup(                     // Inheritance (extends CommandGroupBase)
+            new InstantCommand(                         // Inheritance (extends Command)
+                () -> intakeSubsystem.deployOut(),      // Lambda expression
+                intakeSubsystem                         // Subsystem requirement
+            ),
+            new WaitCommand(0.3),                       // Static final? (0.3 could be a constant)
+            new InstantCommand(
+                intakeSubsystem::stopDeploy             // Method reference
+            ),
+            new RunCommand(
+                () -> intakeSubsystem.runIntake(0.5),   // Lambda with argument
+                intakeSubsystem
+            )
+        ).finallyDo(() -> {                             // Lambda with multiple statements
+            intakeSubsystem.stopIntake();
+            intakeSubsystem.deployIn();
+        })
+    );
+```
+
+Every line uses at least one of the patterns you just learned. The code that looked like hieroglyphics in Unit 1 should now be readable — you can identify each pattern and understand what it does.
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Lambda Expression** | An anonymous function written inline using the `() -> expression` syntax, commonly used to pass behavior to commands and triggers |
+| **Method Reference** | A shorthand for a lambda that calls a single method, using the `object::method` syntax |
+| **Enum** | A Java type with a fixed set of named values (e.g., `Alliance.Red`, `Alliance.Blue`), providing type-safe alternatives to strings or magic numbers |
+| **Static Final** | A variable modifier combination meaning the value belongs to the class (`static`) and cannot be changed (`final`) — used for constants |
+| **Inheritance** | A relationship where a class (`extends`) gains all methods and fields from a parent class, used to connect subsystems to the WPILib framework |
+| **Interface** | A contract defining methods a class must implement, enabling patterns like `Runnable`, `Supplier<T>`, and `Consumer<T>` that make lambdas possible |
+| **Functional Interface** | An interface with exactly one abstract method (like `Runnable` or `Supplier<T>`), which can be implemented using a lambda expression |
+
+---
+
+## What's Next?
+
+You can now recognize and explain the six most common Java patterns in FRC code. These patterns appear in every file in the project — lambdas in RobotContainer, static finals in Constants, inheritance in every subsystem, and method references throughout.
+
+In **Activity 4.6: Find Java Patterns in Your Code**, you'll hunt through your team's repository and find one real example of each pattern. This turns passive recognition into active identification — the skill you need when reading unfamiliar code.
+
+
+In **Activity 4.6: Find Java Patterns in Your Code**, you'll hunt through your team's repository and find one real example of each pattern. This turns passive recognition into active identification — the skill you need when reading unfamiliar code.

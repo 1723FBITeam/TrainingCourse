@@ -1,0 +1,218 @@
+---
+title: "Activity 5.14: Build an Auto Routine"
+description: "Create a new path, register a Named Command, compose an auto routine, and verify it loads in the auto chooser"
+sidebar:
+  order: 14
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Created a new path in PathPlanner with at least 3 waypoints
+- Registered a new Named Command in your team's RobotContainer
+- Composed an auto routine that uses your path and Named Command
+- Verified the auto routine appears in the auto chooser
+
+:::tip[Before You Start]
+Complete **Lesson 5.13: Creating Paths and Named Commands**. Have PathPlanner open with your team's project loaded, and your IDE open to <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />. Work on a Git branch so you don't affect the main codebase.
+:::
+
+---
+
+## Step 1: Create a Git Branch
+
+Before making any changes, create a practice branch:
+
+```bash
+git checkout -b practice/build-auto
+```
+
+---
+
+## Step 2: Create a New Path
+
+1. Open PathPlanner and click **"New Path"**
+2. Name it something descriptive (e.g., `PracticeScoreToPickup`)
+3. Click on the field to place at least **3 waypoints**:
+   - **Waypoint 1:** Starting position (near a scoring location)
+   - **Waypoint 2:** A midpoint (adjust the curve to avoid obstacles)
+   - **Waypoint 3:** Ending position (near a game piece location)
+4. Set **rotation targets** if you want the robot to face a specific direction at any point
+5. Set **path constraints:**
+   - Max velocity: 2.5 m/s (conservative for practice)
+   - Max acceleration: 2.0 m/s²
+
+Document your path:
+
+| Property | Value |
+|----------|-------|
+| Path name | |
+| Number of waypoints | |
+| Start position (x, y) | |
+| End position (x, y) | |
+| Max velocity | |
+| Max acceleration | |
+| Rotation targets? | |
+
+---
+
+## Step 3: Register a Named Command
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and add a new Named Command registration.
+
+Choose one of these options:
+
+### Option A: Simple Print Command (Safe for Testing)
+
+```java
+NamedCommands.registerCommand("PracticeAction",
+    new InstantCommand(() -> System.out.println("Practice Named Command executed!"))
+);
+```
+
+### Option B: Intake Command (If Robot Is Available)
+
+```java
+NamedCommands.registerCommand("PracticeIntake",
+    new SequentialCommandGroup(
+        new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem),
+        new WaitCommand(0.3),
+        new InstantCommand(() -> intakeSubsystem.stopDeploy()),
+        new RunCommand(() -> intakeSubsystem.runIntake(0.3), intakeSubsystem)
+            .withTimeout(2.0)
+    ).finallyDo(() -> {
+        intakeSubsystem.stopIntake();
+        intakeSubsystem.deployIn();
+    })
+);
+```
+
+**Important:** Add the registration in the same area as existing `NamedCommands.registerCommand()` calls — before `AutoBuilder` is configured.
+
+| Question | Your Answer |
+|----------|------------|
+| Named Command name | |
+| What it does | |
+| Where you added it in RobotContainer | |
+
+---
+
+## Step 4: Compose the Auto Routine
+
+1. In PathPlanner, click **"New Auto"**
+2. Name it (e.g., `PracticeAuto`)
+3. Set the **starting pose** to match your path's first waypoint
+4. Add actions in this order:
+   - **Named Command:** Your registered command name (e.g., `"PracticeAction"`)
+   - **Follow Path:** Your new path (e.g., `PracticeScoreToPickup`)
+   - **Named Command:** Your registered command again (or a different one)
+5. Save the auto
+
+Document your auto structure:
+
+| Step | Action Type | Name/Details |
+|------|------------|-------------|
+| 1 | Starting Pose | (x, y, heading) |
+| 2 | | |
+| 3 | | |
+| 4 | | |
+
+---
+
+## Step 5: Build and Verify
+
+1. Save all files in your IDE
+2. Build the project to check for compile errors:
+
+```bash
+./gradlew build
+```
+
+3. If the build succeeds, check that your auto appears in the code. Look for where `AutoBuilder.buildAutoChooser()` is called — your new auto should be automatically discovered from the PathPlanner files.
+
+<AnswerReveal client:load label="Troubleshooting Build Errors">
+Common issues when adding Named Commands:
+
+- **Import missing:** Add `import com.pathplanner.lib.auto.NamedCommands;` at the top of RobotContainer
+- **Command reference error:** Make sure the subsystem variable exists and is initialized before the Named Command registration
+- **Name mismatch:** The string name in `registerCommand()` must exactly match what you typed in PathPlanner
+- **Registration order:** Named Commands must be registered before `AutoBuilder` is configured
+</AnswerReveal>
+
+---
+
+## Step 6: Test on the Robot (If Available)
+
+If you have access to the robot:
+
+1. Deploy the code: `./gradlew deploy`
+2. Open the Driver Station
+3. Check the auto chooser dropdown — your new auto should appear
+4. Select your auto
+5. Place the robot at the starting position
+6. Enable autonomous mode
+7. Watch the robot execute your auto
+
+**If the robot isn't available**, verify these things instead:
+- The build succeeds without errors
+- The Named Command registration is in the right place
+- The PathPlanner auto file exists in `src/main/deploy/pathplanner/autos/`
+- The path file exists in `src/main/deploy/pathplanner/paths/`
+
+---
+
+## Step 7: Iterate
+
+If the auto didn't work perfectly (it rarely does on the first try), iterate:
+
+1. **Path issues** — Adjust waypoints in PathPlanner if the robot's trajectory is off
+2. **Timing issues** — Add or adjust `Wait` commands if actions happen too early or late
+3. **Named Command issues** — Check DS console for errors; verify the command name matches
+4. **Constraint issues** — Lower max velocity if the robot overshoots waypoints
+
+<Checkpoint client:load
+  title="Checkpoint: Build an Auto"
+  prompt="Describe the auto routine you built: (1) What path did you create and where does it go? (2) What Named Command did you register? (3) Did the build succeed? (4) If you tested on the robot, what happened? If not, what would you check first when you get robot access?"
+>
+A complete answer includes:
+
+1. **Path description** — "I created PracticeScoreToPickup with 3 waypoints: starting at (1.4, 5.5) near the speaker, curving around the stage, and ending at (8.0, 4.0) near the center game piece. Max velocity 2.5 m/s."
+
+2. **Named Command** — "I registered 'PracticeAction' as a print command for safe testing. Once verified, I'd replace it with an actual intake command."
+
+3. **Build result** — "Build succeeded after fixing a missing import for NamedCommands."
+
+4. **Testing plan** — "First thing I'd check: does the auto appear in the DS chooser? Then I'd run it at low speed to verify the path shape, and check the DS console for the print statement from my Named Command."
+</Checkpoint>
+
+---
+
+## Cleanup
+
+When you're done practicing, you can either:
+
+- **Keep your work:** Merge the branch to main if the auto is useful
+- **Discard your work:** `git checkout main` and `git branch -D practice/build-auto`
+
+Either way, you've practiced the complete auto creation workflow.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Named Command** — a command registered with a string name so PathPlanner can trigger it at specific points along a path
+- **Event Marker** — a point along a PathPlanner path where a Named Command is triggered automatically
+- **Path Constraints** — limits on velocity, acceleration, and other parameters that control how fast the robot drives a path
+- **Auto Chooser** — a SendableChooser on the dashboard that lets the drive team select which autonomous routine to run
+:::
+
+## What's Next?
+
+You've built your first auto routine from scratch. In **Activity 5.15: Compare Auto Routines**, you'll compare your team's autonomous approach to a top team's — examining how they structure their paths, Named Commands, and auto composition to score more game pieces in 15 seconds.

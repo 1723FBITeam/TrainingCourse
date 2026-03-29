@@ -1,0 +1,209 @@
+---
+title: "Lesson 5.9: Vendor Documentation Deep Dive"
+description: "Navigate CTRE Phoenix 6 and REV Robotics documentation to understand the motors and sensors on your robot"
+sidebar:
+  order: 9
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Navigate the CTRE Phoenix 6 documentation to find motor controller APIs and configuration options
+- Navigate the REV Robotics documentation for SPARK MAX and SPARK Flex controllers
+- Understand the difference between vendor APIs and WPILib APIs
+- Find and read vendor example projects to learn implementation patterns
+- Look up specific motor controller features (current limits, status signals, follower mode)
+
+:::tip[Before You Start]
+Complete **Lesson 5.8: Debugging with Shuffleboard & AdvantageScope**. Have your team's robot code open in your IDE — you'll be connecting vendor docs to the actual motor controller calls in your code.
+:::
+
+---
+
+## Why Vendor Docs Matter
+
+In Unit 4, you learned to navigate WPILib documentation. WPILib provides the framework (subsystems, commands, schedulers), but the actual motor controllers and sensors on your robot come from vendors like **CTRE** and **REV Robotics**. Each vendor has their own API, their own documentation, and their own configuration tools.
+
+Your team's robot uses CTRE hardware extensively — TalonFX and TalonFXS motor controllers, Pigeon 2 gyro, and CANcoders. Understanding the Phoenix 6 documentation is essential for configuring, tuning, and debugging these devices.
+
+| Vendor | Documentation Site | Hardware on Your Robot |
+|--------|-------------------|----------------------|
+| **CTRE Phoenix 6** | [v6.docs.ctr-electronics.com](https://v6.docs.ctr-electronics.com/) | TalonFX, TalonFXS, Pigeon 2, CANcoder |
+| **REV Robotics** | [docs.revrobotics.com](https://docs.revrobotics.com/) | SPARK MAX, SPARK Flex (if used), color sensors |
+
+---
+
+## CTRE Phoenix 6 Documentation
+
+Phoenix 6 is CTRE's latest API for controlling TalonFX (Falcon 500 / Kraken X60) and TalonFXS motor controllers. It's a significant upgrade from the older Phoenix 5 API, with better performance, cleaner syntax, and more features.
+
+### Documentation Structure
+
+The Phoenix 6 docs are organized into these key sections:
+
+| Section | What It Covers | When to Use It |
+|---------|---------------|----------------|
+| **Getting Started** | Installation, vendordep setup, basic configuration | First time setting up Phoenix 6 in a project |
+| **API Reference** | Every class, method, and configuration option | Looking up specific method signatures and parameters |
+| **Device Configuration** | Motor output, current limits, soft limits, sensor config | Configuring a motor controller for a specific mechanism |
+| **Control Requests** | DutyCycleOut, VelocityVoltage, PositionVoltage, MotionMagic | Choosing and using the right control mode |
+| **Status Signals** | Reading sensor data (position, velocity, current, temperature) | Getting data from motor controllers for logging or control |
+| **Examples** | Complete example projects for common use cases | Learning how to implement a specific feature |
+
+### Connecting Phoenix 6 to Your Code
+
+Your team's code uses Phoenix 6 throughout. Let's connect the docs to real code:
+
+**Motor Configuration:**
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> and look for `TalonFXConfiguration`. This is where motor settings like current limits, PID gains, and neutral mode are configured. The Phoenix 6 docs explain every field in this configuration object.
+
+**Control Requests:**
+When your code calls `motor.setControl(new VelocityVoltage(targetRPS))`, it's using a Phoenix 6 control request. The docs explain each control request type:
+
+| Control Request | What It Does | Example Use |
+|----------------|-------------|-------------|
+| `DutyCycleOut` | Simple percent output (-1.0 to 1.0) | Intake rollers, basic mechanisms |
+| `VelocityVoltage` | Closed-loop velocity control with voltage compensation | Shooter flywheels |
+| `PositionVoltage` | Closed-loop position control | Turret aiming |
+| `MotionMagicVoltage` | Smooth position control with trapezoidal motion profiling | Elevator, arm positioning |
+
+**Status Signals:**
+When your code reads `motor.getVelocity().getValueAsDouble()`, it's using a Phoenix 6 status signal. The docs explain signal latency, refresh rates, and how to optimize signal reads.
+
+---
+
+<Quiz client:load
+  question="Your team's shooter uses VelocityVoltage control to maintain flywheel speed. You want to add a feedforward term to improve spin-up time. Where in the Phoenix 6 docs would you find how to configure feedforward?"
+  options={[
+    "Getting Started — it covers all basic setup",
+    "Control Requests — the VelocityVoltage section explains feedforward parameters",
+    "Status Signals — feedforward is a type of sensor reading",
+    "Device Configuration — feedforward is a motor setting"
+  ]}
+  correctIndex={1}
+  explanation="Feedforward is configured as part of the control request. The VelocityVoltage control request in Phoenix 6 accepts feedforward parameters (kS, kV, kA) that are documented in the Control Requests section. The Device Configuration section covers things like current limits and neutral mode, not control-loop parameters."
+/>
+
+---
+
+## REV Robotics Documentation
+
+If your team uses any REV hardware (SPARK MAX, SPARK Flex, color sensors), the REV docs are your reference.
+
+### Key REV Documentation Sections
+
+| Section | What It Covers |
+|---------|---------------|
+| **SPARK MAX/Flex User Guide** | Hardware setup, wiring, LED status codes |
+| **REVLib API** | Java/C++ API for controlling SPARK controllers |
+| **REV Hardware Client** | Desktop tool for configuring and testing REV devices |
+| **Examples** | Code examples for common SPARK configurations |
+
+### REV vs CTRE: Key Differences
+
+| Aspect | CTRE Phoenix 6 | REV REVLib |
+|--------|----------------|-----------|
+| **Configuration** | `TalonFXConfiguration` object applied with `configurator.apply()` | `SparkMaxConfig` with individual setter methods |
+| **Control modes** | Control request objects (`VelocityVoltage`, etc.) | `set()` method with control type parameter |
+| **Sensor reading** | Status signals with `getValueAsDouble()` | Direct getter methods (`getEncoder().getPosition()`) |
+| **Follower mode** | `setControl(new Follower(masterID))` | `follow(masterSpark)` |
+| **Diagnostics** | Phoenix Tuner X | REV Hardware Client |
+
+---
+
+## Finding and Using Vendor Examples
+
+Both CTRE and REV provide example projects that demonstrate common patterns. These are invaluable when you're implementing a new feature.
+
+### Where to Find Examples
+
+- **CTRE Examples:** [github.com/CrossTheRoadElec/Phoenix6-Examples](https://github.com/CrossTheRoadElec/Phoenix6-Examples) — organized by language (Java, C++, Python) with examples for each control mode
+- **REV Examples:** Linked from the REV documentation site and available in the REVLib GitHub repository
+
+### How to Use a Vendor Example
+
+1. **Find the example** that matches your use case (e.g., "VelocityClosedLoop" for a shooter)
+2. **Read the example's README** — it explains what the example demonstrates
+3. **Study the configuration** — how do they set up the motor controller?
+4. **Study the control loop** — how do they command the motor?
+5. **Adapt, don't copy** — take the pattern and apply it to your subsystem's structure
+
+<AnswerReveal client:load label="Example: Adapting a Phoenix 6 Velocity Example">
+Say you find the Phoenix 6 "VelocityClosedLoop" example. It shows:
+
+```java
+// From the example:
+var config = new TalonFXConfiguration();
+config.Slot0.kP = 0.11;
+config.Slot0.kI = 0.0;
+config.Slot0.kD = 0.0;
+config.Slot0.kV = 0.12;
+motor.getConfigurator().apply(config);
+
+// To command velocity:
+motor.setControl(new VelocityVoltage(targetRPS));
+```
+
+To adapt this for your shooter, you'd:
+1. Use your team's PID values from Constants.java instead of the example values
+2. Apply the configuration in your ShooterSubsystem constructor
+3. Use the `VelocityVoltage` control request in your `setTargetRPM()` method
+4. Keep your existing subsystem structure — just update the motor control approach
+</AnswerReveal>
+
+---
+
+## Vendor Docs Lookup Workflow
+
+When you encounter a vendor-specific question, follow this workflow:
+
+1. **Identify the vendor** — Is it a CTRE device (TalonFX, Pigeon, CANcoder) or REV device (SPARK MAX/Flex)?
+2. **Go to the right docs** — Phoenix 6 docs for CTRE, REV docs for REV
+3. **Search for the feature** — Use the docs search bar with specific terms
+4. **Check the API reference** — For exact method signatures and parameters
+5. **Look for examples** — Vendor examples show the recommended implementation pattern
+6. **Test on a branch** — Never change motor configuration on main without testing
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Vendor Documentation"
+  prompt="Open the CTRE Phoenix 6 documentation (v6.docs.ctr-electronics.com). Find the page about current limits for TalonFX. Answer: (1) What are the two types of current limits available? (2) How would you apply a 40A supply current limit to a motor in your team's code? (3) Why would you want to limit current on a mechanism like the intake?"
+>
+Good answers include:
+
+1. **Two types:** Supply current limit (limits current drawn from the battery) and stator current limit (limits current through the motor windings). Supply limits protect the battery and breakers; stator limits protect the motor and mechanism.
+
+2. **Applying a limit:** In the TalonFXConfiguration object, set `config.CurrentLimits.SupplyCurrentLimit = 40` and `config.CurrentLimits.SupplyCurrentLimitEnable = true`, then apply with `motor.getConfigurator().apply(config)`.
+
+3. **Why limit intake current:** If the intake jams (game piece stuck, mechanism hits something), the motor will draw excessive current trying to push through. A current limit prevents the motor from overheating, tripping the breaker, or damaging the mechanism. It also prevents brownouts that could affect other subsystems.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Vendor Library** | A third-party library (like CTRE Phoenix 6 or REV REVLib) that provides APIs for controlling specific hardware devices |
+| **Control Request** | A Phoenix 6 object that specifies how a motor should be controlled (e.g., `VelocityVoltage` for closed-loop velocity) |
+| **Status Signal** | A Phoenix 6 mechanism for reading sensor data from motor controllers, with configurable refresh rates and latency compensation |
+| **Vendordep** | A vendor dependency file (JSON) in the `vendordeps/` folder that tells the build system to include a vendor library |
+| **Current Limit** | A motor controller configuration that restricts the maximum electrical current to protect hardware and prevent brownouts |
+
+---
+
+## What's Next?
+
+You now know how to navigate vendor documentation for the hardware on your robot. In **Activity 5.10: Use a Vendor Example**, you'll find a vendor example project, study its implementation, and adapt a pattern from it for one of your team's mechanisms.

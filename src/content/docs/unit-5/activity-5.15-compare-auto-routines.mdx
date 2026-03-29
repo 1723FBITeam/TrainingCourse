@@ -1,0 +1,197 @@
+---
+title: "Activity 5.15: Compare Auto Routines"
+description: "Compare your team's autonomous routine structure to a top team's approach — paths, Named Commands, and auto composition"
+sidebar:
+  order: 15
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Examined a top team's autonomous routine structure on GitHub
+- Compared their path design, Named Command patterns, and auto composition to your team's
+- Identified strategies that help top teams score more game pieces in 15 seconds
+- Documented your findings in a structured comparison table
+
+:::tip[Before You Start]
+Complete **Activity 5.14: Build an Auto Routine**. Have your team's PathPlanner files and RobotContainer open, plus a browser tab to a top team's GitHub repository.
+:::
+
+---
+
+## Step 1: Choose a Top Team to Study
+
+Pick a team known for strong autonomous performance:
+
+| Team | GitHub | Why Study Their Autos |
+|------|--------|----------------------|
+| **6328** Mechanical Advantage | [github.com/Mechanical-Advantage](https://github.com/Mechanical-Advantage) | Excellent PathPlanner usage, AdvantageKit logging for auto debugging |
+| **254** The Cheesy Poofs | [github.com/Team254](https://github.com/Team254) | Custom auto framework, highly optimized paths |
+| **1678** Citrus Circuits | [github.com/frc1678](https://github.com/frc1678) | Multi-note autos, clean Named Command patterns |
+
+Find their most recent season's robot code repository and navigate to their autonomous-related files.
+
+**Team I'm studying:** _______________
+**Repository URL:** _______________
+
+---
+
+## Step 2: Find Their Auto Files
+
+In the top team's repository, look for:
+
+1. **PathPlanner files** — usually in `src/main/deploy/pathplanner/`
+   - `paths/` — individual path files (.path)
+   - `autos/` — auto routine files (.auto)
+
+2. **Named Command registrations** — search for `NamedCommands.registerCommand` in their RobotContainer or a dedicated auto configuration class
+
+3. **Auto builder setup** — search for `AutoBuilder` to see how they configure PathPlanner integration
+
+If the team doesn't use PathPlanner (some top teams use custom auto frameworks), look for their auto command classes instead.
+
+Document what you find:
+
+| Item | Their Team | Location in Repo |
+|------|-----------|-----------------|
+| Number of paths | | |
+| Number of auto routines | | |
+| Where Named Commands are registered | | |
+| Auto builder configuration | | |
+
+---
+
+## Step 3: Analyze Their Best Auto
+
+Pick their most complex or highest-scoring auto routine and analyze it:
+
+1. **How many paths does it chain together?**
+2. **How many Named Commands does it use?**
+3. **Do they use event markers to overlap driving with mechanism actions?**
+4. **What are their path constraints?** (max velocity, acceleration)
+5. **How do they handle the transition between scoring and picking up?**
+
+<AnswerReveal client:load label="What to Look For in Top Team Autos">
+Top teams often:
+
+- **Use event markers aggressively** — starting the intake before reaching the game piece, aiming the shooter while driving back to score
+- **Have higher path speeds** — 3.5-4.5 m/s with precise constraint zones for slowing down
+- **Chain 4-6 paths** in a single auto for 3-4 note autos
+- **Use parallel command groups** — running multiple mechanisms simultaneously
+- **Have fallback logic** — if a game piece isn't detected, skip to the next one instead of waiting
+- **Name everything clearly** — descriptive path and command names make the auto readable
+</AnswerReveal>
+
+---
+
+## Step 4: Analyze Your Team's Auto
+
+Now look at your team's autonomous setup:
+
+1. Open your team's PathPlanner project and list the auto routines
+2. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and find the Named Command registrations
+3. Pick your team's best auto routine and analyze it with the same questions
+
+| Item | Your Team's Value |
+|------|------------------|
+| Number of paths in best auto | |
+| Number of Named Commands used | |
+| Event markers used? | |
+| Max path velocity | |
+| Total game pieces scored | |
+
+---
+
+## Step 5: Complete the Comparison
+
+## 🔍 Comparison Exercise: Autonomous Routine Structure
+
+**Team to study:** (fill in — e.g., Team 6328 Mechanical Advantage)
+**Repository:** (fill in — e.g., https://github.com/Mechanical-Advantage/RobotCode2025)
+**File/folder to examine:** (fill in — e.g., `src/main/deploy/pathplanner/autos/` and `src/main/java/frc/robot/RobotContainer.java`)
+
+### Guiding Questions
+
+1. How many auto routines does the top team have compared to your team? What does this tell you about their autonomous strategy flexibility?
+2. How do they structure their Named Commands differently? Do they use more granular commands (one per action) or larger composite commands?
+3. Do they use event markers to overlap driving with mechanism actions? How much time does this save compared to sequential execution?
+4. How do their path constraints compare to yours? Are they driving faster, and if so, what enables that (better odometry, vision correction, more testing)?
+
+### Document Your Findings
+
+| Aspect | Their Team | Our Team | Why the Difference? |
+|--------|-----------|----------|-------------------|
+| Number of auto routines | | | |
+| Paths per best auto | | | |
+| Named Commands count | | | |
+| Event markers used | | | |
+| Max path velocity (m/s) | | | |
+| Game pieces scored (best auto) | | | |
+| Named Command granularity | | | |
+| Fallback/error handling | | | |
+| Path naming convention | | | |
+
+---
+
+## Step 6: Identify Improvements
+
+Based on your comparison, identify specific improvements for your team's autonomous:
+
+| Priority | Improvement | Effort | Impact |
+|----------|------------|--------|--------|
+| 1 | | Low / Medium / High | Low / Medium / High |
+| 2 | | Low / Medium / High | Low / Medium / High |
+| 3 | | Low / Medium / High | Low / Medium / High |
+
+Focus on **high-impact, low-effort** improvements first. For example:
+- Adding event markers to existing paths (low effort, saves 0.5-1.0 seconds per auto)
+- Increasing path speed slightly after testing (low effort, saves time on every path)
+- Adding a second auto routine for a different starting position (medium effort, gives strategy flexibility)
+
+<Checkpoint client:load
+  title="Checkpoint: Auto Routine Comparison"
+  prompt="After completing your comparison, answer: (1) What was the biggest difference between the top team's auto approach and yours? (2) What's the single most impactful improvement you could make to your team's autos? (3) What would you need to test or verify before implementing that improvement?"
+>
+Strong answers include:
+
+1. **A specific difference** — e.g., "Team 6328 has 8 different auto routines for different starting positions and alliance partner strategies. We only have 2. Their flexibility lets them adapt to any match situation."
+
+2. **A specific improvement** — e.g., "Adding event markers to start the intake 0.5 seconds before reaching the game piece. This would save about 0.5 seconds per pickup, which adds up to 1-1.5 seconds over a 3-note auto — potentially enough time for an extra game piece."
+
+3. **Testing requirements** — e.g., "I'd need to test the event marker timing to make sure the intake is fully deployed before the robot reaches the game piece. If the marker triggers too early, the intake deploys in the wrong position. I'd test this in simulation first, then on the robot with AdvantageScope logging to verify timing."
+</Checkpoint>
+
+---
+
+## Bonus: Present Your Findings
+
+Create a short presentation (3-5 slides or bullet points) for your team:
+
+1. Which top team you studied and why
+2. The key differences in autonomous approach
+3. Your top 3 recommended improvements
+4. The testing plan for implementing them
+
+Sharing this analysis helps your whole team make better autonomous decisions.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Named Command** — a command registered with a string name so PathPlanner can trigger it at specific points along a path
+- **Event Marker** — a point along a PathPlanner path where a Named Command is triggered automatically
+- **Auto Routine** — a complete autonomous sequence combining paths, Named Commands, and event markers
+:::
+
+## What's Next?
+
+Congratulations — you've completed Unit 5! You've mastered deploying and debugging, learned from the FRC community, explored vendor documentation, understood swerve drive concepts, and built autonomous routines.
+
+When you're ready for the final challenge, **Unit 6: Advanced Engineering** starts with **Lesson 6.1: AdvantageKit** — where you'll explore advanced logging, simulation, control theory, vision processing, state machines, unit testing, and competition readiness.

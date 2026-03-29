@@ -1,0 +1,300 @@
+---
+title: "Lesson 6.8: Pose Estimation and Localization"
+description: "Understand how the pose estimator fuses odometry and vision data using a Kalman filter to keep your robot accurately localized"
+sidebar:
+  order: 8
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain why odometry alone isn't sufficient for accurate localization
+- Describe the Kalman filter at an intuitive level — how it blends two noisy measurements
+- Understand what standard deviations mean in the context of pose estimation
+- Read your team's pose estimator configuration and explain what the numbers do
+- Know how to adjust standard deviations to trust vision more or less
+
+:::tip[Before You Start]
+Complete **Lesson 6.7: Vision Processing**. Have your team's code open in your IDE. You'll be examining the pose estimator configuration in your drivetrain code.
+:::
+
+---
+
+## The Localization Problem
+
+Your robot needs to know where it is on the field. This sounds simple, but it's one of the hardest problems in robotics.
+
+You have two sources of position data:
+
+| Source | Strengths | Weaknesses |
+|--------|-----------|------------|
+| **Odometry** (wheel encoders + gyro) | Smooth, fast (50Hz), no external dependencies | Drifts over time — errors accumulate |
+| **Vision** (AprilTag detection) | Absolute position — no drift | Noisy, slower (30Hz), intermittent (tags not always visible) |
+
+Neither source alone is good enough:
+- **Odometry only:** After driving across the field and back, you might be off by 10-30 cm
+- **Vision only:** The position jumps around between frames and disappears when no tags are visible
+
+The solution is to **fuse** both sources — use odometry for smooth, continuous tracking and vision to correct the drift. This is what the **pose estimator** does.
+
+---
+
+## Kalman Filter Intuition
+
+The pose estimator uses a **Kalman filter** to blend odometry and vision. You don't need to understand the full math (it involves matrix algebra), but the intuition is straightforward.
+
+### The Core Idea
+
+Imagine you're trying to figure out the temperature outside. You have two thermometers:
+- **Thermometer A** reads 72°F but is known to be accurate within ±1°F
+- **Thermometer B** reads 75°F but is only accurate within ±5°F
+
+Which do you trust more? Thermometer A, because it's more precise. But you don't ignore Thermometer B entirely — it still provides useful information.
+
+The Kalman filter does exactly this: it **weights each measurement by its confidence** (inverse of uncertainty). More confident measurements have more influence on the final estimate.
+
+### Applied to Robot Localization
+
+| Measurement | Confidence | Role |
+|-------------|-----------|------|
+| **Odometry update** | High confidence for small movements, decreasing over time as drift accumulates | Provides smooth, continuous position tracking |
+| **Vision measurement** | Moderate confidence, depends on distance to tag and number of tags seen | Corrects accumulated drift periodically |
+
+Each robot loop cycle:
+1. The pose estimator **predicts** the new position using odometry (fast, smooth)
+2. When a vision measurement arrives, it **corrects** the prediction (accurate, periodic)
+
+The result is a position estimate that's both smooth (from odometry) and accurate (from vision corrections).
+
+---
+
+<Quiz client:load
+  question="The pose estimator receives an odometry update saying the robot moved 10cm forward, and a vision measurement saying the robot is actually 5cm behind where odometry thinks. What does the Kalman filter do?"
+  options={[
+    "Ignores the vision data and trusts odometry completely",
+    "Ignores the odometry and jumps to the vision position",
+    "Averages the two positions (splits the difference 50/50)",
+    "Blends the two based on their configured standard deviations — trusting the more confident source more"
+  ]}
+  correctIndex={3}
+  explanation="The Kalman filter doesn't simply average or pick one source. It blends them based on their standard deviations (uncertainty). If odometry has low standard deviations (high confidence), the correction will be small. If vision has low standard deviations (high confidence), the correction will be larger. The exact blend depends on the configured trust levels."
+/>
+
+---
+
+## Standard Deviations: Controlling Trust
+
+**Standard deviations** are the numbers that tell the Kalman filter how much to trust each data source. Lower standard deviation = higher confidence = more trust.
+
+### What the Numbers Mean
+
+Standard deviations are specified for three dimensions: x position, y position, and heading (rotation).
+
+```java
+// Odometry standard deviations (how much odometry drifts per cycle)
+VecBuilder.fill(0.1, 0.1, 0.1)  // x: 0.1m, y: 0.1m, heading: 0.1 rad
+
+// Vision standard deviations (how noisy vision measurements are)
+VecBuilder.fill(0.5, 0.5, 0.9)  // x: 0.5m, y: 0.5m, heading: 0.9 rad
+```
+
+In this example:
+- Odometry is trusted more (lower SDs: 0.1) than vision (higher SDs: 0.5)
+- The pose estimator will mostly follow odometry, with small corrections from vision
+- Heading from vision is trusted least (0.9 rad) — gyro heading is usually more reliable
+
+### How Standard Deviations Affect Behavior
+
+| Scenario | Odometry SDs | Vision SDs | Behavior |
+|----------|-------------|-----------|----------|
+| Trust odometry heavily | 0.05, 0.05, 0.05 | 1.0, 1.0, 2.0 | Vision barely corrects — smooth but may drift |
+| Trust vision heavily | 0.5, 0.5, 0.5 | 0.1, 0.1, 0.2 | Vision corrections are large — accurate but may jump |
+| Balanced | 0.1, 0.1, 0.1 | 0.5, 0.5, 0.9 | Moderate corrections — good balance of smooth and accurate |
+
+---
+
+## Pose Estimation in WPILib
+
+WPILib provides `SwerveDrivePoseEstimator` (and equivalents for other drivetrains) that implements the Kalman filter:
+
+```java
+SwerveDrivePoseEstimator poseEstimator = new SwerveDrivePoseEstimator(
+  kinematics,
+  gyroAngle,
+  modulePositions,
+  initialPose,
+  // Odometry standard deviations: [x, y, heading]
+  VecBuilder.fill(0.1, 0.1, 0.1),
+  // Vision standard deviations: [x, y, heading]
+  VecBuilder.fill(0.5, 0.5, 0.9)
+);
+```
+
+Each cycle, you update with odometry:
+
+```java
+poseEstimator.update(gyroAngle, modulePositions);
+```
+
+When vision data arrives, you add it with a timestamp:
+
+```java
+poseEstimator.addVisionMeasurement(visionPose, timestamp);
+```
+
+The timestamp is critical for latency compensation (covered in Lesson 6.7). The estimator rewinds to the capture time, applies the correction, and replays subsequent odometry updates.
+
+---
+
+## Your Team's Pose Estimator
+
+Let's look at how your team implements pose estimation. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" /> and search for:
+
+- `PoseEstimator` or `SwerveDrivePoseEstimator` — the estimator object
+- `addVisionMeasurement` — where vision data is fed in
+- `VecBuilder.fill` or standard deviation values — the trust configuration
+- `fuseCameraEstimate` or similar — the method that processes camera data
+
+<GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="Look at fuseCameraEstimate in CommandSwerveDrivetrain.java" />
+
+### Questions to Answer About Your Code
+
+1. **What are the odometry standard deviations?** (How much does your team trust odometry?)
+2. **What are the vision standard deviations?** (How much does your team trust vision?)
+3. **Are the vision SDs dynamic?** (Do they change based on distance to tag or number of tags?)
+4. **How many cameras feed into the estimator?**
+
+<AnswerReveal client:load label="Dynamic Standard Deviations">
+Many teams adjust vision standard deviations based on the quality of the detection:
+
+```java
+// Farther from the tag = less confident = higher SDs
+double distance = getDistanceToTag();
+double xySd = 0.3 + (distance * 0.1);  // Increases with distance
+double headingSd = 0.5 + (distance * 0.2);
+
+poseEstimator.addVisionMeasurement(
+  visionPose,
+  timestamp,
+  VecBuilder.fill(xySd, xySd, headingSd)
+);
+```
+
+This makes the estimator trust close-range detections more than far-away ones, which matches reality — close tags produce more accurate poses.
+</AnswerReveal>
+
+---
+
+## Why Localization Quality Matters for Autonomous
+
+The accuracy of your pose estimate directly affects autonomous performance:
+
+| Localization Quality | Auto Performance |
+|---------------------|-----------------|
+| **Poor** (more than 15 cm error) | Robot misses scoring targets, paths diverge from planned routes |
+| **Moderate** (5–15 cm error) | Robot scores most of the time but may need alignment corrections |
+| **Good** (less than 5 cm error) | Robot follows paths precisely, scores consistently, can run complex multi-piece autos |
+
+Top teams invest heavily in localization because it's the foundation of reliable autonomous routines. A robot that knows exactly where it is can:
+- Follow paths more accurately
+- Aim at targets without searching
+- Recover from bumps or collisions
+- Execute complex multi-piece autos consistently
+
+---
+
+<Quiz client:load
+  question="Your robot's auto routine works perfectly in the first match but drifts badly in the second match. The only difference is that in the second match, the robot starts facing away from all AprilTags. What's the most likely cause?"
+  options={[
+    "The gyro broke between matches",
+    "Without initial vision corrections, odometry drift accumulates uncorrected during the critical first seconds of auto",
+    "The battery voltage is different",
+    "PathPlanner paths are randomized between matches"
+  ]}
+  correctIndex={1}
+  explanation="When the robot starts facing away from AprilTags, the cameras can't see any tags during the first few seconds of auto. Without vision corrections, odometry drift accumulates uncorrected. By the time the robot turns and cameras see tags, the accumulated error may have already caused the path to diverge. This is why camera placement matters — having cameras facing multiple directions ensures at least one can see tags from any starting orientation."
+/>
+
+---
+
+## Tuning the Pose Estimator
+
+Tuning standard deviations is an iterative process:
+
+### Step 1: Start with Default Values
+```java
+// Reasonable starting point
+odometrySDs = VecBuilder.fill(0.1, 0.1, 0.1);
+visionSDs = VecBuilder.fill(0.5, 0.5, 0.9);
+```
+
+### Step 2: Observe in AdvantageScope
+Log the pose estimator output and the raw vision poses. In AdvantageScope:
+- Graph the estimated pose (x, y, heading) over time
+- Overlay the raw vision poses
+- Look for jumps (vision SDs too low) or drift (vision SDs too high)
+
+### Step 3: Adjust Based on Observations
+
+| Symptom | Fix |
+|---------|-----|
+| Pose jumps when vision updates arrive | Increase vision SDs (trust vision less) |
+| Pose drifts even when tags are visible | Decrease vision SDs (trust vision more) |
+| Heading is unstable | Increase vision heading SD (trust gyro more for heading) |
+| Pose is smooth but inaccurate | Decrease odometry SDs or decrease vision SDs |
+
+### Step 4: Test in Autonomous
+The real test is autonomous performance. Run your auto routine and measure:
+- Does the robot end up where expected?
+- Does the path following stay accurate throughout?
+- Are there sudden corrections that cause the robot to jerk?
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Pose Estimation"
+  prompt="Explain in your own words: (1) Why does the Kalman filter need standard deviations for both odometry and vision? (2) What happens if you set vision standard deviations very low (e.g., 0.01)? What about very high (e.g., 5.0)? (3) Look at your team's pose estimator code — what are the current standard deviation values, and do they seem reasonable?"
+>
+**Why both SDs are needed:**
+The Kalman filter needs to know how much to trust each data source. Odometry SDs represent how much the wheel encoders and gyro drift per cycle. Vision SDs represent how noisy the AprilTag pose estimates are. Without these numbers, the filter can't decide how to blend the two sources.
+
+**Very low vision SDs (0.01):**
+The estimator trusts vision almost completely. Every vision update causes the pose to jump to the vision measurement. The result is a jerky, unstable pose that follows every bit of vision noise. The robot may oscillate or make sudden corrections during auto.
+
+**Very high vision SDs (5.0):**
+The estimator barely trusts vision. Vision corrections are tiny and odometry drift accumulates almost uncorrected. The robot's position estimate gradually becomes inaccurate, especially during long autonomous routines.
+
+**Team's values:**
+Look for VecBuilder.fill() calls in CommandSwerveDrivetrain.java. Typical values are 0.05-0.2 for odometry and 0.3-1.0 for vision. If vision heading SD is much higher than x/y SDs, that's normal — gyro heading is usually more reliable than vision heading.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Pose Estimator** | A WPILib component that fuses [odometry](/reference-sheets/glossary) and vision data using a Kalman filter to produce an accurate robot position estimate |
+| **Kalman Filter** | A mathematical algorithm that optimally blends two noisy measurements based on their respective uncertainty levels (standard deviations) |
+| **Standard Deviation** | A measure of measurement uncertainty — lower values mean higher confidence, higher values mean more noise |
+| **Odometry Drift** | The gradual accumulation of position errors in wheel encoder and gyro measurements over time |
+| **Vision Correction** | An absolute position measurement from AprilTag detection that corrects accumulated odometry drift |
+| **Latency Compensation** | Applying vision measurements at the image capture timestamp rather than the arrival timestamp to account for processing delay |
+| **Dynamic Standard Deviations** | Adjusting vision trust based on detection quality (distance to tag, number of tags, ambiguity) |
+
+---
+
+## What's Next?
+
+Now that you understand the theory behind pose estimation, it's time to analyze real data. In **Activity 6.9: Analyze Pose Estimator Data**, you'll review match logs in AdvantageScope, evaluate your pose estimator's accuracy, and suggest standard deviation tuning changes based on what you observe.

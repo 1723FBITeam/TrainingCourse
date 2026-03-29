@@ -1,0 +1,198 @@
+---
+title: "Activity 6.6: Tune a PID Loop"
+description: "Pick a mechanism on your robot, tune its PID and feedforward gains using data from AdvantageScope, and verify the improvement"
+sidebar:
+  order: 6
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Selected a mechanism with PID or feedforward control on your team's robot
+- Recorded baseline performance data using AdvantageScope or Shuffleboard
+- Adjusted PID and/or feedforward gains systematically
+- Verified the improvement with before-and-after data comparison
+
+:::tip[Before You Start]
+Complete **Lesson 6.5: Control Theory**. Have your team's robot available for testing (or use simulation), AdvantageScope installed, and your team's code open in your IDE. You'll need to deploy code changes and observe the results.
+:::
+
+---
+
+## Step 1: Choose a Mechanism to Tune
+
+Pick a mechanism that uses PID or feedforward control. Good candidates:
+
+| Mechanism | What to Tune | Where to Find Gains |
+|-----------|-------------|-------------------|
+| Shooter flywheel | Velocity PID + feedforward | <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> |
+| Turret position | Position PID | <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/TurretSubsystem.java`} label="TurretSubsystem.java" /> |
+| Swerve steer motors | Position PID | <GitHubLink client:load path={`${robotConfig.projectRoot}/generated/TunerConstants.java`} label="TunerConstants.java" /> |
+| Swerve drive motors | Velocity feedforward | <GitHubLink client:load path={`${robotConfig.projectRoot}/generated/TunerConstants.java`} label="TunerConstants.java" /> |
+
+**Mechanism I'm tuning:** _______________
+**Current gains (kP, kI, kD, kS, kV, etc.):** _______________
+
+---
+
+## Step 2: Add Logging for Tuning Data
+
+To tune effectively, you need to see both the **target** and **actual** values over time. Add logging to your subsystem if it's not already there:
+
+```java
+// In your subsystem's periodic() method:
+SmartDashboard.putNumber("Mechanism/TargetValue", targetValue);
+SmartDashboard.putNumber("Mechanism/ActualValue", actualValue);
+SmartDashboard.putNumber("Mechanism/Error", targetValue - actualValue);
+SmartDashboard.putNumber("Mechanism/OutputVoltage", outputVoltage);
+```
+
+Or if using AdvantageKit:
+
+```java
+Logger.recordOutput("Mechanism/TargetValue", targetValue);
+Logger.recordOutput("Mechanism/ActualValue", actualValue);
+Logger.recordOutput("Mechanism/Error", targetValue - actualValue);
+```
+
+---
+
+## Step 3: Record Baseline Data
+
+Before changing anything, record how the mechanism currently performs:
+
+1. Deploy the current code to the robot
+2. Open AdvantageScope and connect via NetworkTables
+3. Create a graph with both target and actual values overlaid
+4. Run the mechanism through its typical operation (e.g., spin up the flywheel, move the turret to a target)
+5. Take a screenshot or note the key metrics
+
+### Baseline Metrics
+
+| Metric | Value |
+|--------|-------|
+| Rise time (how long to reach target) | |
+| Overshoot (how far past the target) | |
+| Steady-state error (final offset from target) | |
+| Settling time (how long until stable) | |
+| Oscillation (does it wobble?) | |
+
+---
+
+## Step 4: Tune Systematically
+
+Follow this tuning process. Change **one thing at a time** and test after each change.
+
+### If Tuning Feedforward First (Recommended)
+
+1. **Set all PID gains to zero** (kP = 0, kI = 0, kD = 0)
+2. **Find kS** — slowly increase kS until the mechanism just barely starts moving. This is the static friction compensation.
+3. **Find kV** — command a known velocity and measure the voltage needed. kV = voltage / velocity.
+4. **Find kG** (for arms/elevators) — hold the mechanism at different angles and find the voltage that holds it steady.
+5. **Test** — with only feedforward, the mechanism should get close to the target but may have some error.
+
+### Then Add PID
+
+6. **Start with kP only** — increase kP until the mechanism responds to error without oscillating. A good starting point is small (0.1-1.0 for position, 0.01-0.1 for velocity).
+7. **Add kD if needed** — if the mechanism overshoots, add a small kD to dampen the response.
+8. **Add kI only if necessary** — if there's persistent steady-state error that P can't fix, add a very small kI. Most FRC mechanisms don't need it.
+
+<AnswerReveal client:load label="Tuning Rules of Thumb">
+- **If the mechanism is sluggish:** Increase kP
+- **If the mechanism overshoots and oscillates:** Decrease kP or increase kD
+- **If the mechanism oscillates rapidly:** kP is too high, reduce it
+- **If there's a small persistent error:** Try increasing kP first. Only add kI as a last resort.
+- **If the mechanism is jerky:** kD might be too high, or your sensor data is noisy
+- **If the mechanism can't hold position against gravity:** Add or increase kG feedforward
+- **Always tune feedforward before PID** — it's easier and more effective
+</AnswerReveal>
+
+---
+
+## Step 5: Record Tuned Data
+
+After tuning, record the same metrics as your baseline:
+
+1. Deploy the updated code
+2. Run the same test as before
+3. Graph the target vs actual in AdvantageScope
+4. Compare to the baseline
+
+### Tuned Metrics
+
+| Metric | Baseline | After Tuning | Improvement |
+|--------|----------|-------------|-------------|
+| Rise time | | | |
+| Overshoot | | | |
+| Steady-state error | | | |
+| Settling time | | | |
+| Oscillation | | | |
+
+---
+
+## Step 6: Document Your Gains
+
+Record the final gains so your team can reference them:
+
+| Gain | Before | After |
+|------|--------|-------|
+| kP | | |
+| kI | | |
+| kD | | |
+| kS | | |
+| kV | | |
+| kG | | |
+| kA | | |
+
+Update the gains in your team's code and commit the change with a descriptive message:
+
+```
+git commit -m "Tune [mechanism] PID: kP=X, kD=Y, kV=Z"
+```
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: PID Tuning Results"
+  prompt="After tuning your mechanism, answer: (1) What mechanism did you tune and what were the original gains? (2) What was the biggest improvement you achieved? (3) Which gain had the most impact on performance — was it a PID term or a feedforward term?"
+>
+Strong answers include:
+
+1. **Specific mechanism and gains** — e.g., "I tuned the shooter flywheel. Original gains were kP=0.5, kI=0, kD=0, kV=0. The flywheel took 1.2 seconds to reach 4000 RPM and had 150 RPM of steady-state error."
+
+2. **Measurable improvement** — e.g., "After tuning, rise time dropped from 1.2s to 0.4s and steady-state error went from 150 RPM to under 20 RPM. The flywheel now reaches target speed before the note reaches the shooter."
+
+3. **Which gain mattered most** — e.g., "Adding kV feedforward (0.12 V/RPM) had the biggest impact — it got the flywheel to within 50 RPM of the target without any PID. Then a small kP (0.3) closed the remaining gap. I didn't need kI or kD at all."
+</Checkpoint>
+
+---
+
+## Bonus: Tune in Simulation
+
+If you have physics simulation set up (from Lesson 6.3), try tuning in simulation first:
+1. Get approximate gains in simulation
+2. Deploy to the real robot
+3. Fine-tune on the real robot (gains will need adjustment due to real-world friction and load)
+
+This workflow is faster because you can iterate in simulation without waiting for deploy cycles.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **PID Controller** — a feedback controller that uses Proportional, Integral, and Derivative terms to drive a mechanism to a target setpoint
+- **Feedforward** — a control term calculated from a model of the system that provides a baseline output, reducing the work the PID controller needs to do
+- **Setpoint** — the target value a controller is trying to reach (e.g., a target RPM or position)
+- **Steady-State Error** — the persistent difference between the setpoint and actual value after the system has settled
+:::
+
+## What's Next?
+
+You've now tuned a real mechanism using control theory principles. In **Lesson 6.7: Vision Processing**, you'll learn how cameras and AprilTags give your robot the ability to see — enabling auto-alignment, pose correction, and target tracking.

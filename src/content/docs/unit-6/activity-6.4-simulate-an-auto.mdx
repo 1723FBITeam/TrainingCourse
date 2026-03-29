@@ -1,0 +1,191 @@
+---
+title: "Activity 6.4: Simulate an Auto Routine"
+description: "Run a PathPlanner autonomous routine in WPILib simulation and iterate on it without a physical robot"
+sidebar:
+  order: 4
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Launched your team's robot code in WPILib simulation
+- Selected and run a PathPlanner autonomous routine in the simulator
+- Observed the robot's path on the 2D field view in Glass or AdvantageScope
+- Identified at least one thing to adjust and iterated on the routine
+
+:::tip[Before You Start]
+Complete **Lesson 6.3: Simulation Tools**. Have your team's project open in your IDE with WPILib installed. Make sure your team has at least one PathPlanner auto routine configured. You'll also need Glass or AdvantageScope for visualization.
+:::
+
+---
+
+## Step 1: Verify Your Project Supports Simulation
+
+Before launching, check that your project is set up for simulation:
+
+1. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and verify that PathPlanner's `AutoBuilder` is configured
+2. Check that your auto chooser is set up — look for `AutoBuilder.buildAutoChooser()` or similar
+3. Verify your drivetrain has simulation support — look for a `simulationPeriodic()` method in <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" />
+
+If your drivetrain doesn't have simulation support, you may need to add it. CTRE's swerve template includes simulation support out of the box. Check the CTRE Phoenix 6 documentation for details.
+
+---
+
+## Step 2: Launch the Simulator
+
+1. Open a terminal in your project directory
+2. Run: `./gradlew simulateJava`
+3. When prompted, select **Sim GUI**
+4. Wait for the simulation window to appear
+
+You should see the Sim GUI with panels for Robot State, Joysticks, and System devices.
+
+---
+
+## Step 3: Set Up the Field View
+
+You need a 2D field view to watch the robot follow the path:
+
+### Option A: Using Glass
+1. In the Sim GUI, the field view may already be available
+2. Look for "Field" in the NetworkTables tree
+3. Drag it to create a 2D field visualization
+4. You should see a small rectangle representing the robot on the field
+
+### Option B: Using AdvantageScope
+1. Open AdvantageScope
+2. Connect to the simulation via NetworkTables (it auto-discovers on localhost)
+3. Create an Odometry view and add the robot pose
+4. You'll see the robot on the field in real time
+
+**Visualization tool I'm using:** _______________
+
+---
+
+## Step 4: Select an Auto Routine
+
+1. In the Sim GUI, find the auto chooser in the NetworkTables panel
+2. It should show a dropdown of available auto routines from PathPlanner
+3. Select one of your team's auto routines
+
+If you don't see the auto chooser:
+- Make sure your code publishes it: `SmartDashboard.putData("Auto Chooser", autoChooser)`
+- Check that `AutoBuilder` is configured in RobotContainer
+
+**Auto routine selected:** _______________
+
+---
+
+## Step 5: Run the Auto
+
+1. In the Sim GUI Robot State panel, click **Autonomous** to switch to auto mode
+2. Click **Enable** to start the robot
+3. Watch the 2D field view — the robot should start moving along the path
+
+### What to Observe
+
+As the auto runs, pay attention to:
+
+| What to Watch | What It Tells You |
+|---------------|------------------|
+| **Path shape** | Does the robot follow the expected route? |
+| **Starting position** | Is the robot starting where you expect on the field? |
+| **Named Command timing** | Do mechanism actions trigger at the right moments? |
+| **End position** | Does the robot end up where you planned? |
+| **Total time** | How long does the auto take? Is there time for more? |
+
+<AnswerReveal client:load label="Common Issues in Simulation">
+If the robot doesn't move or behaves strangely:
+
+- **Robot doesn't move at all** — Check that AutoBuilder is configured and the auto routine loaded correctly. Look for errors in the console output.
+- **Robot moves but doesn't follow the path** — The starting pose might not match the path's starting pose. PathPlanner autos often set the initial pose automatically.
+- **Robot spins in circles** — The gyro simulation might not be configured. Check that the simulated gyro is providing heading data.
+- **Path is mirrored** — Check the alliance color setting. PathPlanner flips paths for red vs blue alliance.
+- **Named Commands don't fire** — Verify they're registered with `NamedCommands.registerCommand()` before the auto is built.
+</AnswerReveal>
+
+---
+
+## Step 6: Record Your Observations
+
+After running the auto, document what you saw:
+
+| Observation | Value / Description |
+|-------------|-------------------|
+| Auto routine name | |
+| Starting position (x, y, heading) | |
+| Ending position (x, y, heading) | |
+| Total time (seconds) | |
+| Number of paths in the routine | |
+| Named Commands that fired | |
+| Did the robot follow the expected path? | Yes / No / Partially |
+| Any unexpected behavior? | |
+
+---
+
+## Step 7: Iterate on the Routine
+
+Based on your observations, make one adjustment and re-test:
+
+### Possible Adjustments
+
+1. **Change a path waypoint** — open PathPlanner GUI, adjust a waypoint, save, re-run simulation
+2. **Adjust path constraints** — increase or decrease max velocity/acceleration
+3. **Change Named Command timing** — move an event marker earlier or later along the path
+4. **Add a new Named Command** — register a new command and add it to the auto
+
+After making your change:
+1. Stop the simulation (`Ctrl+C` in terminal or close the Sim GUI)
+2. Re-launch: `./gradlew simulateJava`
+3. Run the auto again and compare
+
+**Change I made:** _______________
+**Result:** _______________
+
+---
+
+## Step 8: Compare Before and After
+
+<Checkpoint client:load
+  title="Checkpoint: Auto Simulation"
+  prompt="After running and iterating on your auto routine in simulation, answer: (1) What auto routine did you test and what did you observe? (2) What change did you make and how did it affect the result? (3) What's one limitation of testing autos in simulation vs on the real robot?"
+>
+Strong answers include:
+
+1. **Specific observations** — e.g., "I ran our 2-piece auto. The robot followed the first path correctly but overshot the second pickup point by about 20cm. The total time was 12.3 seconds."
+
+2. **A specific change and result** — e.g., "I reduced the max velocity on the second path from 4.0 m/s to 3.5 m/s and added a deceleration zone near the pickup. The overshoot was reduced and the robot stopped closer to the target."
+
+3. **A realistic limitation** — e.g., "Simulation doesn't model carpet friction or wheel slip, so the actual path following on the real field will be different. The PID gains that work in sim may need adjustment on the real robot. Also, game piece interactions aren't simulated, so I can't verify that the intake actually picks up the piece."
+</Checkpoint>
+
+---
+
+## Bonus: Run Multiple Autos
+
+If your team has several auto routines, run each one in simulation:
+- Which one is fastest?
+- Which one is most reliable (follows the path most accurately)?
+- Are there any that fail or behave unexpectedly?
+
+Document your findings and share them with your drive team — this information helps with match strategy.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Robot Simulation** — running robot code on a development computer without physical hardware, using WPILib's simulation framework
+- **Physics Simulation** — modeling the physical behavior of mechanisms (motors, arms, flywheels) in software to test code realistically
+- **Glass** — a WPILib dashboard tool designed for simulation, providing real-time visualization of simulated robot state
+:::
+
+## What's Next?
+
+You've now used simulation to test and iterate on autonomous routines without a physical robot. In **Lesson 6.5: Control Theory — PID, Feedforward, and Motion Profiling**, you'll dive into the math behind how your robot controls mechanisms precisely — the PID loops, feedforward calculations, and motion profiles that make accurate autonomous movement possible.

@@ -1,0 +1,208 @@
+---
+title: "Activity 6.17: Implement an Advanced Auto Feature"
+description: "Build an advanced autonomous feature using on-the-fly path generation, custom constraints, or AutoBuilder composition"
+sidebar:
+  order: 17
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Chosen an advanced PathPlanner feature to implement
+- Written code that uses on-the-fly path generation, constraint zones, or AutoBuilder composition
+- Tested the feature in simulation or on the robot
+- Documented what you built and how it improves your team's autonomous
+
+:::tip[Before You Start]
+Complete **Lesson 6.16: Advanced PathPlanner**. Have your team's robot project open in your IDE, the [PathPlanner documentation](https://pathplanner.dev) open in a browser, and terminal access for building and testing.
+:::
+
+---
+
+## Step 1: Choose Your Feature
+
+Pick one of these advanced features to implement. Choose based on what would be most useful for your team:
+
+| Feature | Description | Difficulty |
+|---------|------------|------------|
+| **A: On-the-fly path to a pose** | Generate a path from the robot's current position to a target pose | ⭐⭐ Medium |
+| **B: Constraint zones** | Add speed zones to an existing auto path (slow near scoring, fast on straightaways) | ⭐ Easier |
+| **C: Multi-path auto with event markers** | Compose a 2+ piece auto that overlaps actions with driving using event markers | ⭐⭐⭐ Advanced |
+
+**I'm implementing Feature:** _______________
+
+---
+
+## Step 2: Implement Your Feature
+
+### Option A: On-the-Fly Path Generation
+
+Create a command that generates a path from the robot's current pose to a target pose.
+
+1. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />
+
+2. Create a method that builds a path dynamically:
+
+```java
+private Command driveToPose(Pose2d target) {
+  return Commands.defer(() -> {
+    Pose2d current = drivetrain.getPose();
+
+    List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
+      current, target
+    );
+
+    PathPlannerPath path = new PathPlannerPath(
+      waypoints,
+      new PathConstraints(3.0, 3.0, 2 * Math.PI, 2 * Math.PI),
+      null,
+      new GoalEndState(0.0, target.getRotation())
+    );
+
+    return AutoBuilder.followPath(path);
+  }, Set.of(drivetrain));
+}
+```
+
+3. Bind it to a button for testing:
+
+```java
+// Drive to a known field position when a button is pressed
+controller.a().onTrue(
+  driveToPose(new Pose2d(5.0, 3.0, Rotation2d.fromDegrees(0)))
+);
+```
+
+4. Test in simulation — does the robot drive to the target from different starting positions?
+
+### Option B: Constraint Zones
+
+Add speed variation to an existing auto path.
+
+1. Open an existing auto path in the PathPlanner GUI
+2. Identify segments where the robot should slow down (near scoring, near game pieces) or speed up (open field)
+3. Add constraint zones in the GUI:
+   - Select the path
+   - Add a constraint zone covering the approach to the scoring position
+   - Set lower velocity (e.g., 1.5 m/s) and acceleration limits
+4. Test the modified auto — does the robot slow down smoothly in the constrained zone?
+
+### Option C: Multi-Path Auto with Event Markers
+
+Build a 2+ piece auto that overlaps mechanism actions with driving.
+
+1. Design or select two paths in PathPlanner GUI:
+   - Path 1: Starting position → Game piece location
+   - Path 2: Game piece location → Scoring position
+
+2. Add event markers to the paths:
+   - On Path 1 at ~70%: trigger `deployIntake` (start deploying before arrival)
+   - On Path 2 at ~60%: trigger `prepareShooter` (spin up while driving back)
+
+3. Register the Named Commands in your code:
+
+```java
+NamedCommands.registerCommand("deployIntake",
+  intake.runOnce(() -> intake.deploy())
+);
+
+NamedCommands.registerCommand("prepareShooter",
+  shooter.runOnce(() -> shooter.spinUp(4000))
+);
+```
+
+4. Compose the full auto:
+
+```java
+public Command twoPieceAuto() {
+  return Commands.sequence(
+    // Score preloaded piece
+    shootCommand(),
+    // Drive to game piece (intake deploys via event marker)
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToGamePiece")),
+    // Pick up
+    intakeCommand().withTimeout(1.0),
+    // Drive to scoring (shooter spins up via event marker)
+    AutoBuilder.followPath(PathPlannerPath.fromPathFile("ToScoring")),
+    // Score
+    shootCommand()
+  );
+}
+```
+
+5. Test the auto — do the event markers fire at the right times?
+
+---
+
+## Step 3: Test and Verify
+
+Run your feature and verify it works:
+
+| Check | Pass? |
+|-------|-------|
+| Code compiles without errors | |
+| Feature runs in simulation (if applicable) | |
+| Path constraints are respected (robot doesn't exceed speed limits) | |
+| Event markers fire at the correct path positions | |
+| Robot reaches the target pose accurately | |
+| No unexpected errors in Driver Station console | |
+
+<AnswerReveal client:load label="Common Issues">
+**Path generation fails at runtime:** Make sure AutoBuilder is configured before any paths are generated. The `AutoBuilder.configure()` call should be in the RobotContainer constructor.
+
+**Event markers don't fire:** Verify the Named Command names match exactly (case-sensitive) between the PathPlanner GUI and your `NamedCommands.registerCommand()` calls.
+
+**Robot overshoots the target:** Reduce the max velocity in your PathConstraints. Start with 2.0 m/s and increase gradually.
+
+**Alliance flipping issues:** If the path works on one side but not the other, check that your `isRedAlliance()` supplier returns the correct value.
+</AnswerReveal>
+
+---
+
+## Step 4: Document Your Work
+
+Record what you implemented:
+
+| Item | Your Answer |
+|------|-------------|
+| Feature chosen (A, B, or C) | |
+| What it does | |
+| Files you created or modified | |
+| How it improves your team's auto | |
+| What you'd improve with more time | |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Advanced Auto Feature"
+  prompt="Describe the feature you implemented: (1) What does it do? (2) What was the hardest part? (3) How would you test it on a real robot to make sure it works reliably?"
+>
+Strong answers include:
+
+1. **Clear description** — e.g., "I implemented on-the-fly path generation that drives the robot to a target pose. I bound it to the A button so we can test driving to different field positions."
+
+2. **Honest difficulty assessment** — e.g., "The hardest part was getting the GoalEndState right — I initially forgot to set the target rotation, so the robot arrived at the right position but facing the wrong direction."
+
+3. **Practical testing plan** — e.g., "On the real robot, I'd test from multiple starting positions to make sure the path generation works regardless of where the robot starts. I'd also test with obstacles nearby to see if the constraints prevent the robot from driving too aggressively."
+</Checkpoint>
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **On-the-Fly Path Generation** — creating paths dynamically at runtime based on the robot's current position rather than using pre-built paths
+- **Path Constraints** — limits on velocity, acceleration, and other parameters that control how fast the robot drives a path
+- **Event Marker** — a point along a PathPlanner path where a Named Command is triggered automatically
+- **AutoBuilder** — the PathPlanner class that constructs autonomous routines from paths and Named Commands
+:::
+
+## What's Next?
+
+You've implemented an advanced autonomous feature. In **Activity 6.18: Test and Iterate an Auto**, you'll practice the full auto development cycle — running an auto, observing the results, adjusting waypoints and timing, and re-testing until it's competition-ready.

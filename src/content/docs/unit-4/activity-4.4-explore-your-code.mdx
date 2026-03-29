@@ -1,0 +1,212 @@
+---
+title: "Activity 4.4: Explore Your Own Robot Code"
+description: "Apply the Code Reading Framework to three files you haven't opened yet"
+sidebar:
+  order: 4
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeReading } from '../../../components/CodeReading';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Applied the five-question Code Reading Framework to three files you haven't studied before
+- Used the WPILib docs and vendor docs to look up unfamiliar classes and methods
+- Documented your findings for each file in a structured format
+- Built confidence reading code you've never seen before
+
+:::tip[Before You Start]
+Complete **Lesson 4.1: WPILib Documentation Deep Dive** first. You'll need to look up unfamiliar classes in the WPILib and vendor docs as you read these files. Have your IDE open with the team's robot project, and keep a browser tab open to [docs.wpilib.org](https://docs.wpilib.org) and [v6.docs.ctr-electronics.com](https://v6.docs.ctr-electronics.com/).
+:::
+
+---
+
+## The Code Reading Framework (Recap)
+
+You learned this framework in Unit 1. For every file, answer these five questions:
+
+1. **What does this file do?** — Summarize its purpose in one or two sentences.
+2. **What subsystem or command does it belong to?** — Where does it fit in the robot's architecture?
+3. **What methods does it expose?** — What can other files call on this one?
+4. **What does it depend on?** — What imports, libraries, or other files does it use?
+5. **When does this code run?** — During init? Every 20ms loop? Only in auto? On a button press?
+
+In Unit 1 you practiced this on `Telemetry.java` with guidance. Now you'll do it independently on three new files.
+
+---
+
+## File 1: Telemetry.java — A Deeper Look
+
+You did a quick Code Reading of Telemetry.java in Unit 1. Now let's go deeper. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/Telemetry.java`} label="Telemetry.java" /> and read through it more carefully this time. Pay attention to the NetworkTables publishers and the Mechanism2d visualization.
+
+### Step 1: Skim the Imports
+
+Before reading any method, look at the import statements at the top. They tell you what libraries this file depends on. You should see imports from:
+
+- `com.ctre.phoenix6` — CTRE Phoenix 6 library (for `SwerveDriveState`, `SignalLogger`)
+- `edu.wpi.first.math` — WPILib math classes (`Pose2d`, `ChassisSpeeds`)
+- `edu.wpi.first.networktables` — NetworkTables publishers
+- `edu.wpi.first.wpilibj` — SmartDashboard, Mechanism2d
+
+If you don't recognize a class, look it up! For CTRE classes, check [v6.docs.ctr-electronics.com](https://v6.docs.ctr-electronics.com/). For WPILib classes, check [docs.wpilib.org](https://docs.wpilib.org).
+
+### Step 2: Apply the Code Reading Framework
+
+<CodeReading client:load
+  targetFile="Telemetry.java"
+  answers={{
+    whatDoes: "Telemetry.java publishes real-time robot data (position, speed, swerve module states) to NetworkTables and SmartDashboard. It creates a Mechanism2d visualization of the swerve modules and logs data via CTRE's SignalLogger for post-match analysis.",
+    belongsTo: "It's a utility/helper class — not a subsystem or command. It's used by CommandSwerveDrivetrain to publish drivetrain telemetry. The drivetrain calls its telemeterize() method every loop cycle.",
+    methods: "One main public method: telemeterize(SwerveDriveState state) — takes the current swerve state and publishes all data. The constructor Telemetry(double maxSpeed) initializes all the NetworkTables publishers and Mechanism2d objects.",
+    dependsOn: "CTRE Phoenix 6 (SwerveDriveState, SignalLogger), WPILib math (Pose2d, Rotation2d, ChassisSpeeds, SwerveModuleState), WPILib NetworkTables (StructPublisher, StructArrayPublisher, DoublePublisher), WPILib SmartDashboard and Mechanism2d.",
+    whenRuns: "The telemeterize() method runs every robot loop cycle (~20ms) during all modes — teleop, autonomous, and disabled. It's called continuously so the dashboard always shows current data."
+  }}
+/>
+
+### Step 3: Go Deeper — Questions to Investigate
+
+After completing the Code Reading, try to answer these bonus questions using the WPILib docs:
+
+1. What is a `StructPublisher` and why does Telemetry use it instead of `SmartDashboard.putNumber()`?
+2. What is `Mechanism2d` and what does it visualize?
+3. What does `SignalLogger` do that SmartDashboard doesn't?
+
+<AnswerReveal client:load label="Show Bonus Answers">
+1. **StructPublisher** is a NetworkTables publisher that can send structured data types (like `Pose2d` or `SwerveModuleState[]`) as a single entry, rather than breaking them into individual numbers. It's more efficient and keeps related data together. Look it up in the WPILib NetworkTables docs.
+
+2. **Mechanism2d** is a WPILib visualization tool that draws a 2D representation of a mechanism on the dashboard. Telemetry uses it to show each swerve module's current angle and speed as arrows, giving the drive team a visual of what the drivetrain is doing.
+
+3. **SignalLogger** is CTRE's high-frequency data logging system. It records data to a file on the roboRIO at up to 250Hz (vs SmartDashboard's ~50Hz), and the logs can be replayed in AdvantageScope for post-match analysis. SmartDashboard is for live viewing; SignalLogger is for detailed post-match review.
+</AnswerReveal>
+
+---
+
+## File 2: LimelightHelpers.java
+
+This is a big file — don't try to read every line. Focus on understanding the structure and purpose. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/LimelightHelpers.java`} label="LimelightHelpers.java" /> in your IDE.
+
+### Step 1: Don't Panic
+
+LimelightHelpers.java is likely the longest file in the project. It's a utility library provided by Limelight (the vision camera) — your team didn't write most of it. The key insight: **you don't need to understand every line.** Focus on what the file does and which methods your team actually uses.
+
+### Step 2: Skim the Structure
+
+Scroll through the file and notice:
+- **Inner classes** at the top (like `LimelightTarget_Fiducial`, `LimelightResults`) — these are data containers for vision results
+- **Static helper methods** in the middle — these are the methods your team calls
+- **NetworkTables access** throughout — LimelightHelpers reads data that the Limelight camera publishes to NetworkTables
+
+### Step 3: Apply the Code Reading Framework
+
+<CodeReading client:load
+  targetFile="LimelightHelpers.java"
+  answers={{
+    whatDoes: "LimelightHelpers.java is a utility library that provides convenient methods to read data from Limelight vision cameras via NetworkTables. It wraps raw NetworkTables access into easy-to-use methods like getTX() (horizontal offset), getTY() (vertical offset), getTV() (target visible), and getBotPoseEstimate() (robot position from AprilTags).",
+    belongsTo: "It's a standalone utility class — not a subsystem or command. Other files (like CommandSwerveDrivetrain or a vision subsystem) call its static methods to get camera data. It's the bridge between the Limelight camera hardware and your Java code.",
+    methods: "Key static methods include: getTX/getTY/getTA (target offsets and area), getTV (is a target visible), getBotPoseEstimate_wpiBlue (robot pose from AprilTags in field coordinates), setPipelineIndex (switch camera modes), and setLEDMode_ForceOff/On (control camera LEDs).",
+    dependsOn: "WPILib NetworkTables (NetworkTableInstance, NetworkTable) for reading camera data, WPILib math classes (Pose2d, Pose3d, Rotation2d) for position data, and com.fasterxml.jackson for JSON parsing of complex results.",
+    whenRuns: "The methods are called on-demand by other code — typically every loop cycle (~20ms) when the robot needs vision data. The Limelight camera itself runs independently and publishes data to NetworkTables continuously."
+  }}
+/>
+
+### Step 4: Find Where Your Team Uses It
+
+Search your project for `LimelightHelpers.` (with the dot) to find every place your team calls these methods. You should find calls in the drivetrain or a vision-related file. Note which methods are actually used — that's the subset you need to understand.
+
+<AnswerReveal client:load label="Hint: Common Usage Patterns">
+Most teams use LimelightHelpers for two things:
+
+1. **AprilTag pose estimation** — `getBotPoseEstimate_wpiBlue()` returns the robot's position on the field based on what AprilTags the camera can see. This feeds into the pose estimator for accurate autonomous driving.
+
+2. **Target detection** — `getTV()` checks if the camera sees a target, and `getTX()`/`getTY()` give the offset to aim at. This is used for auto-aiming features like your team's AutoShootCommand.
+</AnswerReveal>
+
+---
+
+## File 3: TrajectoryCalculations.java
+
+This file contains math. Don't worry — you don't need to understand the math to apply the Code Reading Framework. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/TrajectoryCalculations.java`} label="TrajectoryCalculations.java" /> in your IDE.
+
+### Step 1: Read the Class-Level Comments
+
+If there are comments at the top of the file or above the class declaration, read them first. They often explain the purpose better than the code itself.
+
+### Step 2: Identify the Public Methods
+
+Scroll through and list every `public` method. For each one, note:
+- The method name (what it's called)
+- The parameters (what inputs it needs)
+- The return type (what it gives back)
+
+Don't worry about understanding the math inside each method yet. Focus on the interface — what goes in and what comes out.
+
+### Step 3: Apply the Code Reading Framework
+
+<CodeReading client:load
+  targetFile="TrajectoryCalculations.java"
+  answers={{
+    whatDoes: "TrajectoryCalculations.java computes shooting trajectories — it calculates the angle, speed, and timing needed to launch a game piece from the robot's current position to the target (hub/speaker). It accounts for distance, robot velocity, and possibly air resistance.",
+    belongsTo: "It's a utility/math class used by the shooting system. AutoShootCommand or ShooterSubsystem likely calls its methods to determine the correct hood angle and flywheel speed for a shot from the current position.",
+    methods: "Public methods likely include calculations that take the robot's current pose (position + heading) and target position as inputs, and return shooting parameters like hood angle, flywheel RPM, or turret angle. Look for methods with Pose2d or Translation2d parameters.",
+    dependsOn: "WPILib math classes (Pose2d, Translation2d, Rotation2d) for position math, possibly Constants.java for field positions and physical measurements (shooter height, target height), and standard Java math (Math.atan2, Math.sqrt).",
+    whenRuns: "Called on-demand when the robot needs to calculate a shot — typically every loop cycle during auto-aim (when AutoShootCommand is running) or when the driver holds the shoot button. Not called when the robot isn't trying to shoot."
+  }}
+/>
+
+---
+
+## Reflect: What Did You Learn?
+
+Take a moment to think about what these three files have in common and how they differ.
+
+### 🗣️ Teach It Back
+
+Pick one of the three files you read and explain it to a teammate (or write it down as if you were explaining to a rookie). Use only plain English — no code jargon. If you can explain what the file does, what it depends on, and when it runs without using technical terms, you truly understand it.
+
+<Checkpoint client:load
+  title="Checkpoint: Code Exploration Reflection"
+  prompt="Answer these reflection questions: (1) Which of the three files was easiest to understand? Why? (2) Which file would you most want to understand deeply if you were debugging a shooting accuracy problem? (3) What's one class or method you looked up in the WPILib docs during this activity?"
+>
+There's no single right answer here — this is about building self-awareness as a code reader. Some common observations:
+
+1. **Telemetry.java** is often the easiest because it has a clear, single purpose (publish data) and the method names are descriptive. **LimelightHelpers.java** can be overwhelming due to its size, but the static methods are straightforward once you focus on the ones your team uses. **TrajectoryCalculations.java** is often the hardest because the math can be opaque.
+
+2. For a **shooting accuracy problem**, you'd want to understand **TrajectoryCalculations.java** (is the math correct?) and **LimelightHelpers.java** (is the vision data accurate?). The trajectory calculations determine where to aim, and the Limelight data determines where the robot thinks it is.
+
+3. Common lookups: `Pose2d`, `StructPublisher`, `Mechanism2d`, `NetworkTableInstance`, `SignalLogger`. If you didn't look anything up, challenge yourself to look up at least one unfamiliar class next time!
+</Checkpoint>
+
+---
+
+## Bonus Challenge: Find a Fourth File
+
+If you finished the three files above and want more practice, pick any file in the project that you haven't opened yet. Apply the Code Reading Framework on your own — no guided answers this time.
+
+Some suggestions:
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + ".java"} /> — the auto-shoot command that coordinates turret, flywheel, and feeder
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[3].file}`} label={robotConfig.subsystems[3].name + ".java"} /> — {robotConfig.subsystems[3].description}
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.generatedFiles[0].file}`} label="TunerConstants.java" /> — the auto-generated swerve configuration (read-only, but interesting to understand)
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[Subsystem](/reference-sheets/glossary)** — a Java class that represents a physical robot mechanism and controls specific hardware
+- **[Command](/reference-sheets/glossary)** — a class or inline definition that describes a specific robot behavior using one or more subsystems
+- **Code Reading Framework** — the five-question method for understanding any file: what it does, where it belongs, what it exposes, what it depends on, and when it runs
+:::
+
+## What's Next?
+
+You've now applied the Code Reading Framework to files across different categories — telemetry, vision utilities, and math helpers. You're building the skill of picking up any file and quickly understanding its role.
+
+In **Lesson 4.5: Java Patterns in FRC Code**, you'll learn to recognize specific Java language patterns (lambdas, method references, enums, inheritance) that appear throughout the robot code. These patterns probably confused you when you first saw them — after Lesson 4.5, they won't.
+
+
+In **Lesson 4.5: Java Patterns in FRC Code**, you'll learn to recognize specific Java language patterns (lambdas, method references, enums, inheritance) that appear throughout the robot code. These patterns probably confused you when you first saw them — after Lesson 4.5, they won't.

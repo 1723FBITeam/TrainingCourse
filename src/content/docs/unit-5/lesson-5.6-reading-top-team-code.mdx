@@ -1,0 +1,310 @@
+---
+title: "Lesson 5.6: Reading Top Team Code"
+description: "Learn to navigate GitHub repositories from teams like 254, 6328, 971, and 1678 — understanding their code patterns and architecture decisions"
+sidebar:
+  order: 6
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeReading } from '../../../components/CodeReading';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Navigate the GitHub repositories of top FRC teams (254, 6328, 971, 1678)
+- Identify common project structures and how they differ from your team's code
+- Recognize architectural patterns like IO layers, superstructure, and factory methods
+- Read unfamiliar code by applying the Code Reading Framework from Unit 4
+- Know what to look for (and what to skip) when studying top team code
+
+:::tip[Before You Start]
+Complete **Lesson 5.5: Chief Delphi as a Learning Resource**. Have a browser open to GitHub — you'll be exploring real repositories throughout this lesson. Keep your team's code open in your IDE for comparison.
+:::
+
+---
+
+## Why Read Top Team Code?
+
+In Unit 4, you learned to read *your own* team's code. That's the foundation. But reading code from top teams exposes you to patterns and techniques you might never encounter on your own team.
+
+Top teams don't write better code because they're smarter — they write better code because they've iterated over many seasons, learned from failures, and shared their approaches openly. By reading their code, you get to learn from those iterations without making the same mistakes.
+
+The goal isn't to copy their code. It's to understand *why* they made certain decisions, and then decide what makes sense for your team.
+
+---
+
+## The Top Teams to Study
+
+These four teams consistently share high-quality, well-documented code on GitHub:
+
+| Team | Name | GitHub | Known For |
+|------|------|--------|-----------|
+| **254** | The Cheesy Poofs | [github.com/Team254](https://github.com/Team254) | Superstructure pattern, state machines, clean architecture |
+| **6328** | Mechanical Advantage | [github.com/Mechanical-Advantage](https://github.com/Mechanical-Advantage) | AdvantageKit, IO layers, replay-based debugging, thorough logging |
+| **971** | Spartan Robotics | [github.com/frc971](https://github.com/frc971) | Control theory, custom tooling, C++ codebase |
+| **1678** | Citrus Circuits | [github.com/frc1678](https://github.com/frc1678) | Superstructure coordination, scouting systems, clean Java code |
+
+:::note[Language Differences]
+Team 971 primarily uses C++, while 254, 6328, and 1678 use Java. If you're most comfortable with Java (like your team's code), start with 254, 6328, or 1678. The patterns transfer across languages, but the syntax is easier to follow in a language you know.
+:::
+
+---
+
+## Navigating a Top Team Repository
+
+When you first open a top team's GitHub repo, it can feel overwhelming. Here's a systematic approach.
+
+### Step 1: Find the Right Repository
+
+Most teams have multiple repos. Look for the one named after the current season or their robot name. Examples:
+- **6328**: `RobotCode2025` or similar year-based naming
+- **254**: `FRC-2024-Public` (they often publish after the season)
+- **1678**: `C2025-Public` or similar
+
+### Step 2: Start with the Project Structure
+
+Before reading any code, look at the folder structure. Compare it to your team's layout:
+
+**Your team's structure:**
+```
+src/main/java/frc/robot/
+├── Robot.java
+├── RobotContainer.java
+├── Constants.java
+├── subsystems/
+│   ├── IntakeSubsystem.java
+│   ├── ShooterSubsystem.java
+│   └── CommandSwerveDrivetrain.java
+├── commands/
+│   └── AutoShootCommand.java
+└── generated/
+    └── TunerConstants.java
+```
+
+**A typical top team structure (6328-style):**
+```
+src/main/java/frc/robot/
+├── Robot.java
+├── RobotContainer.java
+├── Constants.java
+├── subsystems/
+│   ├── drive/
+│   │   ├── Drive.java
+│   │   ├── DriveIO.java
+│   │   ├── DriveIOTalonFX.java
+│   │   └── DriveIOSim.java
+│   ├── intake/
+│   │   ├── Intake.java
+│   │   ├── IntakeIO.java
+│   │   └── IntakeIOTalonFX.java
+│   └── shooter/
+│       ├── Shooter.java
+│       ├── ShooterIO.java
+│       └── ShooterIOTalonFX.java
+├── commands/
+└── util/
+```
+
+Notice the difference? Top teams often have an **IO layer** — an interface (`DriveIO`) with separate implementations for real hardware (`DriveIOTalonFX`) and simulation (`DriveIOSim`). This is a pattern you'll learn about in Unit 6.
+
+### Step 3: Read RobotContainer First
+
+Just like with your own code, `RobotContainer.java` is the best starting point. It shows you:
+- What subsystems exist
+- How buttons are bound to commands
+- How autonomous routines are configured
+- The overall architecture at a glance
+
+### Step 4: Pick One Subsystem to Study
+
+Don't try to read the entire codebase. Pick one subsystem that matches something on your robot — like their intake or shooter — and study it in depth. Compare it to your team's equivalent.
+
+---
+
+<Quiz client:load
+  question="You're exploring Team 6328's repository and see files named DriveIO.java, DriveIOTalonFX.java, and DriveIOSim.java in the drive subsystem folder. What pattern does this represent?"
+  options={[
+    "They have three different drivetrains on their robot",
+    "An IO layer pattern — an interface with separate implementations for real hardware and simulation",
+    "These are backup copies of the same file",
+    "They use three different motor controllers for driving"
+  ]}
+  correctIndex={1}
+  explanation="This is the IO layer pattern popularized by Team 6328's AdvantageKit framework. DriveIO.java defines the interface (what data the drive subsystem needs), DriveIOTalonFX.java implements it for real TalonFX hardware, and DriveIOSim.java implements it for simulation. This lets them test and replay code without a physical robot."
+/>
+
+---
+
+## Common Patterns in Top Team Code
+
+As you read more top team code, you'll notice recurring patterns. Here are the most important ones to recognize:
+
+### Pattern 1: IO Layers (6328)
+
+**What it is:** An interface that abstracts hardware access, with separate implementations for real hardware and simulation.
+
+**Why they use it:** Enables replay-based debugging with AdvantageKit and makes code testable without a robot.
+
+**Your team's approach:** Your <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" /> talks directly to motors. This is simpler but doesn't support simulation or replay.
+
+### Pattern 2: Superstructure (254, 1678)
+
+**What it is:** A single coordinating class that manages all non-drivetrain subsystem interactions. Instead of individual commands coordinating between subsystems, the superstructure handles all the state transitions.
+
+**Why they use it:** Prevents conflicting commands, makes complex multi-subsystem sequences safer, and centralizes the robot's behavior logic.
+
+**Your team's approach:** Your team uses individual commands like <GitHubLink client:load path={`${robotConfig.projectRoot}/commands/AutoShootCommand.java`} label="AutoShootCommand.java" /> that coordinate subsystems directly. This is more common and easier to understand for smaller teams.
+
+### Pattern 3: Constants Organization
+
+**What it is:** Top teams often organize constants into nested classes or separate files per subsystem, rather than one large Constants file.
+
+**Why they use it:** Keeps constants close to where they're used and reduces merge conflicts when multiple people edit constants.
+
+**Your team's approach:** Your <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> has all constants in one file. This works fine for smaller codebases.
+
+### Pattern 4: Command Factories
+
+**What it is:** Static methods that create and return commands, often in the subsystem class itself or in a dedicated factory class.
+
+**Why they use it:** Keeps command creation logic close to the subsystem, reduces RobotContainer complexity, and makes commands reusable.
+
+**Example:** Instead of building a `SequentialCommandGroup` inline in RobotContainer (like your team's intake binding), a top team might have `IntakeSubsystem.intakeCommand()` that returns the complete command.
+
+---
+
+:::note[😤 It's OK to Not Understand Everything]
+When you open a top team's code for the first time, you will feel lost. Their project structure is different, their patterns are unfamiliar, and there's a lot of code. This is normal. Even experienced programmers feel this way when reading a new codebase. The goal isn't to understand every line — it's to recognize patterns and identify ideas worth learning more about.
+:::
+
+---
+
+## How to Read Unfamiliar Code
+
+When you open a top team's file and it looks nothing like your team's code, don't panic. Apply the same Code Reading Framework you learned in Unit 4:
+
+1. **What is this file's job?** — Read the class name and any comments at the top
+2. **What does it depend on?** — Check the imports and constructor parameters
+3. **What are the public methods?** — These are the file's interface to the rest of the code
+4. **How does data flow?** — Trace from inputs (sensors, commands) to outputs (motors, logs)
+5. **What would I change?** — Think about how you'd modify this for your team's robot
+
+### Reading Code You Don't Fully Understand
+
+You won't understand everything in a top team's code — and that's okay. The goal is to:
+
+- **Recognize the pattern** even if you don't understand every line
+- **Note what's different** from your team's approach
+- **Identify concepts to learn more about** (add them to your learning list)
+- **Skip the parts that are too advanced** for now — you can come back later
+
+<AnswerReveal client:load label="Example: Reading a 6328 Subsystem">
+Let's say you open Team 6328's `Intake.java` and see something like:
+
+```java
+public class Intake extends SubsystemBase {
+  private final IntakeIO io;
+  private final IntakeIOInputsAutoLogged inputs = new IntakeIOInputsAutoLogged();
+
+  public Intake(IntakeIO io) {
+    this.io = io;
+  }
+
+  @Override
+  public void periodic() {
+    io.updateInputs(inputs);
+    Logger.processInputs("Intake", inputs);
+  }
+}
+```
+
+**What you can understand right now:**
+- It's a subsystem (extends `SubsystemBase`) — same as your team
+- It takes an `IntakeIO` in the constructor — this is the IO layer pattern
+- `periodic()` reads sensor data and logs it — similar concept to your team's periodic methods
+
+**What you might not understand yet:**
+- `IntakeIOInputsAutoLogged` — this is an AdvantageKit auto-generated class (Unit 6 topic)
+- `Logger.processInputs()` — AdvantageKit's structured logging (Unit 6 topic)
+
+That's fine! You've identified the pattern (IO layer) and noted what to learn later (AdvantageKit).
+</AnswerReveal>
+
+---
+
+## Practical Exercise: Explore a Top Team Repo
+
+Let's practice navigating a real top team repository.
+
+### Exercise: Find the Intake
+
+1. Open Team 1678's GitHub: [github.com/frc1678](https://github.com/frc1678)
+2. Find their most recent season's robot code repository
+3. Navigate to their subsystems directory
+4. Find their intake subsystem (it might be called "Intake", "Roller", or something mechanism-specific)
+5. Open the file and answer these questions:
+
+<AnswerReveal client:load label="Guiding Questions">
+- How many motor controllers does their intake use?
+- Do they use an IO layer or talk to hardware directly?
+- What methods does their intake expose? (deploy, retract, run, stop, etc.)
+- How does their intake structure compare to your team's <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />?
+- Is there anything in their code you'd want to adopt for your team?
+</AnswerReveal>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Reading Top Team Code"
+  prompt="Pick one of the four top teams (254, 6328, 971, or 1678) and find their most recent robot code on GitHub. Answer: (1) What is the repository name and URL? (2) How is their project structured differently from your team's code? (3) Pick one subsystem — what pattern do they use that your team doesn't? (4) What's one thing you'd want to learn more about from their code?"
+>
+Good answers will include:
+
+1. **A specific repo** — e.g., "Team 6328's RobotCode2025 at github.com/Mechanical-Advantage/RobotCode2025"
+
+2. **Structural differences** — e.g., "They have separate folders per subsystem with IO interfaces, while our team has all subsystems in one flat folder."
+
+3. **A specific pattern** — e.g., "Their shooter subsystem uses an IO layer (ShooterIO interface + ShooterIOTalonFX implementation). Our ShooterSubsystem.java talks to motors directly."
+
+4. **A learning goal** — e.g., "I want to understand how their AdvantageKit logging works — they log every sensor reading and can replay matches, which would help us debug autonomous issues."
+</Checkpoint>
+
+---
+
+## What NOT to Do with Top Team Code
+
+A few important warnings:
+
+1. **Don't copy-paste code you don't understand.** If you can't explain what every line does, you can't debug it when it breaks at competition.
+
+2. **Don't try to adopt everything at once.** Pick one pattern per season to learn and integrate. Trying to rewrite your entire codebase to match 6328's architecture will create more problems than it solves.
+
+3. **Don't assume their approach is always better.** Top teams have more programmers, more mentors, and more practice time. A simpler approach that your team understands is better than a complex one nobody can debug.
+
+4. **Don't compare your team's code negatively.** Your code works for your robot. Top team code is a learning resource, not a judgment of your team's abilities.
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **IO Layer** | An architectural pattern where hardware access is abstracted behind an interface, with separate implementations for real hardware and simulation |
+| **Superstructure** | A coordinating class that manages all non-drivetrain subsystem interactions using state machine logic, popularized by teams 254 and 1678 |
+| **Command Factory** | A static method (often on a subsystem class) that creates and returns a complete command, keeping command logic close to the subsystem |
+| **Code Reading Framework** | The five-question approach to understanding unfamiliar code: job, dependencies, public methods, data flow, and what you'd change |
+
+---
+
+## What's Next?
+
+You've learned how to find and read top team code. Now it's time to put that skill into practice. In **Activity 5.7: Compare a Subsystem**, you'll pick a specific subsystem from a top team's repository, compare it side-by-side with your team's equivalent, and document the differences in a structured comparison exercise.

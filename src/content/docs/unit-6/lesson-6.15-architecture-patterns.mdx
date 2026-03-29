@@ -1,0 +1,461 @@
+---
+title: "Lesson 6.15: Architecture Patterns from Top Teams"
+description: "Explore how elite FRC teams structure their robot code — IO layers, superstructure, trigger-based, and singleton patterns"
+sidebar:
+  order: 15
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Describe four common architecture patterns used by top FRC teams
+- Explain the IO layer pattern and how it enables simulation and replay
+- Understand the superstructure pattern for coordinating complex mechanisms
+- Recognize trigger-based and singleton patterns in real team code
+- Evaluate which patterns might benefit your team's codebase
+
+:::tip[Before You Start]
+Complete **Activity 6.14: Write a Unit Test**. Have a browser open for exploring top team GitHub repositories. You'll be reading real code examples throughout this lesson.
+:::
+
+---
+
+## Why Architecture Matters
+
+In Units 0–3 and Unit 4, you learned the standard WPILib command-based structure: subsystems control hardware, commands define behaviors, and RobotContainer wires them together. This works well for most teams.
+
+But as robots get more complex — more mechanisms, more sensors, more autonomous routines — the standard structure can become hard to manage. Top teams have developed architecture patterns that scale better. These aren't replacements for command-based programming; they're layers on top of it.
+
+Let's explore four patterns you'll encounter when reading top team code.
+
+---
+
+## Pattern 1: IO Layers (Hardware Abstraction)
+
+**Used by:** Team 6328 (Mechanical Advantage) with AdvantageKit
+
+The IO layer pattern separates *what* a subsystem does from *how* it talks to hardware. Each subsystem has:
+
+1. **An IO interface** — defines the inputs and outputs (sensor readings, motor commands)
+2. **A real implementation** — talks to actual hardware (TalonFX, SparkMax, etc.)
+3. **A simulated implementation** — provides fake data for simulation and testing
+
+### Structure
+
+```java
+// 1. IO Interface — defines what data flows in and out
+public interface ShooterIO {
+  public static class ShooterIOInputs {
+    public double leftVelocityRPM = 0.0;
+    public double rightVelocityRPM = 0.0;
+    public double leftCurrentAmps = 0.0;
+    public double rightCurrentAmps = 0.0;
+  }
+
+  void updateInputs(ShooterIOInputs inputs);
+  void setVelocity(double rpm);
+  void stop();
+}
+
+// 2. Real implementation — talks to hardware
+public class ShooterIOTalonFX implements ShooterIO {
+  private final TalonFX leftMotor;
+  private final TalonFX rightMotor;
+
+  @Override
+  public void updateInputs(ShooterIOInputs inputs) {
+    inputs.leftVelocityRPM = leftMotor.getVelocity().getValueAsDouble() * 60;
+    inputs.rightVelocityRPM = rightMotor.getVelocity().getValueAsDouble() * 60;
+  }
+
+  @Override
+  public void setVelocity(double rpm) {
+    leftMotor.setControl(new VelocityVoltage(rpm / 60.0));
+    rightMotor.setControl(new VelocityVoltage(rpm / 60.0));
+  }
+}
+
+// 3. Simulated implementation — no hardware needed
+public class ShooterIOSim implements ShooterIO {
+  private double targetRPM = 0.0;
+  private double currentRPM = 0.0;
+
+  @Override
+  public void updateInputs(ShooterIOInputs inputs) {
+    // Simulate flywheel spin-up
+    currentRPM += (targetRPM - currentRPM) * 0.1;
+    inputs.leftVelocityRPM = currentRPM;
+    inputs.rightVelocityRPM = currentRPM;
+  }
+
+  @Override
+  public void setVelocity(double rpm) {
+    targetRPM = rpm;
+  }
+}
+```
+
+### The Subsystem Uses the Interface
+
+```java
+public class ShooterSubsystem extends SubsystemBase {
+  private final ShooterIO io;
+  private final ShooterIOInputs inputs = new ShooterIOInputs();
+
+  public ShooterSubsystem(ShooterIO io) {
+    this.io = io;  // Could be real or simulated
+  }
+
+  @Override
+  public void periodic() {
+    io.updateInputs(inputs);
+    Logger.recordOutput("Shooter/LeftRPM", inputs.leftVelocityRPM);
+    Logger.recordOutput("Shooter/RightRPM", inputs.rightVelocityRPM);
+  }
+}
+```
+
+### Why IO Layers?
+
+| Benefit | Explanation |
+|---------|------------|
+| **Simulation** | Swap in the sim implementation and test without hardware |
+| **Replay** | AdvantageKit can replay logged inputs through the subsystem logic |
+| **Testing** | Unit tests use the sim implementation — no mocking needed |
+| **Vendor flexibility** | Switch from TalonFX to SparkMax by writing a new IO class — subsystem logic doesn't change |
+
+### Tradeoff
+
+More files per subsystem (3 instead of 1). For a robot with 5 subsystems, that's 15 files instead of 5. The benefit is worth it for teams that use simulation and replay heavily.
+
+---
+
+<Quiz client:load
+  question="Your team wants to switch the shooter motors from TalonFX to SparkMax. With the IO layer pattern, what do you need to change?"
+  options={[
+    "Rewrite the ShooterSubsystem class entirely",
+    "Create a new ShooterIOSparkMax class implementing ShooterIO, and change one line in RobotContainer",
+    "Modify the ShooterIOTalonFX class to use SparkMax APIs",
+    "Change the Constants file and rebuild"
+  ]}
+  correctIndex={1}
+  explanation="With IO layers, the subsystem only knows about the ShooterIO interface — it doesn't care which hardware is behind it. You create a new ShooterIOSparkMax class that implements the same interface using REV APIs, then change the constructor call in RobotContainer from 'new ShooterIOTalonFX()' to 'new ShooterIOSparkMax()'. The subsystem logic, commands, and tests all remain unchanged."
+/>
+
+---
+
+## Pattern 2: Superstructure (Centralized Coordination)
+
+**Used by:** Team 254 (The Cheesy Poofs), Team 1678 (Citrus Circuits)
+
+You explored this in Lesson 6.10 on state machines. The superstructure pattern takes it further: a single class coordinates *all* non-drivetrain mechanisms.
+
+### How It Works
+
+```java
+public class Superstructure extends SubsystemBase {
+  private final Intake intake;
+  private final Shooter shooter;
+  private final Turret turret;
+  private final Climber climber;
+
+  private SystemState desiredState = SystemState.IDLE;
+
+  public enum SystemState {
+    IDLE,
+    INTAKING,
+    PREPARING_TO_SHOOT,
+    SHOOTING,
+    CLIMBING,
+    ESTOP
+  }
+
+  @Override
+  public void periodic() {
+    switch (desiredState) {
+      case IDLE -> {
+        intake.stop();
+        shooter.idle();
+        turret.holdPosition();
+      }
+      case INTAKING -> {
+        intake.deploy();
+        intake.runRollers();
+        shooter.idle();
+        if (intake.hasNote()) {
+          desiredState = SystemState.PREPARING_TO_SHOOT;
+        }
+      }
+      case PREPARING_TO_SHOOT -> {
+        intake.retract();
+        turret.aimAtTarget();
+        shooter.spinUp();
+        if (turret.isOnTarget() && shooter.isAtSpeed()) {
+          desiredState = SystemState.SHOOTING;
+        }
+      }
+      case SHOOTING -> {
+        shooter.feed();
+        if (!shooter.hasNote()) {
+          desiredState = SystemState.IDLE;
+        }
+      }
+      // ... more states
+    }
+  }
+
+  // Commands just request state changes
+  public Command intakeCommand() {
+    return runOnce(() -> desiredState = SystemState.INTAKING);
+  }
+
+  public Command shootCommand() {
+    return runOnce(() -> desiredState = SystemState.PREPARING_TO_SHOOT);
+  }
+}
+```
+
+### Key Characteristics
+
+| Aspect | Description |
+|--------|------------|
+| **Single source of truth** | One class knows what every mechanism should do |
+| **Impossible states prevented** | Can't intake and climb simultaneously — the enum enforces it |
+| **Simple commands** | Commands are one-liners that request state changes |
+| **Complex coordination** | Multi-step sequences are explicit in the switch statement |
+
+### When to Use It
+
+The superstructure pattern shines when your robot has many interacting mechanisms that need careful coordination. It's overkill for a simple robot with independent subsystems.
+
+---
+
+## Pattern 3: Trigger-Based Architecture
+
+**Used by:** Many teams using WPILib 2024+ features
+
+Instead of writing explicit command classes, trigger-based architecture uses WPILib's `Trigger` class to wire behaviors directly in RobotContainer. This reduces the number of command files.
+
+### Traditional Approach (Separate Command Classes)
+
+```java
+// IntakeCommand.java — a whole file for this
+public class IntakeCommand extends Command {
+  private final IntakeSubsystem intake;
+
+  public IntakeCommand(IntakeSubsystem intake) {
+    this.intake = intake;
+    addRequirements(intake);
+  }
+
+  @Override public void execute() { intake.runRollers(); }
+  @Override public void end(boolean interrupted) { intake.stop(); }
+  @Override public boolean isFinished() { return false; }
+}
+
+// In RobotContainer:
+controller.x().whileTrue(new IntakeCommand(intake));
+```
+
+### Trigger-Based Approach (Inline in RobotContainer)
+
+```java
+// No separate file needed
+controller.x().whileTrue(
+  intake.run(() -> intake.runRollers())
+    .finallyDo(() -> intake.stop())
+);
+```
+
+### Advanced Trigger Composition
+
+```java
+// Combine triggers for complex conditions
+Trigger hasNote = new Trigger(intake::hasNote);
+Trigger shooterReady = new Trigger(shooter::isAtSpeed);
+
+// Auto-feed when note is loaded AND shooter is ready
+hasNote.and(shooterReady).onTrue(
+  feeder.runOnce(() -> feeder.feed())
+);
+
+// Rumble controller when note is detected
+hasNote.onTrue(
+  Commands.runOnce(() -> controller.setRumble(RumbleType.kBothRumble, 0.5))
+    .andThen(Commands.waitSeconds(0.3))
+    .andThen(Commands.runOnce(() -> controller.setRumble(RumbleType.kBothRumble, 0.0)))
+);
+```
+
+### Tradeoffs
+
+| Aspect | Trigger-Based | Separate Command Classes |
+|--------|--------------|-------------------------|
+| **File count** | Fewer files — logic lives in RobotContainer | More files — each behavior is a class |
+| **Readability** | Great for simple behaviors, messy for complex ones | Each command is self-documenting |
+| **Reusability** | Harder to reuse inline lambdas | Commands can be reused in multiple places |
+| **Testing** | Harder to unit test inline lambdas | Each command class is independently testable |
+| **Team workflow** | One person edits RobotContainer | Multiple people can work on different commands |
+
+Your team's code uses a mix — some inline bindings and some command classes. That's a perfectly valid approach.
+
+---
+
+## Pattern 4: Singleton Pattern
+
+**Used by:** Many FRC teams for subsystem access
+
+The singleton pattern ensures only one instance of a subsystem exists and provides global access to it. Instead of passing subsystems through constructors, you access them via a static method.
+
+### Standard Approach (Constructor Injection)
+
+```java
+// RobotContainer creates and passes subsystems
+public class RobotContainer {
+  private final ShooterSubsystem shooter = new ShooterSubsystem();
+  private final IntakeSubsystem intake = new IntakeSubsystem();
+
+  public RobotContainer() {
+    // Pass subsystems to commands that need them
+    controller.y().onTrue(new AutoShootCommand(shooter, intake));
+  }
+}
+```
+
+### Singleton Approach
+
+```java
+public class ShooterSubsystem extends SubsystemBase {
+  private static ShooterSubsystem instance;
+
+  public static ShooterSubsystem getInstance() {
+    if (instance == null) {
+      instance = new ShooterSubsystem();
+    }
+    return instance;
+  }
+
+  private ShooterSubsystem() {
+    // Private constructor prevents external instantiation
+  }
+}
+
+// Commands access subsystems directly
+public class AutoShootCommand extends Command {
+  private final ShooterSubsystem shooter = ShooterSubsystem.getInstance();
+
+  public AutoShootCommand() {
+    addRequirements(shooter);
+  }
+}
+```
+
+### Tradeoffs
+
+| Aspect | Singleton | Constructor Injection |
+|--------|-----------|----------------------|
+| **Convenience** | No need to pass subsystems around | Must thread subsystems through constructors |
+| **Testing** | Harder — global state persists between tests | Easier — inject mock subsystems |
+| **Clarity** | Hidden dependencies — not obvious what a command needs | Explicit dependencies in the constructor |
+| **Safety** | Guaranteed single instance | Could accidentally create duplicates |
+
+Most modern FRC teams prefer constructor injection (the standard WPILib approach) because it's more testable and makes dependencies explicit. But you'll see singletons in older codebases and some current teams.
+
+---
+
+<Quiz client:load
+  question="You're reading a top team's code and see that their subsystem has a private constructor and a static getInstance() method. What pattern is this?"
+  options={[
+    "IO Layer pattern — it's abstracting hardware",
+    "Superstructure pattern — it's coordinating mechanisms",
+    "Singleton pattern — it ensures only one instance exists",
+    "Factory pattern — it creates different types of subsystems"
+  ]}
+  correctIndex={2}
+  explanation="A private constructor plus a static getInstance() method is the classic singleton pattern. It prevents anyone from creating a second instance of the subsystem (which would be a bug — you only have one set of shooter motors). The tradeoff is that it makes testing harder because you can't easily substitute a mock."
+/>
+
+---
+
+## Comparing the Patterns
+
+No single pattern is "best." Teams choose based on their robot's complexity, team size, and experience level.
+
+| Pattern | Best For | Team Size | Complexity |
+|---------|---------|-----------|------------|
+| **Standard Command-Based** | Most teams, simpler robots | Any | Low |
+| **IO Layers** | Teams using simulation/replay heavily | Medium–Large | Medium |
+| **Superstructure** | Complex robots with many interacting mechanisms | Experienced | High |
+| **Trigger-Based** | Simple behaviors, reducing file count | Any | Low–Medium |
+| **Singleton** | Quick access to subsystems (legacy pattern) | Any | Low |
+
+### What Your Team Uses
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and look at how subsystems are created and passed to commands. Your team uses the standard command-based approach with constructor injection — subsystems are created in RobotContainer and passed to commands that need them.
+
+This is a solid foundation. If your team decides to adopt IO layers or a superstructure in the future, you'd build on top of this existing structure, not replace it.
+
+---
+
+## Reading Top Team Code with Architecture in Mind
+
+Now that you know these patterns, you can read top team code more effectively:
+
+| Team | Primary Pattern | Where to Look |
+|------|----------------|---------------|
+| **6328** Mechanical Advantage | IO Layers + AdvantageKit | `subsystems/` — each has IO interface, real, and sim implementations |
+| **254** The Cheesy Poofs | Superstructure | `subsystems/Superstructure.java` — centralized state machine |
+| **1678** Citrus Circuits | Superstructure + IO Layers | `subsystems/` for IO, `Superstructure.java` for coordination |
+| **3015** Ranger Robotics | Trigger-Based | `RobotContainer.java` — heavy use of inline trigger composition |
+
+When you browse their repos, look for:
+- How many files per subsystem? (1 = standard, 3+ = IO layers)
+- Is there a Superstructure class? (centralized coordination)
+- How complex is RobotContainer? (simple = separate commands, complex = trigger-based)
+- Are subsystems created with `new` or `getInstance()`? (constructor injection vs singleton)
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Architecture Patterns"
+  prompt="(1) Which of the four patterns does your team's code most closely follow? (2) Pick one pattern your team doesn't currently use — what would be the biggest benefit of adopting it? What would be the biggest cost? (3) If you were starting a new robot project from scratch with your team, which combination of patterns would you choose and why?"
+>
+Strong answers include:
+
+1. **Current pattern identification** — e.g., "Our team uses standard command-based with constructor injection. RobotContainer creates all subsystems and passes them to commands. We have some inline trigger bindings and some separate command classes."
+
+2. **Thoughtful tradeoff analysis** — e.g., "IO layers would let us test subsystem logic without hardware and use AdvantageKit replay. The cost is tripling our subsystem file count and requiring every team member to understand the interface pattern. For our 4-person programming team, that's a significant learning curve."
+
+3. **Practical recommendation** — e.g., "I'd use standard command-based as the foundation, add IO layers for the drivetrain and shooter (our most complex subsystems), and keep simple subsystems as single files. I wouldn't use a superstructure unless our robot had 5+ interacting mechanisms."
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **IO Layer** | An architecture pattern that separates subsystem logic from hardware communication using interfaces, enabling simulation and hardware swaps |
+| **Hardware Abstraction** | The practice of hiding hardware-specific details behind a common interface so code can work with different hardware implementations |
+| **Superstructure** | A centralized coordinating class that manages all non-drivetrain subsystem interactions using a state machine |
+| **Trigger-Based Architecture** | An approach where behaviors are wired using WPILib Trigger composition directly in RobotContainer instead of separate command classes |
+| **Singleton Pattern** | A design pattern ensuring only one instance of a class exists, accessed via a static `getInstance()` method |
+| **Constructor Injection** | Passing dependencies (like subsystems) through a class's constructor, making dependencies explicit and testable |
+| **Dependency Injection** | The broader principle of providing a class's dependencies from outside rather than having the class create them internally |
+
+---
+
+## What's Next?
+
+You've now surveyed the major architecture patterns used by top FRC teams. In **Lesson 6.16: Advanced PathPlanner**, you'll explore advanced autonomous features — on-the-fly path generation, custom constraints, zone behaviors, and AutoBuilder composition — taking your autonomous routines to the next level.

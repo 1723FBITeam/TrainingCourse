@@ -1,0 +1,367 @@
+---
+title: "Lesson 4.7: Constants, Subsystems & Commands Revisited"
+description: "A deeper dive into the three building blocks of command-based robot code, building on Units 2–3"
+sidebar:
+  order: 7
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain how Constants.java organizes values using inner classes and why that structure matters
+- Describe the full lifecycle of a subsystem — construction, periodic, default commands
+- Distinguish between inline commands, standalone command classes, and command compositions
+- Trace how constants flow from Constants.java into subsystems and then into commands
+- Identify patterns for when to use each command type in your team's code
+
+:::tip[Before You Start]
+Complete **Activity 4.6: Find Java Patterns** first. You should be comfortable with lambdas, static finals, and inheritance. Have <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />, <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label="IntakeSubsystem.java" />, and <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> open in your IDE.
+:::
+
+---
+
+## The Three Building Blocks — Revisited
+
+In Units 2–3 you learned the basics: **Constants** hold configuration values, **Subsystems** control hardware, and **Commands** define behaviors. That's the 30,000-foot view. Now let's zoom in and see how these three pieces actually interact in your team's code.
+
+Think of it as a supply chain:
+
+```
+Constants.java  →  Subsystems  →  Commands  →  RobotContainer
+(what values)      (what hardware)  (what behavior)  (when to run)
+```
+
+Each layer depends on the one before it. Constants feed into subsystems, subsystems are used by commands, and RobotContainer wires commands to triggers. Let's explore each layer in depth.
+
+:::note[🧠 Mental Models — Say These Out Loud]
+- **Constants** = the settings panel (what values)
+- **Subsystem** = the hardware owner (what motors and sensors)
+- **Command** = the instruction (what behavior)
+- **RobotContainer** = the wiring diagram (when to run)
+
+If you can say these from memory, you understand the architecture.
+:::
+
+---
+
+## Constants.java — The Configuration Hub
+
+You've edited Constants.java in Unit 3 to change a motor speed. Now let's understand its full structure.
+
+### Inner Classes as Namespaces
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> and notice how constants are grouped into inner classes:
+
+```java title="Constants.java — Inner class structure"
+public final class Constants {
+
+    public static final class ShootingConstants {
+        public static final int SHOOTER_LEFT_MOTOR = {robotConfig.canIds.shooterLeft};
+        public static final int SHOOTER_RIGHT_MOTOR = {robotConfig.canIds.shooterRight};
+        public static final int TURRET_MOTOR = {robotConfig.canIds.turret};
+        public static final int FEEDER_MOTOR = {robotConfig.canIds.feeder};
+        // ... more shooting-related constants
+    }
+
+    public static final class IntakeConstants {
+        public static final int INTAKE_LEFT_MOTOR = {robotConfig.canIds.intakeLeft};
+        public static final int INTAKE_RIGHT_MOTOR = {robotConfig.canIds.intakeRight};
+        public static final int DEPLOY_LEFT_MOTOR = {robotConfig.canIds.deployLeft};
+        public static final int DEPLOY_RIGHT_MOTOR = {robotConfig.canIds.deployRight};
+        // ... more intake-related constants
+    }
+
+    public static final class ClimberConstants {
+        public static final int CLIMB_LEFT_MOTOR = {robotConfig.canIds.climbLeft};
+        public static final int CLIMB_RIGHT_MOTOR = {robotConfig.canIds.climbRight};
+        public static final int ELEVATOR_MOTOR = {robotConfig.canIds.elevator};
+    }
+}
+```
+
+Each inner class groups related constants together. When you need the turret motor CAN ID, you write `ShootingConstants.TURRET_MOTOR` — the inner class name tells you exactly which system it belongs to.
+
+### Why Inner Classes Instead of One Big List?
+
+Imagine Constants.java with 50+ constants in a flat list. Finding the right one would be like searching a phone book with no sections. Inner classes act as sections — `ShootingConstants`, `IntakeConstants`, `ClimberConstants` — so you always know where to look.
+
+This also prevents name collisions. Both the shooter and intake might have a `LEFT_MOTOR` constant, but `ShootingConstants.LEFT_MOTOR` and `IntakeConstants.LEFT_MOTOR` are distinct.
+
+
+<Quiz client:load
+  question="Why does Constants.java use inner classes like ShootingConstants and IntakeConstants instead of putting all constants in one flat list?"
+  options={[
+    "Java requires inner classes for constants",
+    "It makes the file compile faster",
+    "It groups related constants together and prevents name collisions",
+    "Inner classes use less memory than regular variables"
+  ]}
+  correctIndex={2}
+  explanation="Inner classes organize constants by system (shooting, intake, climber) so you can find values quickly. They also prevent name collisions — both systems can have a LEFT_MOTOR constant without conflict because ShootingConstants.LEFT_MOTOR and IntakeConstants.LEFT_MOTOR are separate."
+/>
+
+---
+
+## Subsystems — The Hardware Layer
+
+You know that subsystems control hardware. But there's more to the lifecycle than just motor methods.
+
+### The Subsystem Lifecycle
+
+When your robot boots up, here's what happens to each subsystem:
+
+1. **Construction** — RobotContainer creates the subsystem with `new IntakeSubsystem()`. The constructor initializes motor controllers, configures settings (brake/coast mode, current limits), and sets initial states.
+
+2. **Registration** — Because the subsystem extends `SubsystemBase`, it automatically registers with the **Command Scheduler**. The scheduler now knows this subsystem exists.
+
+3. **Periodic** — Every 20ms, the scheduler calls the subsystem's `periodic()` method (if it has one). This is where subsystems can update sensor readings, publish telemetry, or run control loops.
+
+4. **Default Command** — If no other command is using the subsystem, the scheduler runs its **default command**. For the drivetrain, this is usually the teleop drive command.
+
+### Construction: Where Constants Meet Hardware
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label="IntakeSubsystem.java" /> and look at the constructor. You'll see constants being used to create motor controllers:
+
+```java title="IntakeSubsystem.java — Constructor pattern"
+public class IntakeSubsystem extends SubsystemBase {
+    private final TalonFX intakeLeftMotor;
+    private final TalonFX intakeRightMotor;
+    private final TalonFXS intakeLeftActivator;
+    private final TalonFXS intakeRightActivator;
+
+    public IntakeSubsystem() {
+        intakeLeftMotor = new TalonFX(IntakeConstants.INTAKE_LEFT_MOTOR);
+        intakeRightMotor = new TalonFX(IntakeConstants.INTAKE_RIGHT_MOTOR);
+        intakeLeftActivator = new TalonFXS(IntakeConstants.DEPLOY_LEFT_MOTOR);
+        intakeRightActivator = new TalonFXS(IntakeConstants.DEPLOY_RIGHT_MOTOR);
+        // ... motor configuration (brake mode, current limits, etc.)
+    }
+}
+```
+
+See the flow? `IntakeConstants.INTAKE_LEFT_MOTOR` (the CAN ID from Constants.java) gets passed to `new TalonFX(...)` to create the motor controller object. The constant tells the motor controller which physical device to talk to on the CAN bus.
+
+### The `periodic()` Method
+
+Some subsystems override `periodic()` to do work every loop cycle:
+
+```java title="Subsystem periodic pattern"
+@Override
+public void periodic() {
+    // Read sensors, update state, publish telemetry
+    SmartDashboard.putNumber("Intake/Speed", intakeLeftMotor.getVelocity().getValueAsDouble());
+}
+```
+
+This runs every 20ms regardless of what command is active. It's the subsystem's heartbeat — always running, always updating.
+
+### Default Commands
+
+A default command runs whenever no other command requires the subsystem. The most common example is the drivetrain's teleop drive:
+
+```java title="RobotContainer.java — Setting a default command"
+drivetrain.setDefaultCommand(
+    drivetrain.applyRequest(() -> drive
+        .withVelocityX(-controller.getLeftY() * MaxSpeed)
+        .withVelocityY(-controller.getLeftX() * MaxSpeed)
+        .withRotationalRate(-controller.getRightX() * MaxAngularRate)
+    )
+);
+```
+
+When no autonomous command or button-triggered command is using the drivetrain, this default command reads the joysticks and drives. The moment a button command takes over, the default command pauses. When the button command finishes, the default command resumes automatically.
+
+
+---
+
+## Commands — The Behavior Layer
+
+In Unit 2 you learned that commands tell the robot what to do. Now let's look at the three different ways commands are created in your team's code.
+
+### Type 1: Inline Commands (in RobotContainer)
+
+The simplest commands are defined right where they're used — inline in RobotContainer button bindings:
+
+```java title="RobotContainer.java — Inline command"
+controller.a().whileTrue(
+    new RunCommand(() -> intakeSubsystem.jostle(), intakeSubsystem)
+);
+```
+
+This creates a `RunCommand` on the spot. No separate file needed. Use inline commands when the behavior is simple — one method call, one subsystem.
+
+### Type 2: Standalone Command Classes (in commands/)
+
+Complex behaviors get their own file. Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.commands[0].file}`} label={robotConfig.commands[0].name + ".java"} /> — this command coordinates the turret, flywheel, and feeder to auto-shoot:
+
+```java title="AutoShootCommand.java — Standalone command structure"
+public class AutoShootCommand extends Command {
+    private final ShooterSubsystem shooter;
+    private final TurretSubsystem turret;
+
+    public AutoShootCommand(ShooterSubsystem shooter, TurretSubsystem turret) {
+        this.shooter = shooter;
+        this.turret = turret;
+        addRequirements(shooter, turret);  // Lock both subsystems
+    }
+
+    @Override
+    public void execute() {
+        // Aim turret, spin flywheel, feed when ready
+    }
+
+    @Override
+    public void end(boolean interrupted) {
+        shooter.stopShooter();
+        turret.stopTurret();
+    }
+}
+```
+
+Use standalone commands when the behavior involves multiple subsystems, has complex logic, or needs `initialize()`, `execute()`, `end()`, and `isFinished()` lifecycle methods.
+
+### Type 3: Command Compositions (Sequences and Parallels)
+
+The X button intake binding is a **command composition** — multiple commands chained together:
+
+```java title="RobotContainer.java — Command composition"
+new SequentialCommandGroup(
+    new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem),
+    new WaitCommand(0.3),
+    new InstantCommand(() -> intakeSubsystem.stopDeploy()),
+    new RunCommand(() -> intakeSubsystem.runIntake(0.5), intakeSubsystem)
+)
+```
+
+WPILib provides several composition types:
+
+| Composition | Behavior |
+|-------------|----------|
+| `SequentialCommandGroup` | Run commands one after another |
+| `ParallelCommandGroup` | Run all commands at once, finish when ALL are done |
+| `ParallelRaceGroup` | Run all commands at once, finish when ANY one is done |
+| `ParallelDeadlineGroup` | Run all commands at once, finish when the FIRST (deadline) command is done |
+
+### When to Use Which?
+
+| Situation | Command Type |
+|-----------|-------------|
+| Simple one-liner (run a motor, stop a motor) | Inline `InstantCommand` or `RunCommand` |
+| Multi-step sequence (deploy → wait → run) | `SequentialCommandGroup` with inline commands |
+| Complex multi-subsystem behavior (auto-shoot) | Standalone command class in `commands/` |
+| Run two things simultaneously (drive + aim) | `ParallelCommandGroup` or `ParallelRaceGroup` |
+
+
+<Quiz client:load
+  question="Your team needs a command that aims the turret while simultaneously spinning up the flywheel, then feeds the note once both are ready. Which approach is most appropriate?"
+  options={[
+    "An inline RunCommand in RobotContainer",
+    "A standalone command class in the commands/ folder",
+    "A SequentialCommandGroup of InstantCommands",
+    "Just call the methods directly in periodic()"
+  ]}
+  correctIndex={1}
+  explanation="This behavior coordinates multiple subsystems (turret + shooter) with complex logic (wait until both are ready before feeding). That's exactly when you create a standalone command class. Inline commands are too simple for this, and calling methods directly in periodic() bypasses the command scheduler's subsystem locking."
+/>
+
+---
+
+## How the Three Layers Connect
+
+Let's trace a complete path from constant to motor output for the intake system:
+
+```
+Constants.java                    IntakeSubsystem.java              RobotContainer.java
+─────────────                    ────────────────────              ───────────────────
+IntakeConstants                  Constructor reads constants:       Creates subsystem:
+  INTAKE_LEFT_MOTOR = 31   →      new TalonFX(31)            ←    new IntakeSubsystem()
+  INTAKE_RIGHT_MOTOR = 32  →      new TalonFX(32)
+  DEPLOY_LEFT_MOTOR = 33   →      new TalonFXS(33)                Binds commands:
+  DEPLOY_RIGHT_MOTOR = 34  →      new TalonFXS(34)                controller.x().toggleOnTrue(
+                                                                     → intakeSubsystem.deployOut()
+                                 Methods use motors:                 → intakeSubsystem.runIntake()
+                                   deployOut() → set(0.15)         )
+                                   runIntake(speed) → set(speed)
+```
+
+The data flows left to right: constants define the hardware addresses, the subsystem uses those addresses to create motor objects and expose methods, and RobotContainer wires those methods to controller buttons via commands.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Three Building Blocks"
+  prompt="Without looking at the code, answer these questions: (1) What are the three types of commands and when would you use each? (2) What happens to a subsystem's default command when a button-triggered command starts? (3) Why do subsystem constructors read from Constants.java instead of hardcoding CAN IDs?"
+>
+1. **Three command types:**
+   - **Inline commands** (InstantCommand, RunCommand in RobotContainer) — for simple one-liner behaviors
+   - **Standalone command classes** (in commands/ folder) — for complex multi-subsystem behaviors with lifecycle methods
+   - **Command compositions** (SequentialCommandGroup, ParallelCommandGroup) — for chaining multiple commands together
+
+2. **Default command behavior:** When a button-triggered command starts and requires the same subsystem, the default command is **interrupted** (paused). When the button command finishes or is cancelled, the default command **resumes automatically**. The command scheduler handles this — you don't need to restart it manually.
+
+3. **Why read from Constants.java:** Centralizing CAN IDs in one file means you only change them in one place if hardware is rewired. If CAN IDs were hardcoded in each subsystem, you'd have to find and update every occurrence — easy to miss one and cause a bug.
+</Checkpoint>
+
+---
+
+## Advanced Pattern: Subsystem Requirements
+
+One detail that trips up new programmers: the `addRequirements()` call in commands. When a command declares that it requires a subsystem, the command scheduler enforces **exclusive access** — only one command can use a subsystem at a time.
+
+```java title="Why requirements matter"
+// In AutoShootCommand constructor:
+addRequirements(shooter, turret);
+
+// This means: while AutoShootCommand is running,
+// NO other command can use shooter or turret.
+// If another command tries, the scheduler will
+// cancel one of them.
+```
+
+This prevents conflicts. Imagine two commands both trying to set the shooter to different speeds — the robot would jitter between them. Requirements ensure only one command controls each subsystem at any moment.
+
+For inline commands, you pass the subsystem as the second argument:
+
+```java
+new InstantCommand(() -> intakeSubsystem.deployOut(), intakeSubsystem)
+//                                                    ^^^^^^^^^^^^^^^^
+//                                                    This is the requirement
+```
+
+If you forget the requirement, the command scheduler won't know the command uses that subsystem, and two commands could fight over the same motors.
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Inner Class** | A class defined inside another class, used in Constants.java to group related constants by system |
+| **Default Command** | A command that runs on a subsystem whenever no other command requires that subsystem — typically the teleop drive command |
+| **Command Composition** | Combining multiple commands using SequentialCommandGroup, ParallelCommandGroup, or other group types to create complex behaviors |
+| **Subsystem Requirement** | A declaration that a command uses a specific subsystem, enforced by the command scheduler to prevent conflicts |
+| **Command Scheduler** | The WPILib engine that manages which commands run, handles requirements, and calls periodic methods every 20ms |
+| **Inline Command** | A command created directly in RobotContainer (like `new RunCommand(...)`) rather than in a separate file |
+
+---
+
+## What's Next?
+
+You now understand how constants, subsystems, and commands work together at a deeper level — from inner class organization to subsystem lifecycles to command composition patterns.
+
+In **Activity 4.8: Trace a New Button**, you'll put this knowledge to work by picking a button binding you haven't traced yet (the A button jostle or B button elevator) and producing a complete CodeTrace from button press to motor output.
+
+
+
+In **Activity 4.8: Trace a New Button**, you'll put this knowledge to work by picking a button binding you haven't traced yet (the A button jostle or B button elevator) and producing a complete CodeTrace from button press to motor output.

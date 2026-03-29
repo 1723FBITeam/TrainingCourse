@@ -1,0 +1,281 @@
+---
+title: "Lesson 5.13: Creating Paths and Named Commands"
+description: "Learn to create autonomous paths in PathPlanner, register Named Commands, use event markers, and understand path constraints"
+sidebar:
+  order: 13
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Create and edit paths in the PathPlanner GUI with waypoints and rotation targets
+- Register Named Commands in RobotContainer that PathPlanner auto routines can reference
+- Use event markers to trigger commands at specific points along a path
+- Configure path constraints (max velocity, max acceleration) for safe and efficient motion
+- Compose auto routines that chain paths and Named Commands together
+
+:::tip[Before You Start]
+Complete **Activity 5.12: Trace a Joystick Through Swerve Math**. You should have PathPlanner installed from [pathplanner.dev](https://pathplanner.dev) and your team's robot project loaded. You also need your team's code open in your IDE, specifically <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />.
+:::
+
+---
+
+## From Reading Autos to Creating Them
+
+In Unit 4 (Lessons 4.12 and Activity 4.13), you learned to *read* existing autonomous routines — opening PathPlanner, tracing paths, and connecting Named Commands to Java code. Now you'll learn to *create* them.
+
+The workflow for creating an autonomous routine has four parts:
+
+1. **Create paths** — design the trajectories the robot will follow
+2. **Register Named Commands** — write the Java commands that mechanisms will execute
+3. **Add event markers** — trigger commands at specific points along paths
+4. **Compose the auto** — chain paths and commands into a complete routine
+
+Let's go through each one.
+
+---
+
+## Part 1: Creating Paths in PathPlanner
+
+A **path** is a trajectory that the robot follows on the field. It's defined by waypoints — points that the robot drives through.
+
+### Opening the Path Editor
+
+1. Open PathPlanner and load your team's project
+2. Click **"New Path"** in the paths panel
+3. Give it a descriptive name (e.g., `ScoreToPickup1`, `Pickup1ToScore`)
+
+### Adding Waypoints
+
+Click on the field to add waypoints. Each waypoint has:
+
+| Property | What It Controls |
+|----------|-----------------|
+| **Position (x, y)** | Where the robot drives through on the field (in meters) |
+| **Heading** | The direction the robot is traveling at this point (tangent to the path) |
+| **Rotation target** | The direction the robot should be *facing* at this point (independent of travel direction) |
+
+The distinction between heading and rotation target is important for swerve drive:
+- **Heading** = direction of travel (which way the robot is moving)
+- **Rotation target** = direction the robot faces (which way the front of the robot points)
+
+With swerve drive, these can be different — the robot can drive sideways while facing forward, or drive forward while rotating to face a scoring target.
+
+### Path Design Tips
+
+1. **Start simple** — begin with 2-3 waypoints and add more only if needed
+2. **Use smooth curves** — avoid sharp turns that require the robot to slow down significantly
+3. **Consider the robot's size** — leave clearance from field elements and walls
+4. **Think about what comes next** — end the path in a position that sets up the next action
+5. **Name paths descriptively** — `ScoreToPickup1` is better than `Path1`
+
+---
+
+## Part 2: Registering Named Commands
+
+**Named Commands** are Java commands that PathPlanner auto routines reference by name. They're the bridge between PathPlanner's visual auto editor and your team's Java code.
+
+### How Named Commands Work
+
+1. In Java code, you register a command with a string name:
+   ```java
+   NamedCommands.registerCommand("StartIntake", intakeSubsystem.intakeCommand());
+   ```
+
+2. In PathPlanner's auto editor, you reference that name:
+   ```
+   Named Command: "StartIntake"
+   ```
+
+3. When the auto runs, PathPlanner looks up "StartIntake" and executes the registered Java command.
+
+### Where to Register Named Commands
+
+Named Commands are registered in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" />, typically in the constructor or a dedicated `configureNamedCommands()` method. Look for `NamedCommands.registerCommand()` calls.
+
+### Writing Good Named Commands
+
+| Good Practice | Why |
+|--------------|-----|
+| **Use descriptive names** | `"StartIntake"` is clearer than `"cmd1"` |
+| **Keep commands focused** | One Named Command = one action (start intake, shoot, stop intake) |
+| **Handle cleanup** | Commands should stop motors when they end (use `finallyDo()`) |
+| **Test independently** | Verify each Named Command works via a button binding before using it in an auto |
+| **Match names exactly** | PathPlanner is case-sensitive — `"StartIntake"` ≠ `"startintake"` |
+
+### Common Named Commands for FRC
+
+| Name | What It Does | Example |
+|------|-------------|---------|
+| `"StartIntake"` | Deploys and runs the intake | `new InstantCommand(() -> intake.deployAndRun())` |
+| `"StopIntake"` | Retracts and stops the intake | `new InstantCommand(() -> intake.stopAndRetract())` |
+| `"ShootNote"` | Runs the full shooting sequence | `new AutoShootCommand(shooter, turret, feeder)` |
+| `"AimTurret"` | Starts turret auto-aiming | `new InstantCommand(() -> turret.enableAutoAim())` |
+| `"ResetPose"` | Resets odometry to a known position | `new InstantCommand(() -> drivetrain.resetPose(startPose))` |
+
+---
+
+<Quiz client:load
+  question="You register a Named Command as NamedCommands.registerCommand('RunIntake', intakeCommand) in Java, but in PathPlanner you type 'runIntake' (lowercase 'r'). What happens when the auto runs?"
+  options={[
+    "PathPlanner automatically matches case-insensitive names",
+    "The auto skips the command silently — no error, but the intake never runs",
+    "The auto crashes with a NullPointerException",
+    "PathPlanner shows a warning in the GUI"
+  ]}
+  correctIndex={1}
+  explanation="Named Command lookup is case-sensitive. If the name doesn't match exactly, PathPlanner can't find the registered command. Depending on the PathPlanner version, it may skip the command silently or log a warning. Either way, the intake won't run. Always double-check that names match exactly between Java code and PathPlanner."
+/>
+
+---
+
+## Part 3: Event Markers
+
+**Event markers** let you trigger a Named Command at a specific point along a path, rather than before or after the path. This is powerful for overlapping driving with mechanism actions.
+
+### When to Use Event Markers
+
+| Scenario | Without Event Markers | With Event Markers |
+|----------|----------------------|-------------------|
+| Start intake while driving to a game piece | Drive to piece → stop → start intake → wait | Start intake at 70% through the path → intake is running when robot arrives |
+| Aim turret while approaching scoring position | Drive to position → stop → aim → shoot | Start aiming at 50% through the path → turret is aimed when robot arrives |
+| Retract intake after picking up | Pick up → stop → retract → drive to score | Retract at the end of the pickup path → retraction happens during the drive |
+
+Event markers save time by overlapping actions with driving. In a 15-second autonomous period, every fraction of a second matters.
+
+### Adding Event Markers in PathPlanner
+
+1. Open a path in the PathPlanner editor
+2. Click on the path at the point where you want the command to trigger
+3. Select **"Add Event Marker"**
+4. Enter the Named Command name (must match your Java registration exactly)
+5. Set the trigger position (percentage along the path or specific waypoint)
+
+---
+
+## Part 4: Path Constraints
+
+**Path constraints** control how fast the robot can drive along a path. They're critical for safety and reliability.
+
+### Constraint Types
+
+| Constraint | What It Controls | Typical Values |
+|-----------|-----------------|----------------|
+| **Max velocity** | Maximum speed along the path (m/s) | 2.0 – 4.5 m/s |
+| **Max acceleration** | Maximum speed change rate (m/s²) | 2.0 – 4.0 m/s² |
+| **Max angular velocity** | Maximum rotation speed (rad/s) | 2π – 4π rad/s |
+| **Max angular acceleration** | Maximum rotation speed change (rad/s²) | 4π – 8π rad/s² |
+
+### Setting Constraints
+
+In PathPlanner, you can set constraints at two levels:
+
+1. **Global constraints** — apply to the entire path (set in the path properties)
+2. **Constraint zones** — apply to a specific section of the path (useful for slowing down near obstacles or scoring positions)
+
+### Constraint Tips
+
+- **Start conservative** — use lower speeds until you verify the path works, then increase
+- **Slow down near game pieces** — the robot needs to be precise when picking up, not fast
+- **Slow down near scoring** — accuracy matters more than speed when scoring
+- **Match your robot's capabilities** — don't set max velocity higher than your robot can actually achieve
+- **Account for carpet friction** — paths that work on smooth floors may slip on competition carpet
+
+---
+
+## Composing an Auto Routine
+
+An **auto routine** chains paths and Named Commands into a complete autonomous sequence. In PathPlanner's auto editor:
+
+1. Click **"New Auto"** in the autos panel
+2. Set the **starting pose** — where the robot begins on the field
+3. Add actions in sequence:
+   - **Follow Path** — the robot drives along a path
+   - **Named Command** — the robot executes a registered command
+   - **Wait** — pause for a specified time
+4. Name the auto descriptively (e.g., `TwoNoteCenter`, `ThreeNoteAmp`)
+
+### Example Auto Structure
+
+A typical two-note auto might look like:
+
+```
+1. Starting Pose: Center of the field, facing the speaker
+2. Named Command: "ShootPreload" (score the preloaded note)
+3. Follow Path: "ScoreToPickup1" (drive to the first game piece)
+4. Named Command: "StartIntake" (begin intaking)
+5. Wait: 0.5s (give the intake time to grab the piece)
+6. Named Command: "StopIntake"
+7. Follow Path: "Pickup1ToScore" (drive back to scoring position)
+8. Named Command: "ShootNote" (score the second note)
+```
+
+### Auto Chooser
+
+PathPlanner's `AutoBuilder` creates a `SendableChooser` that appears in the Driver Station. This lets the drive team select which auto to run before each match without redeploying code.
+
+Your team's auto chooser is set up in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> — look for `AutoBuilder.buildAutoChooser()` or similar.
+
+---
+
+<Quiz client:load
+  question="You create a new auto routine in PathPlanner with a Named Command 'ShootNote', but when you run the auto, the robot drives the paths correctly but never shoots. The Named Command is registered in RobotContainer. What should you check?"
+  options={[
+    "The path constraints are too high",
+    "The Named Command name in PathPlanner doesn't exactly match the registered name in Java",
+    "The auto chooser is selecting the wrong auto",
+    "The gyro needs to be recalibrated"
+  ]}
+  correctIndex={1}
+  explanation="The most common cause of Named Commands not executing is a name mismatch between PathPlanner and the Java registration. Check for exact case matching, extra spaces, or typos. Also verify that the Named Command registration runs before the auto is built (it should be in the RobotContainer constructor)."
+/>
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Creating Paths and Named Commands"
+  prompt="Design a simple two-note auto routine on paper (or in PathPlanner). Describe: (1) The starting pose and why you chose it. (2) The paths you'd create (names, start/end positions). (3) The Named Commands you'd need to register. (4) Where you'd place event markers to save time. (5) What constraints you'd set and why."
+>
+A strong auto design includes:
+
+1. **Starting pose:** "Center of the field, facing the speaker at (1.4, 5.5) with 0° heading. This position gives the shortest path to the center game pieces."
+
+2. **Paths:** "ScoreToCenter1 — from scoring position to the first center game piece. Center1ToScore — from the game piece back to the scoring position."
+
+3. **Named Commands:** "ShootPreload (score the starting note), StartIntake (deploy and run intake), StopIntake (retract intake), ShootNote (full shooting sequence)."
+
+4. **Event markers:** "Place StartIntake at 80% through ScoreToCenter1 so the intake is running before the robot reaches the game piece. Place StopIntake at 20% through Center1ToScore so the intake retracts while driving back."
+
+5. **Constraints:** "Max velocity 3.0 m/s (conservative for first test), max acceleration 2.5 m/s². Add a constraint zone at the end of ScoreToCenter1 that slows to 1.5 m/s for precise game piece pickup."
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Path** | A trajectory defined by waypoints that the robot follows during autonomous, created in the PathPlanner GUI |
+| **Named Command** | A Java command registered with a string name via `NamedCommands.registerCommand()` that PathPlanner auto routines can reference |
+| **Event Marker** | A trigger point along a path that executes a Named Command at a specific position, enabling overlapped driving and mechanism actions |
+| **Path Constraints** | Limits on maximum velocity, acceleration, and angular rates that control how fast the robot drives along a path |
+| **Constraint Zone** | A section of a path with different constraints than the rest, used to slow down near obstacles or precision-required areas |
+| **Auto Routine** | A complete autonomous sequence composed of paths, Named Commands, and waits in PathPlanner's auto editor |
+| **Auto Chooser** | A NetworkTables-based dropdown in the Driver Station that lets the drive team select which auto routine to run before a match |
+
+---
+
+## What's Next?
+
+You now know how to create paths, register Named Commands, and compose auto routines. In **Activity 5.14: Build an Auto Routine**, you'll put this knowledge into practice — creating a new path, registering a Named Command, composing an auto, and verifying it loads in the auto chooser.

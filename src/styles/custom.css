@@ -4,18 +4,18 @@
 
 /* ------------------------------------------
    1. Accent Color Override
-   Vibrant teal/blue-green that's energetic
-   and team-friendly for high school students.
+   Team 1723 FBI colors: neon green + black
+   from the team logo and website.
    ------------------------------------------ */
 :root {
-  --sl-color-accent-low: #0e3a4a;
-  --sl-color-accent: #0ea5e9;
-  --sl-color-accent-high: #bae6fd;
+  --sl-color-accent-low: #0a2e12;
+  --sl-color-accent: #00e639;
+  --sl-color-accent-high: #a3ffc1;
 }
 :root[data-theme='light'] {
-  --sl-color-accent-low: #cff2fe;
-  --sl-color-accent: #0284c7;
-  --sl-color-accent-high: #0c4a6e;
+  --sl-color-accent-low: #d4fce0;
+  --sl-color-accent: #00b82e;
+  --sl-color-accent-high: #0a4a1a;
 }
 
 /* ------------------------------------------
@@ -77,8 +77,8 @@
 }
 
 .quiz-container .quiz-option.correct {
-  border-color: #22c55e;
-  background: rgba(34, 197, 94, 0.12);
+  border-color: #00e639;
+  background: rgba(0, 230, 57, 0.12);
 }
 
 .quiz-container .quiz-option.incorrect {
@@ -200,9 +200,9 @@
 }
 
 .code-trace .trace-start {
-  background: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
-  border: 1px solid #22c55e;
+  background: rgba(0, 230, 57, 0.12);
+  color: #00c932;
+  border: 1px solid #00e639;
 }
 
 .code-trace .trace-end {

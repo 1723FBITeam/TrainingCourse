@@ -1,0 +1,330 @@
+---
+title: "Lesson 6.5: Control Theory — PID, Feedforward, and Motion Profiling"
+description: "Understand the math behind precise mechanism control — PID loops, feedforward calculations, and motion profiles"
+sidebar:
+  order: 5
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Explain what a PID controller does and what each term (P, I, D) contributes
+- Describe why feedforward is often more important than PID for FRC mechanisms
+- Understand motion profiling and how TrapezoidProfile creates smooth movement
+- Read PID and feedforward configuration in your team's code
+- Know when to use PID alone, feedforward alone, or both together
+
+:::tip[Before You Start]
+Complete **Activity 6.4: Simulate an Auto Routine**. Have your team's code open in your IDE and a browser tab to the WPILib controls documentation: [docs.wpilib.org/en/stable/docs/software/advanced-controls/introduction/index.html](https://docs.wpilib.org/en/stable/docs/software/advanced-controls/introduction/index.html). For a deeper mathematical treatment, see Tyler Veness's textbook: [controls-in-frc.link](https://file.tavsys.net/control/controls-engineering-in-frc.pdf).
+:::
+
+:::note[😤 Math Ahead — Don't Panic]
+This lesson has more math than any other in the course. That's okay. You don't need to derive the equations — you need to understand what each piece does and when to use it. Think of it like driving a car: you don't need to understand combustion to drive well, but knowing "gas pedal = go faster" and "brake = slow down" makes you a better driver. PID and feedforward are the gas pedal and brake for your robot's mechanisms.
+:::
+
+---
+
+:::caution[🤔 Predict First]
+Your shooter flywheel needs to spin at exactly 4000 RPM. You send it 50% voltage. What do you think happens? Does it reach exactly 4000 RPM? Does it overshoot? Does it depend on the battery charge? Write down your prediction before reading on.
+:::
+
+---
+
+## The Control Problem
+
+Every mechanism on your robot needs to move to a specific position or maintain a specific speed. The intake needs to deploy to exactly 90°. The shooter flywheel needs to spin at exactly 4000 RPM. The drivetrain needs to follow a path within centimeters.
+
+The question is: **how much voltage do you send to the motor to get the behavior you want?**
+
+Sending a fixed voltage doesn't work — the motor's response depends on load, battery voltage, friction, and gravity. You need a **controller** that continuously adjusts the voltage based on what the mechanism is actually doing.
+
+---
+
+## PID Control
+
+**PID** stands for **Proportional-Integral-Derivative**. It's the most common feedback controller in FRC (and in industrial automation worldwide).
+
+A PID controller measures the **error** — the difference between where you want to be (setpoint) and where you actually are (measurement) — and calculates a motor output to reduce that error.
+
+```
+error = setpoint - measurement
+output = (kP × error) + (kI × integral of error) + (kD × derivative of error)
+```
+
+### The P Term (Proportional)
+
+The P term is the simplest: output is proportional to the error.
+
+- **Big error** → big output (motor pushes hard)
+- **Small error** → small output (motor pushes gently)
+- **Zero error** → zero output (motor stops)
+
+```java
+double output = kP * error;
+```
+
+**Problem:** P alone often can't reach the exact setpoint. As the error gets small, the output gets too weak to overcome friction. This leaves a small persistent error called **steady-state error**.
+
+### The I Term (Integral)
+
+The I term accumulates error over time. If the mechanism is stuck slightly below the setpoint, the integral grows until the output is strong enough to push through.
+
+```java
+integral += error * dt;
+double output = kP * error + kI * integral;
+```
+
+**Problem:** The integral can "wind up" — if the mechanism is stuck for a long time, the integral grows huge and causes overshoot when the mechanism finally moves. In FRC, the I term is often set to zero or very small.
+
+### The D Term (Derivative)
+
+The D term responds to how fast the error is changing. If the mechanism is approaching the setpoint quickly, D applies a braking force to prevent overshoot.
+
+```java
+double derivative = (error - previousError) / dt;
+double output = kP * error + kI * integral + kD * derivative;
+```
+
+**Think of it like this:** P is the gas pedal (push toward the target), D is the brake (slow down as you approach), and I is the nudge that gets you the last inch.
+
+---
+
+<Quiz client:load
+  question="Your shooter flywheel is at 3800 RPM but the setpoint is 4000 RPM. The error has been 200 RPM for the last 2 seconds. Which PID term would help close this remaining gap?"
+  options={[
+    "P term — it responds to the current error",
+    "I term — it accumulates the persistent error over time and increases output",
+    "D term — it responds to the rate of change of error",
+    "None — PID can't handle this situation"
+  ]}
+  correctIndex={1}
+  explanation="The P term is already responding to the 200 RPM error but isn't producing enough output to close the gap (likely due to friction or load). The I term accumulates this persistent error over time, gradually increasing the output until it's strong enough to reach the setpoint. The D term wouldn't help here because the error isn't changing — it's steady at 200 RPM."
+/>
+
+---
+
+## PID in WPILib
+
+WPILib provides a `PIDController` class that handles the math for you:
+
+```java
+PIDController pidController = new PIDController(kP, kI, kD);
+
+// In periodic():
+double output = pidController.calculate(currentPosition, targetPosition);
+motor.setVoltage(output);
+```
+
+You can also use vendor-specific PID controllers that run on the motor controller itself (CTRE's `PositionVoltage`, REV's `SparkPIDController`). These run at a faster loop rate (1kHz vs 50Hz) and reduce CAN bus traffic.
+
+### PID in Your Team's Code
+
+Look at your team's code for PID usage. Common places to find it:
+
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> — flywheel velocity control
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/TurretSubsystem.java`} label="TurretSubsystem.java" /> — position control for aiming
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/generated/TunerConstants.java`} label="TunerConstants.java" /> — swerve module PID gains
+
+Look for `kP`, `kI`, `kD` values, `PIDController` objects, or vendor-specific PID configuration like `Slot0Configs`.
+
+---
+
+## Feedforward: The Other Half
+
+PID is a **feedback** controller — it reacts to error after it happens. **Feedforward** is a **predictive** controller — it calculates the expected output based on physics, before any error occurs.
+
+### Why Feedforward Matters
+
+Imagine you're controlling an elevator. Gravity constantly pulls it down. A PID controller would see the elevator dropping, calculate an error, and push it back up. But why wait for the error? You *know* gravity exists. You can calculate exactly how much voltage is needed to counteract gravity and add it proactively.
+
+That's feedforward: **predicting the required output from physics.**
+
+### Common Feedforward Terms
+
+| Term | Symbol | What It Compensates For |
+|------|--------|------------------------|
+| **Static friction** | kS | The minimum voltage to overcome friction and start moving |
+| **Gravity** | kG | The voltage needed to hold position against gravity (arms, elevators) |
+| **Velocity** | kV | The voltage per unit of velocity (proportional to speed) |
+| **Acceleration** | kA | The voltage per unit of acceleration (proportional to how fast you're speeding up) |
+
+### Feedforward in WPILib
+
+```java
+// For a simple motor (flywheel, roller)
+SimpleMotorFeedforward ff = new SimpleMotorFeedforward(kS, kV, kA);
+double ffOutput = ff.calculate(targetVelocity);
+
+// For an arm with gravity
+ArmFeedforward ff = new ArmFeedforward(kS, kG, kV, kA);
+double ffOutput = ff.calculate(armAngle, targetVelocity);
+
+// For an elevator with gravity
+ElevatorFeedforward ff = new ElevatorFeedforward(kS, kG, kV, kA);
+double ffOutput = ff.calculate(targetVelocity);
+```
+
+### PID + Feedforward Together
+
+The best control comes from combining both:
+
+```java
+double ffOutput = feedforward.calculate(targetVelocity);
+double pidOutput = pidController.calculate(currentPosition, targetPosition);
+motor.setVoltage(ffOutput + pidOutput);
+```
+
+Feedforward does the heavy lifting (80-90% of the output), and PID handles the remaining error. This is why many FRC mechanisms work well with just feedforward and a small P term — the I and D terms aren't needed when feedforward is doing most of the work.
+
+---
+
+<Quiz client:load
+  question="You're controlling an arm that needs to hold at 45°. With only PID control, the arm droops slightly under gravity. What's the best fix?"
+  options={[
+    "Increase the I term to compensate for the gravity error",
+    "Add a feedforward term (kG) that calculates the voltage needed to counteract gravity at the current angle",
+    "Increase the P term until the arm stops drooping",
+    "Add a D term to resist the downward movement"
+  ]}
+  correctIndex={1}
+  explanation="Gravity is a known, predictable force. Rather than relying on PID to react to the error caused by gravity, add a feedforward kG term that proactively applies the voltage needed to hold the arm at any angle. This is more stable and responsive than increasing PID gains, which can cause oscillation."
+/>
+
+---
+
+## Motion Profiling
+
+PID and feedforward tell the motor *how hard to push*. Motion profiling tells the motor *how to get there* — defining a smooth path from the current position to the target.
+
+### The Problem with Instant Setpoints
+
+If you tell a PID controller "go to position 90°" instantly, it applies maximum output immediately. The mechanism accelerates as fast as possible, overshoots, oscillates, and eventually settles. This is harsh on the mechanism and wastes time.
+
+### TrapezoidProfile
+
+WPILib's `TrapezoidProfile` generates a smooth motion path with three phases:
+
+1. **Acceleration** — ramp up to cruise speed
+2. **Cruise** — maintain maximum speed
+3. **Deceleration** — ramp down to stop at the target
+
+```
+Speed
+  ^
+  |    ___________
+  |   /           \
+  |  /             \
+  | /               \
+  |/                 \
+  +--------------------> Time
+  Accel  Cruise  Decel
+```
+
+The profile respects maximum velocity and acceleration constraints that you define:
+
+```java
+TrapezoidProfile.Constraints constraints =
+  new TrapezoidProfile.Constraints(
+    maxVelocity,      // degrees per second
+    maxAcceleration   // degrees per second²
+  );
+
+TrapezoidProfile profile = new TrapezoidProfile(constraints);
+```
+
+Each cycle, the profile gives you an intermediate setpoint that your PID + feedforward controller tracks:
+
+```java
+// In periodic():
+TrapezoidProfile.State targetState = profile.calculate(
+  0.02,  // timestep
+  currentState,
+  goalState
+);
+
+double ffOutput = feedforward.calculate(targetState.velocity);
+double pidOutput = pid.calculate(currentPosition, targetState.position);
+motor.setVoltage(ffOutput + pidOutput);
+```
+
+### Motion Magic (CTRE)
+
+CTRE's **Motion Magic** is a vendor-specific implementation of motion profiling that runs on the motor controller itself. It combines the profile generation, PID, and feedforward into a single control request:
+
+```java
+motor.setControl(new MotionMagicVoltage(targetPosition)
+  .withSlot(0));  // Uses PID + FF gains from Slot 0
+```
+
+Motion Magic runs at 1kHz on the Talon, which gives smoother motion than the 50Hz robot loop.
+
+---
+
+## Putting It All Together
+
+Here's how the pieces fit together for a well-controlled mechanism:
+
+| Layer | What It Does | Example |
+|-------|-------------|---------|
+| **Motion Profile** | Plans the path (position, velocity over time) | TrapezoidProfile, Motion Magic |
+| **Feedforward** | Predicts the base output from physics | kS + kV × velocity + kG × cos(angle) |
+| **PID Feedback** | Corrects remaining error | kP × (target - actual) |
+
+```
+Target Position
+      ↓
+Motion Profile → Intermediate Setpoint (position + velocity)
+      ↓                    ↓
+  Feedforward          PID Controller
+      ↓                    ↓
+      +----→ Total Output ←----+
+                ↓
+            Motor Voltage
+```
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Control Theory"
+  prompt="In your own words, explain: (1) Why feedforward is often more important than PID for FRC mechanisms. (2) What problem does motion profiling solve that PID alone doesn't? (3) Look at your team's code — find one place where PID or feedforward is used and describe what it controls."
+>
+**Why feedforward matters more:**
+Feedforward handles the predictable physics (gravity, friction, velocity-dependent load) proactively, providing 80-90% of the required output. PID only corrects the remaining error. Without feedforward, PID has to do all the work reactively, leading to larger errors, slower response, and potential oscillation. With good feedforward, you often only need a small P term.
+
+**What motion profiling solves:**
+PID with an instant setpoint change causes the mechanism to accelerate as hard as possible, overshoot, and oscillate. Motion profiling creates a smooth trajectory with controlled acceleration and deceleration, so the mechanism moves predictably and settles faster. It also protects the mechanism from excessive forces.
+
+**Team code example:**
+In TunerConstants.java, the swerve module steer motors use PID gains (kP, kI, kD) to control the wheel angle. The drive motors use feedforward (kS, kV) to maintain target velocity. The combination ensures each swerve module accurately tracks its commanded speed and angle.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **PID Controller** | A feedback controller that calculates output based on Proportional (current error), Integral (accumulated error), and Derivative (rate of error change) terms |
+| **Feedforward** | A predictive controller that calculates expected motor output based on physics (gravity, friction, velocity) before any error occurs |
+| **Setpoint** | The target value a controller is trying to reach (e.g., 4000 RPM, 90°, 2.5 meters) |
+| **Steady-State Error** | A small persistent error that remains after the controller has settled, often caused by friction or gravity |
+| **Motion Profile** | A planned trajectory that defines position and velocity over time, with controlled acceleration and deceleration phases |
+| **TrapezoidProfile** | WPILib's motion profiling class that generates trapezoidal velocity profiles with configurable max velocity and acceleration |
+| **Motion Magic** | CTRE's on-controller motion profiling that combines profile generation, PID, and feedforward at 1kHz |
+
+---
+
+## What's Next?
+
+Now that you understand the theory, it's time to apply it. In **Activity 6.6: Tune a PID Loop**, you'll pick a mechanism on your team's robot, tune its PID and feedforward gains using AdvantageScope data, and see the difference good tuning makes.

@@ -1,0 +1,210 @@
+---
+title: "Activity 4.3: Create a Pull Request"
+description: "Practice the team Git workflow by creating a branch, making a safe edit, and opening a pull request"
+sidebar:
+  order: 3
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Created a feature branch from an up-to-date main
+- Made a safe, small edit to the robot code (a comment or constant name improvement)
+- Committed with a clear message and pushed to GitHub
+- Opened a pull request and requested a code review from a teammate
+- Experienced the full PR workflow from start to finish
+
+:::tip[Before You Start]
+Complete **Lesson 4.2: Git & GitHub Team Workflow** first. You need the team's robot project cloned on your computer with push access to the GitHub repository. If you don't have push access, ask your programming lead to add you as a collaborator on <GitHubLink client:load path="" label={robotConfig.repoName} />.
+:::
+
+---
+
+## The Plan
+
+You're going to make a **safe, small edit** — something that won't break the robot code. This is a practice run to learn the workflow before you make real changes during build season.
+
+**Safe edit ideas:**
+- Add a clarifying comment to a method in a subsystem file
+- Improve a variable name to be more descriptive
+- Add a missing Javadoc comment to a public method
+- Fix a typo in an existing comment
+
+**Do NOT** change any functional code (motor speeds, CAN IDs, logic) for this exercise. The goal is to practice the Git workflow, not to modify robot behavior.
+
+---
+
+## Step 1: Update Your Local Main
+
+Open your terminal in the robot project directory and run:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+
+This ensures you're starting from the latest code. If you see "Already up to date," you're good.
+
+---
+
+## Step 2: Create Your Branch
+
+```bash
+git checkout -b docs/add-comment-YOUR_NAME
+```
+
+Replace `YOUR_NAME` with your actual name (e.g., `docs/add-comment-alex`). The `docs/` prefix tells teammates this is a documentation/comment change, not a functional change.
+
+Verify you're on the new branch:
+
+```bash
+git branch
+```
+
+You should see an asterisk (`*`) next to your new branch name.
+
+---
+
+## Step 3: Make Your Safe Edit
+
+Open one of these files in your IDE and make a small, safe edit:
+
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label="IntakeSubsystem.java" /> — add a comment explaining what `deployOut()` does
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[1].file}`} label="ShooterSubsystem.java" /> — add a Javadoc comment to a public method
+- <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> — add a comment explaining what a constant group is for
+
+**Example edit** — adding a comment to IntakeSubsystem.java:
+
+```java
+// Before:
+public void deployOut() {
+    intakeLeftActivator.set(DEPLOY_SPEED);
+    intakeRightActivator.set(DEPLOY_SPEED);
+}
+
+// After (your edit):
+/**
+ * Deploys the intake outward by running both deploy motors at DEPLOY_SPEED.
+ * Called at the start of the intake sequence when the driver presses X.
+ */
+public void deployOut() {
+    intakeLeftActivator.set(DEPLOY_SPEED);
+    intakeRightActivator.set(DEPLOY_SPEED);
+}
+```
+
+Save the file after making your edit.
+
+---
+
+## Step 4: Commit Your Change
+
+```bash
+git add .
+git status
+```
+
+Check that `git status` shows only the file you edited. Then commit:
+
+```bash
+git commit -m "Add Javadoc comment to IntakeSubsystem.deployOut()"
+```
+
+Write a clear, specific commit message that describes exactly what you changed.
+
+---
+
+## Step 5: Push to GitHub
+
+```bash
+git push origin docs/add-comment-YOUR_NAME
+```
+
+Git will output a URL to create a pull request. You can click that URL, or go to the repository on GitHub manually.
+
+---
+
+## Step 6: Create the Pull Request
+
+On GitHub:
+
+1. You should see a yellow banner: "docs/add-comment-YOUR_NAME had recent pushes." Click **"Compare & pull request"**.
+
+2. Fill in the PR form:
+   - **Title**: "Add Javadoc comment to IntakeSubsystem.deployOut()" (or whatever you changed)
+   - **Description**: Write 2–3 sentences explaining what you changed and why. Example:
+     > Added a Javadoc comment to the `deployOut()` method in IntakeSubsystem.java. This helps new team members understand what the method does and when it's called. No functional changes.
+
+3. On the right sidebar, click **"Reviewers"** and select a teammate or your programming lead.
+
+4. Click **"Create pull request"**.
+
+---
+
+## Step 7: Wait for Review (or Review Someone Else's)
+
+If a teammate is doing this activity at the same time, review each other's PRs! When reviewing:
+
+- Click the **"Files changed"** tab to see the diff
+- Check that the edit is safe (no functional changes)
+- Leave a comment — even just "Looks good!" counts
+- Click **"Approve"** if everything looks correct
+
+<Checkpoint client:load
+  title="Checkpoint: PR Created"
+  prompt="Confirm you've completed these steps: (1) Created a branch with a descriptive name (2) Made a safe edit to one file (3) Committed with a clear message (4) Pushed to GitHub (5) Created a PR with a description and reviewer. What's the URL of your pull request?"
+>
+If you've completed all five steps, you've successfully practiced the full Git workflow! The PR URL will look like:
+
+`https://github.com/{robotConfig.repoName}/pull/NUMBER`
+
+If you got stuck on any step, ask your programming lead for help. The most common issues are:
+- **No push access**: Ask to be added as a collaborator on the repository
+- **Branch already exists**: Use a different name, or delete the old branch with `git branch -d branch-name`
+- **Merge conflicts**: Unlikely for a comment-only change, but if it happens, follow the conflict resolution steps from Lesson 4.2
+</Checkpoint>
+
+---
+
+## Step 8: Merge and Clean Up
+
+Once your PR is approved:
+
+1. Click **"Merge pull request"** on GitHub
+2. Click **"Delete branch"** when prompted
+3. Back in your terminal, update your local main:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+Your change is now part of the main codebase. Congratulations — you've completed the full cycle!
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Branch** — an independent line of development in Git that lets you work on changes without affecting the main codebase
+- **Pull Request** — a GitHub feature for proposing changes, getting code review, and merging branches
+- **Code Review** — the process of teammates reading and commenting on proposed code changes before they are merged
+- **Merge Conflict** — when two branches modify the same lines of code and Git cannot automatically combine them
+:::
+
+## What's Next?
+
+You've now practiced the complete Git workflow that your team uses for every code change. From here on, every edit you make to the robot code should follow this process: branch → commit → push → PR → review → merge.
+
+In **Lesson 4.12: Reading Autonomous Routines**, you'll learn how to read PathPlanner files and understand how your team's autonomous routines are structured — from JSON path files to Named Commands.
+
+
+
+In **Activity 4.4: Explore Your Own Robot Code**, you'll apply the Code Reading Framework to three files in your team's project that you haven't opened yet, using the WPILib docs to look up unfamiliar classes and methods.

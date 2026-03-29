@@ -1,0 +1,260 @@
+---
+title: "Lesson 5.5: Chief Delphi as a Learning Resource"
+description: "Learn to search, read build threads, and find programming discussions on Chief Delphi — the FRC community's knowledge base"
+sidebar:
+  order: 5
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Navigate Chief Delphi and use its search effectively to find FRC programming discussions
+- Identify the different types of threads (build threads, technical discussions, Q&A) and when each is useful
+- Find programming-specific discussions about topics relevant to your team's robot
+- Evaluate the quality and relevance of advice from community posts
+- Use Chief Delphi as a complement to official documentation
+
+:::caution[Unit 5 Prerequisites]
+Complete **Units 0–3 (Core Curriculum)** and **Unit 4** before starting Unit 5. You should be comfortable navigating WPILib docs, reading Java patterns in FRC code, tracing button bindings, understanding NetworkTables, and using Git workflows. Unit 5 builds on all of those skills.
+:::
+
+:::tip[Before You Start]
+Open a browser tab to [chiefdelphi.com](https://www.chiefdelphi.com) alongside your IDE. You'll be searching for real discussions throughout this lesson.
+:::
+
+:::note[😤 This Will Feel Different]
+Unit 5 is a shift. You're moving from "reading your own code" to "learning from the wider FRC world." It's normal to feel overwhelmed by the amount of information out there. You don't need to absorb everything — focus on finding one useful thing per lesson and applying it to your team's code.
+:::
+
+---
+
+## What Is Chief Delphi?
+
+**Chief Delphi** (often abbreviated CD) is the largest online forum for the FRC community. It's been running since 2001 and contains over two decades of build threads, technical discussions, strategy debates, and Q&A posts from teams around the world.
+
+Think of it as Stack Overflow meets Reddit, but exclusively for FRC. When you have a question that WPILib docs don't answer — "How do other teams handle intake jams?" or "What's the best way to tune swerve auto-alignment?" — Chief Delphi is where you'll find teams sharing their real-world solutions.
+
+> **[chiefdelphi.com](https://www.chiefdelphi.com)**
+
+---
+
+## Types of Content on Chief Delphi
+
+Not all threads are created equal. Understanding the different types helps you find what you need faster.
+
+| Thread Type | What It Contains | When to Read It |
+|-------------|-----------------|-----------------|
+| **Build Threads** | Season-long documentation of a team's robot design, build, and code | When you want to see how a specific team approached a challenge end-to-end |
+| **Technical Discussions** | Deep dives into specific topics (swerve, vision, controls) | When you're learning a new concept and want multiple perspectives |
+| **Q&A / Help Threads** | Someone asking for help with a specific problem | When you're stuck on a similar problem — check if someone already solved it |
+| **White Papers** | Detailed technical write-ups by experienced teams | When you want a thorough explanation of a concept or approach |
+| **Reveal / Behind the Bumpers** | Robot reveals with photos, videos, and design explanations | When you want to see what's possible and get inspired |
+
+---
+
+## Searching Chief Delphi Effectively
+
+The search bar at the top of Chief Delphi is your most powerful tool. But generic searches return thousands of results. Here's how to narrow things down.
+
+### Search Tips
+
+1. **Be specific with keywords.** Instead of searching "swerve", try "swerve auto alignment pid" or "CTRE swerve odometry drift".
+
+2. **Add the year.** FRC changes every season. Adding "2024" or "2025" filters out outdated advice. Example: "pathplanner named commands 2025".
+
+3. **Use category filters.** After searching, click the category dropdown to filter by "Technical Discussion" or "Programming" to skip non-technical threads.
+
+4. **Search for team numbers.** Want to see what Team 254 shared? Search "254" and filter by their posts. Top teams often share detailed technical breakdowns.
+
+5. **Look for "white paper" or "writeup".** These are usually the highest-quality posts — teams that took time to document their approach thoroughly.
+
+### What Makes a Good Search Query
+
+| Bad Search | Better Search | Why It's Better |
+|-----------|--------------|-----------------|
+| "swerve" | "swerve module optimization CTRE 2025" | Specific topic, vendor, and year |
+| "auto" | "pathplanner on-the-fly path generation" | Specific tool and feature |
+| "help motor" | "TalonFX following error CAN bus" | Specific hardware and error type |
+| "code" | "command-based state machine intake" | Specific pattern and mechanism |
+
+---
+
+<Quiz client:load
+  question="You want to find how other teams handle the transition from intake to shooting in their command-based code. Which Chief Delphi search would give you the most relevant results?"
+  options={[
+    "intake shooter",
+    "command-based intake to shooter handoff 2025",
+    "FRC code help",
+    "robot programming"
+  ]}
+  correctIndex={1}
+  explanation="The second option includes the specific pattern (command-based), the specific mechanism transition (intake to shooter handoff), and the year (2025). This narrows results to relevant, recent discussions. The other searches are too vague and would return thousands of unrelated results."
+/>
+
+---
+
+## Reading Build Threads
+
+Build threads are one of Chief Delphi's most valuable resources. Top teams like 254 (The Cheesy Poofs), 1678 (Citrus Circuits), 6328 (Mechanical Advantage), and 971 (Spartan Robotics) post detailed build threads each season.
+
+### What to Look For in a Build Thread
+
+When reading a build thread for programming insights, focus on:
+
+1. **Software architecture posts** — How did they organize their code? What patterns did they use?
+2. **Autonomous strategy** — How many game pieces do their autos score? What path planning approach do they use?
+3. **Debugging stories** — What problems did they encounter and how did they solve them? These are gold.
+4. **Links to their GitHub** — Many teams link their code repository in the build thread. Bookmark these.
+5. **CAD and mechanism descriptions** — Understanding the hardware helps you understand why the code is structured the way it is.
+
+### How to Read a Build Thread Efficiently
+
+Build threads can be hundreds of posts long. Don't read every post sequentially. Instead:
+
+1. **Read the first post** — it usually has an overview and links to key updates
+2. **Use the thread summary** (if available) — some teams add a table of contents
+3. **Search within the thread** — use `Ctrl+F` to find "code", "software", "auto", or "GitHub"
+4. **Jump to the end** — later posts often have the most refined version of their approach
+5. **Check linked resources** — GitHub repos, technical documents, and videos linked in the thread
+
+---
+
+## Finding Programming Discussions
+
+Beyond build threads, Chief Delphi has active programming discussions. Here's how to find the most useful ones.
+
+### The "Programming" Category
+
+Chief Delphi has a dedicated Programming category. Browse it directly:
+
+> **[chiefdelphi.com/c/technical/programming](https://www.chiefdelphi.com/c/technical/programming)**
+
+This filters out all the non-programming content and shows you threads specifically about code, algorithms, and software tools.
+
+### High-Value Discussion Topics
+
+These topics come up regularly and have excellent community responses:
+
+| Topic | What You'll Find |
+|-------|-----------------|
+| **Swerve drive implementation** | Comparisons of CTRE vs REV swerve, odometry tuning, module optimization |
+| **PathPlanner tips** | Path constraints, named command patterns, auto builder strategies |
+| **Vision processing** | AprilTag detection, pose estimation, camera placement, latency compensation |
+| **State machines** | How teams coordinate complex mechanisms, enum-based patterns |
+| **AdvantageKit** | Logging setup, replay debugging, IO layer patterns |
+| **Competition debugging** | Real stories of diagnosing issues under time pressure |
+
+---
+
+## Evaluating Community Advice
+
+Not all advice on Chief Delphi is equal. Here's how to evaluate what you read:
+
+### Signs of High-Quality Advice
+
+- **Comes from a known team** — Teams with strong track records (254, 1678, 6328, 971, 148, 3476) tend to give well-tested advice
+- **Includes code or data** — Posts with actual code snippets, graphs, or test results are more trustworthy than opinions
+- **Explains the "why"** — Good advice explains the reasoning, not just the solution
+- **Acknowledges tradeoffs** — Real engineering involves tradeoffs; advice that says "always do X" is usually oversimplified
+- **Is recent** — FRC libraries change yearly; advice from 2020 may not apply to 2025
+
+### Signs of Lower-Quality Advice
+
+- **No code or evidence** — "Just use X, it works" without explanation
+- **Contradicts official docs** — If it conflicts with WPILib or vendor documentation, the docs are usually right
+- **Very old** — Pre-2022 advice about command-based programming may reference the old framework
+- **Overly complex for the problem** — Sometimes the simplest solution is the best one
+
+<Quiz client:load
+  question="You find a Chief Delphi post from 2021 that recommends a specific approach to swerve odometry. The post has no code examples and contradicts the current WPILib documentation. What should you do?"
+  options={[
+    "Follow the post's advice — Chief Delphi users are always right",
+    "Ignore it completely — old posts are never useful",
+    "Note the concept but verify against current WPILib docs and recent posts — the approach may be outdated",
+    "Ask your mentor to decide"
+  ]}
+  correctIndex={2}
+  explanation="A 2021 post about swerve odometry may reference older APIs or approaches that have been superseded. The concept might still be valid, but you should verify against current WPILib documentation and look for more recent discussions. Official docs take precedence when there's a conflict."
+/>
+
+---
+
+## Connecting Chief Delphi to Your Team's Code
+
+The real power of Chief Delphi comes when you connect community knowledge to your own robot code. Here's a practical workflow:
+
+### The CD → Code Workflow
+
+1. **Encounter a problem** in your team's code (e.g., swerve drift during auto)
+2. **Search Chief Delphi** for the specific issue ("swerve odometry drift autonomous 2025")
+3. **Read 2-3 relevant threads** — look for teams that had the same problem
+4. **Note their solutions** — what did they change? What values did they tune?
+5. **Compare to your code** — open your team's <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/CommandSwerveDrivetrain.java`} label="CommandSwerveDrivetrain.java" /> and see if the same patterns apply
+6. **Try the suggestion** on a branch — never change main directly based on a CD post
+
+### Example: Finding Intake Patterns
+
+Say you want to improve your team's intake logic. Here's what a CD search might look like:
+
+1. Search: "command-based intake beam break 2025"
+2. Find a thread where Team 6328 explains their intake state machine with a beam break sensor
+3. Compare their approach to your team's <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" />
+4. Note the differences — maybe they use a state machine while your team uses sequential commands
+5. Discuss with your team whether the pattern would improve your code
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Chief Delphi Navigation"
+  prompt="Open Chief Delphi in your browser and complete these tasks: (1) Search for a programming discussion about a topic relevant to your team's robot (swerve, intake, shooter, auto, etc.). (2) Find one build thread from a top team (254, 1678, 6328, or 971) from the most recent season. (3) In that build thread, locate a post about their software or autonomous approach. Describe what you found and how it relates to your team's code."
+>
+Good answers will include:
+
+1. **A specific search query** you used and the thread you found — e.g., "I searched 'CTRE swerve auto alignment 2025' and found a thread about using vision-assisted alignment during autonomous."
+
+2. **A specific build thread** — e.g., "I found Team 6328's 2025 build thread. They posted their GitHub link and described their AdvantageKit logging setup."
+
+3. **A connection to your team's code** — e.g., "Team 6328 uses IO layers for each subsystem, which is different from our direct hardware access in IntakeSubsystem.java. Their approach makes it easier to test in simulation."
+</Checkpoint>
+
+---
+
+## Beyond Chief Delphi: Other Community Resources
+
+Chief Delphi is the hub, but the FRC community shares knowledge in other places too:
+
+| Resource | What It Offers |
+|----------|---------------|
+| **FRC Discord** | Real-time chat with quick Q&A — good for "is this a known issue?" questions |
+| **The Compass Alliance** | Curated technical resources and guides from experienced mentors |
+| **Team GitHub repositories** | Direct access to top team code — you'll explore these in the next lesson |
+| **YouTube (FRC-specific channels)** | Video explanations of concepts, robot reveals, and technical talks |
+| **FIRST Updates Now (FUN)** | Weekly show covering FRC news, strategy, and technical topics |
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Chief Delphi** | The largest online forum for the FRC community, hosting build threads, technical discussions, and Q&A since 2001 |
+| **Build Thread** | A season-long forum thread where a team documents their robot design, build process, code, and competition results |
+| **White Paper** | A detailed technical write-up shared by a team explaining their approach to a specific engineering challenge |
+| **CD Search** | Using Chief Delphi's search with specific keywords, year filters, and category filters to find relevant discussions |
+
+---
+
+## What's Next?
+
+Now that you know how to tap into the FRC community's collective knowledge, it's time to go straight to the source. In **Lesson 5.6: Reading Top Team Code**, you'll learn how to navigate the GitHub repositories of teams like 254, 6328, 971, and 1678 — reading their actual code to understand the patterns and architectures that make them successful.

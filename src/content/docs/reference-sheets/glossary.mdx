@@ -1,6 +1,6 @@
 ---
 title: "Glossary"
-description: "Beginner glossary of key FRC programming terms with definitions for all 11 required terms."
+description: "Glossary of key FRC programming terms with definitions covering beginner through advanced concepts."
 sidebar:
   order: 3
 prev: true
@@ -27,6 +27,19 @@ This glossary covers the key terms you need to know when reading FRC robot code.
 | 9 | **Constants** | Fixed configuration values stored in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />. Includes motor speeds, CAN IDs, PID gains, and physical measurements. Changing constants is the safest type of code edit. |
 | 10 | **CAN ID** | A unique number assigned to each motor controller and sensor on the robot's CAN bus network. Our robot uses CAN IDs like {robotConfig.canIds.shooterLeft} (shooter left), {robotConfig.canIds.intakeLeft} (intake left), and {robotConfig.canIds.climbLeft} (climber left). Defined in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" />. |
 | 11 | **Swerve Drive** | A drivetrain where each wheel can independently rotate and change direction, allowing the robot to move in any direction while facing any direction. Our project uses CTRE's swerve implementation in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[4].file}`} label="CommandSwerveDrivetrain.java" /> with configuration in <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.generatedFiles[0].file}`} label="TunerConstants.java" />. |
+| 12 | **NetworkTables** | The WPILib publish/subscribe communication system that connects robot code, dashboards (SmartDashboard, Shuffleboard), and coprocessors (Limelight) over the network. Used for sending data between the robot and the Driver Station. |
+| 13 | **CAN Bus** | The Controller Area Network communication bus connecting the roboRIO to motor controllers, sensors, and other devices on the robot. Each device has a unique CAN ID for identification. |
+| 14 | **Odometry** | The process of tracking the robot's position on the field using wheel encoder measurements and gyro heading data. Odometry drifts over time due to wheel slip and measurement noise. |
+| 15 | **Kinematics** | The mathematical transformation that converts desired robot motion (translation + rotation) into individual module states. In swerve drive, kinematics calculates the speed and angle for each wheel module. |
+| 16 | **Kalman Filter** | A mathematical algorithm that optimally blends two noisy measurements (e.g., odometry and vision) based on their respective uncertainty levels (standard deviations) to produce a more accurate estimate. |
+| 17 | **State Machine** | A design pattern where a system is modeled as a set of discrete states with defined transitions and guard conditions controlling movement between states. Used to coordinate complex robot behaviors. |
+| 18 | **Superstructure Pattern** | An architecture pattern used by top FRC teams (254, 1678) where a single coordinating class manages all non-drivetrain subsystem interactions using a state machine. |
+| 19 | **Field-Relative Control** | A control mode where joystick inputs are interpreted relative to the field orientation rather than the robot's heading, using gyro data. Pushing the joystick "up" always moves the robot away from the driver, regardless of which way the robot is facing. |
+| 20 | **Module State** | The combination of drive speed and steering angle for a single swerve drive module. Each of the four swerve modules has its own module state that is calculated by kinematics. |
+| 21 | **Pose Estimator** | A WPILib component that fuses odometry data with vision measurements using a Kalman filter to produce a more accurate robot position estimate on the field. |
+| 22 | **Standard Deviation** | A measure of measurement uncertainty used by the Pose Estimator to determine how much to trust odometry vs vision data. Lower standard deviation means higher trust in that measurement source. |
+| 23 | **Match Log** | Data recorded during a robot match (via Driver Station logs or AdvantageScope) used for post-match analysis and debugging. Includes sensor readings, command states, and error messages. |
+| 24 | **Hotfix Branch** | A short-lived Git branch created at competition to make targeted code fixes without disrupting the stable main branch. Merged back after the fix is verified. |
 
 ---
 

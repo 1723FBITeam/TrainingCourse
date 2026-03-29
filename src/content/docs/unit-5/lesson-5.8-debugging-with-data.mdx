@@ -1,0 +1,237 @@
+---
+title: "Lesson 5.8: Debugging with Shuffleboard & AdvantageScope"
+description: "Learn to debug your robot using data visualization — logging values, reading graphs, and replaying matches"
+sidebar:
+  order: 8
+prev: true
+next: true
+---
+
+import { Quiz } from '../../../components/Quiz';
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 What You'll Learn
+
+By the end of this lesson you will be able to:
+
+- Use Shuffleboard to create custom dashboards that display live robot data
+- Use AdvantageScope to visualize logged data with graphs and 3D views
+- Add logging statements to your robot code to capture useful debugging data
+- Read time-series graphs to identify issues like oscillation, lag, and unexpected values
+- Replay match data to diagnose problems that happened during a match
+
+:::tip[Before You Start]
+Complete **Activity 5.7: Compare a Subsystem**. You should have Shuffleboard installed (it comes with WPILib) and AdvantageScope downloaded from [docs.advantagescope.org](https://docs.advantagescope.org). If you have access to the robot, connect to it — live data makes this lesson much more impactful.
+:::
+
+---
+
+## Why Debug with Data?
+
+In Unit 4, you learned to read code to understand what *should* happen. But what happens when the robot doesn't do what the code says? That's where debugging with data comes in.
+
+The most common debugging approach for beginners is adding `System.out.println()` statements. This works, but it has serious limitations:
+
+- Print statements scroll by too fast to read during a match
+- You can't see trends over time (is the value increasing? oscillating? stuck?)
+- You can't go back and review what happened 30 seconds ago
+- Print statements don't survive after the match ends
+
+Data visualization tools solve all of these problems. Instead of printing text, you publish numbers to **NetworkTables** (which you learned about in Lesson 4.9), and then use tools like Shuffleboard or AdvantageScope to display them as graphs, gauges, and 3D visualizations.
+
+---
+
+## Tool 1: Shuffleboard
+
+**Shuffleboard** is the dashboard tool that comes with WPILib. It connects to your robot over NetworkTables and displays live data in customizable layouts.
+
+### What Shuffleboard Does Well
+
+| Feature | How It Helps |
+|---------|-------------|
+| **Live data display** | See motor speeds, sensor values, and subsystem states in real time |
+| **Custom layouts** | Arrange widgets (graphs, gauges, boolean indicators) however you want |
+| **Tab organization** | Create separate tabs for different subsystems or debugging scenarios |
+| **Auto chooser widget** | Select autonomous routines from a dropdown — you've seen this in PathPlanner |
+| **Camera streams** | Display camera feeds alongside data |
+
+### Adding Data to Shuffleboard
+
+You already know how to publish data to NetworkTables from Lesson 4.9. Here's a quick refresher:
+
+```java
+// In any subsystem's periodic() method:
+SmartDashboard.putNumber("Shooter/LeftRPM", getLeftVelocity());
+SmartDashboard.putNumber("Shooter/RightRPM", getRightVelocity());
+SmartDashboard.putBoolean("Shooter/AtSpeed", isAtTargetSpeed());
+SmartDashboard.putString("Intake/State", getCurrentState().name());
+```
+
+The `/` in the key name creates a folder structure in Shuffleboard, keeping related values grouped together.
+
+### Shuffleboard Layout Tips
+
+1. **Create a "Debug" tab** — put all your debugging widgets here so they don't clutter the driver's view
+2. **Use graphs for changing values** — motor speeds, encoder positions, PID outputs
+3. **Use boolean indicators for states** — is the intake deployed? Is the shooter at speed?
+4. **Use text displays for strings** — current command name, auto routine selection
+5. **Save your layout** — Shuffleboard layouts persist between sessions if you save them
+
+---
+
+## Tool 2: AdvantageScope
+
+**AdvantageScope** is a more powerful data visualization tool created by Team 6328. It's become the standard for FRC data analysis.
+
+> **[docs.advantagescope.org](https://docs.advantagescope.org)**
+
+### What AdvantageScope Does That Shuffleboard Can't
+
+| Feature | How It Helps |
+|---------|-------------|
+| **Time-series graphs** | Plot multiple values on the same time axis with zoom and pan |
+| **Log file replay** | Open saved log files and scrub through match data after the fact |
+| **3D field visualization** | See your robot's position on a 3D field model in real time or from logs |
+| **Synchronized views** | Multiple graph panels stay in sync — zoom one, they all zoom |
+| **NetworkTables live view** | Connect to a running robot and see all NT values in a tree |
+| **Driver Station log import** | Import DS logs to correlate robot data with match events |
+
+### Connecting AdvantageScope to Your Robot
+
+1. Open AdvantageScope
+2. Click **File → Connect to Robot** (or the NetworkTables icon)
+3. Enter your robot's address (usually `10.TE.AM.2` or `172.22.11.2` for USB)
+4. AdvantageScope will show all NetworkTables entries in the left panel
+5. Drag values to the graph area to start plotting
+
+### Reading Graphs Like a Pro
+
+Graphs are the most powerful debugging tool in AdvantageScope. Here's what to look for:
+
+| Graph Pattern | What It Means | Likely Cause |
+|--------------|---------------|-------------|
+| **Flat line at zero** | Value never changes | Sensor disconnected, wrong CAN ID, or code never updates the value |
+| **Oscillation** | Value bounces rapidly between two values | PID gains too aggressive, mechanical backlash, or sensor noise |
+| **Step function** | Value jumps instantly to a new level | Command started/stopped, mode changed, or limit hit |
+| **Gradual drift** | Value slowly changes over time | Odometry drift, encoder slip, or thermal effects |
+| **Spikes** | Brief extreme values | Electrical noise, CAN bus errors, or momentary sensor glitches |
+| **Lag/delay** | Output follows input but with a time offset | Control loop too slow, mechanical inertia, or communication delay |
+
+---
+
+<Quiz client:load
+  question="You're watching a graph of your shooter's flywheel RPM in AdvantageScope. The target is 4000 RPM, but the actual RPM oscillates rapidly between 3800 and 4200, never settling at 4000. What's the most likely cause?"
+  options={[
+    "The motor is broken",
+    "The PID gains are too aggressive — the controller is overcorrecting",
+    "The encoder is disconnected",
+    "The CAN bus is overloaded"
+  ]}
+  correctIndex={1}
+  explanation="Rapid oscillation around a target value is the classic sign of PID gains that are too high (especially the P or D term). The controller overshoots the target, then overcorrects in the other direction, creating a continuous oscillation. The fix is to reduce the P gain or add/increase the D gain to dampen the response."
+/>
+
+---
+
+## Adding Useful Logging to Your Code
+
+The data you can visualize is only as good as the data you publish. Here's what to log for each subsystem type:
+
+### For Motor-Based Subsystems (Intake, Shooter, Climber)
+
+```java
+// In periodic():
+SmartDashboard.putNumber("Shooter/TargetRPM", targetRPM);
+SmartDashboard.putNumber("Shooter/ActualRPM", getVelocity());
+SmartDashboard.putNumber("Shooter/Error", targetRPM - getVelocity());
+SmartDashboard.putNumber("Shooter/OutputPercent", motor.get());
+SmartDashboard.putNumber("Shooter/CurrentAmps", motor.getStatorCurrent().getValueAsDouble());
+SmartDashboard.putBoolean("Shooter/AtTarget", Math.abs(targetRPM - getVelocity()) < 50);
+```
+
+### For the Drivetrain
+
+```java
+// In periodic():
+SmartDashboard.putNumber("Drive/PoseX", getPose().getX());
+SmartDashboard.putNumber("Drive/PoseY", getPose().getY());
+SmartDashboard.putNumber("Drive/HeadingDeg", getHeading().getDegrees());
+SmartDashboard.putNumber("Drive/SpeedMPS", getChassisSpeeds().vxMetersPerSecond);
+```
+
+### For Commands
+
+```java
+// In a command's initialize():
+SmartDashboard.putString("ActiveCommand", getName());
+
+// In end():
+SmartDashboard.putString("ActiveCommand", "none");
+SmartDashboard.putBoolean("LastCommandInterrupted", interrupted);
+```
+
+---
+
+## Debugging Workflow: The Data-Driven Approach
+
+Here's a systematic workflow for debugging with data:
+
+### Step 1: Reproduce the Problem
+Run the robot and trigger the issue. Note the approximate time.
+
+### Step 2: Check the Graphs
+Open AdvantageScope and look at the relevant values around the time of the issue. What do the graphs show?
+
+### Step 3: Compare Expected vs Actual
+- What should the value be? (Check your code for the target)
+- What is the value actually doing? (Check the graph)
+- When does the discrepancy start? (Zoom in on the transition)
+
+### Step 4: Narrow Down the Cause
+- If the **target is wrong** → the command logic has a bug
+- If the **target is right but output is wrong** → the control loop (PID) needs tuning
+- If the **output is right but the mechanism doesn't move** → hardware issue (wiring, CAN, mechanical)
+- If the **value is zero or missing** → sensor disconnected or wrong CAN ID
+
+### Step 5: Fix and Verify
+Make the fix, redeploy, and check the graphs again. The data should confirm the fix worked.
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: Debugging with Data"
+  prompt="Describe a scenario where you'd use AdvantageScope instead of System.out.println() to debug a problem. What values would you log, what graph pattern would you look for, and how would the graph help you identify the root cause faster than print statements?"
+>
+A strong answer might be:
+
+**Scenario:** "The shooter flywheel takes too long to spin up before shooting."
+
+**Values to log:** Target RPM, actual RPM, motor output percent, and motor current draw.
+
+**Graph pattern to look for:** The actual RPM curve should show how quickly it rises toward the target. If it rises slowly and plateaus below the target, the motor might be current-limited or the feedforward is too low. If it overshoots and oscillates, the PID is too aggressive.
+
+**Why graphs are better:** With print statements, you'd see a stream of numbers scrolling by and have to mentally track the trend. With a graph, you instantly see the shape of the response curve — how fast it rises, whether it overshoots, and exactly when it reaches the target. You can also zoom in on the exact moment the shoot command starts.
+</Checkpoint>
+
+---
+
+## Key Terms
+
+📖 *All terms below are also in the [full glossary](/reference-sheets/glossary) for quick reference.*
+
+| Term | Definition |
+|------|-----------|
+| **Shuffleboard** | The WPILib dashboard tool that displays live robot data from NetworkTables in customizable widget layouts |
+| **AdvantageScope** | A data visualization tool by Team 6328 that provides time-series graphs, 3D field views, and log file replay for FRC robots |
+| **Time-Series Graph** | A graph that plots a value over time, showing trends, oscillations, and transitions that are invisible in raw numbers |
+| **Log File** | A recorded file of robot data from a match or test session that can be replayed and analyzed after the fact |
+| **Oscillation** | A graph pattern where a value rapidly bounces between two extremes, typically indicating PID gains that are too aggressive |
+
+---
+
+## What's Next?
+
+You now know how to visualize robot data for debugging. In **Lesson 5.9: Vendor Documentation Deep Dive**, you'll learn to navigate the documentation for CTRE Phoenix 6 and REV Robotics — the vendor libraries that control the specific motors and sensors on your robot.

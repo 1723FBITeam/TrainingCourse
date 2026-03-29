@@ -1,0 +1,193 @@
+---
+title: "Activity 5.4: Inspect CAN Devices"
+description: "Use Phoenix Tuner X and REV Hardware Client to inspect and document every CAN device on your team's robot"
+sidebar:
+  order: 4
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Connected to your robot with Phoenix Tuner X (and REV Hardware Client if applicable)
+- Discovered and listed every CAN device on the robot
+- Verified that each device's CAN ID matches the code in Constants.java
+- Documented the firmware version and status of each device
+- Identified any devices that need attention (firmware updates, faults, missing devices)
+
+:::tip[Before You Start]
+Complete **Lesson 5.3: CAN Bus and Hardware Debugging**. You need the robot powered on and connected to your laptop via USB. Have Phoenix Tuner X installed and open. Also have your team's code open to <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.constants}`} label="Constants.java" /> for reference.
+:::
+
+---
+
+## Step 1: Connect to the Robot
+
+1. Power on the robot
+2. Connect your laptop to the roboRIO via USB cable
+3. Open **Phoenix Tuner X**
+4. Click **"Connect"** or select the roboRIO from the device list
+5. Wait for Tuner X to scan the CAN bus
+
+You should see a list of all CTRE devices on the CAN bus. If you also have REV devices, open the REV Hardware Client and connect via USB as well.
+
+---
+
+## Step 2: Inventory All CAN Devices
+
+Fill in this table with every device Phoenix Tuner X discovers. Compare each CAN ID to the values in your team's Constants.java:
+
+### CTRE Devices (Phoenix Tuner X)
+
+| CAN ID | Device Type | Name in Code | Subsystem | Firmware Version | Status |
+|--------|------------|-------------|-----------|-----------------|--------|
+| {robotConfig.canIds.shooterLeft} | TalonFX | Shooter Left | ShooterSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.shooterRight} | TalonFX | Shooter Right | ShooterSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.turret} | TalonFX | Turret | TurretSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.feeder} | TalonFX | Feeder | ShooterSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.spinner} | TalonFX | Spinner | ShooterSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.intakeLeft} | TalonFX | Intake Left | IntakeSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.intakeRight} | TalonFX | Intake Right | IntakeSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.deployLeft} | TalonFXS | Deploy Left | IntakeSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.deployRight} | TalonFXS | Deploy Right | IntakeSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.climbLeft} | TalonFX | Climb Left | ClimberSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.climbRight} | TalonFX | Climb Right | ClimberSubsystem | | ✅ / ⚠️ / ❌ |
+| {robotConfig.canIds.elevator} | TalonFX | Elevator | ClimberSubsystem | | ✅ / ⚠️ / ❌ |
+
+**Status key:** ✅ = Found and healthy, ⚠️ = Found but needs attention (firmware update, fault), ❌ = Not found
+
+### Additional Devices
+
+Your robot also has devices not in the motor CAN ID list — Pigeon 2 gyro, CANcoders for swerve modules, and possibly a CANdle. List any additional devices you find:
+
+| CAN ID | Device Type | Purpose | Firmware Version | Status |
+|--------|------------|---------|-----------------|--------|
+| | | | | |
+| | | | | |
+| | | | | |
+
+---
+
+## Step 3: Run Self-Tests
+
+For each device, run a self-test in Phoenix Tuner X:
+
+1. Select the device in the device list
+2. Click **"Self-Test"** (or the diagnostic button)
+3. Read the results — look for any faults or warnings
+
+Document any issues found:
+
+| Device (CAN ID) | Self-Test Result | Issue Found | Action Needed |
+|-----------------|-----------------|-------------|---------------|
+| | | | |
+| | | | |
+
+<AnswerReveal client:load label="Common Self-Test Issues">
+- **Under-voltage fault:** Battery was low when the device was last powered. Usually clears on its own with a charged battery.
+- **Hardware fault:** A persistent hardware issue. May need device replacement.
+- **Firmware out of date:** Orange warning. Update through Phoenix Tuner X.
+- **Boot during enable:** The device rebooted while the robot was enabled. Could indicate a wiring issue causing power interruption.
+- **No faults:** Everything is healthy.
+</AnswerReveal>
+
+---
+
+## Step 4: Test a Motor
+
+Pick one motor and test it directly from Phoenix Tuner X (without robot code):
+
+1. Select the motor controller in the device list
+2. Go to the **"Control"** tab
+3. Set a small output value (e.g., 10% or 0.1)
+4. Click **"Enable"** and observe the motor
+
+⚠️ **Safety:** Make sure the mechanism is safe to move before testing. Keep hands clear and ensure the robot is secured.
+
+| Test | Result |
+|------|--------|
+| Motor selected | CAN ID: ___ |
+| Output commanded | ___% |
+| Motor responded? | Yes / No |
+| Direction correct? | Yes / No / N/A |
+| Any unusual sounds? | |
+
+---
+
+## Step 5: Check CAN Bus Health
+
+In Phoenix Tuner X, check the overall CAN bus health:
+
+1. Look for the **CAN utilization** percentage
+2. Check if any devices show intermittent communication (blinking status)
+3. Note the total device count — does it match what you expect?
+
+| Metric | Value | Healthy Range |
+|--------|-------|--------------|
+| CAN utilization | ___% | Below 70% |
+| Total devices found | ___ | Should match your device count |
+| Devices with warnings | ___ | Should be 0 |
+| Devices with faults | ___ | Should be 0 |
+
+---
+
+## Step 6: Create a CAN Bus Map
+
+Draw or document the physical CAN bus chain on your robot. This is invaluable for debugging at competition:
+
+1. Start at the roboRIO
+2. Follow the CAN wires (green CAN H and yellow CAN L) from device to device
+3. Note the order of devices in the chain
+4. Mark where the chain ends (should have a 120Ω termination resistor)
+
+```
+roboRIO → [Device ___] → [Device ___] → [Device ___] → ... → [Last Device]
+```
+
+This map tells you exactly where to look when a device goes missing — if device 5 in the chain disappears, check the wiring between device 4 and device 5.
+
+<Checkpoint client:load
+  title="Checkpoint: CAN Device Inspection"
+  prompt="After completing your inspection, answer: (1) How many total CAN devices did you find? Does this match what the code expects? (2) Were any devices missing or showing faults? (3) What is the CAN bus utilization percentage? (4) If you had to debug a CAN issue at competition, what's the first thing you'd check based on your CAN bus map?"
+>
+Good answers include specific numbers and observations from your actual robot inspection. For example:
+
+1. "Found 16 devices total (12 motor controllers + Pigeon 2 + 3 CANcoders). This matches our Constants.java."
+
+2. "All devices found. Two TalonFX controllers showed firmware update warnings — we should update them before competition."
+
+3. "CAN utilization is at 45%, well within the healthy range."
+
+4. "Based on my CAN bus map, the swerve module CANcoders are at the end of the chain. If they go missing, I'd check the CAN connection at the last motor controller before the CANcoders."
+</Checkpoint>
+
+---
+
+## Bonus: Save Your Documentation
+
+Save your CAN device inventory and bus map somewhere your whole team can access:
+- Team Google Drive or Notion
+- Engineering notebook
+- Printed copy taped inside the robot's electronics board
+
+Having this documentation at competition saves critical debugging time.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[CAN Bus](/reference-sheets/glossary)** — the Controller Area Network communication bus connecting the roboRIO to motor controllers and sensors
+- **[CAN ID](/reference-sheets/glossary)** — a unique number assigned to each device on the CAN bus for identification
+- **Phoenix Tuner X** — CTRE's diagnostic tool for configuring, testing, and updating firmware on Phoenix devices
+- **Daisy-Chain** — the wiring topology where CAN devices are connected in series, one after another
+:::
+
+## What's Next?
+
+You've inspected every CAN device on your robot and documented the bus layout. In **Lesson 5.11: Swerve Drive Concepts**, you'll dive into how your team's swerve drivetrain works — module states, field-relative control, odometry, kinematics, and the role of the gyro.

@@ -1,0 +1,206 @@
+---
+title: "Activity 4.8: Trace a New Button"
+description: "Pick an untraced button binding and produce a full CodeTrace from button press to motor output"
+sidebar:
+  order: 8
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { CodeTrace } from '../../../components/CodeTrace';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Chosen a button binding that hasn't been traced yet (A button jostle or B button elevator)
+- Followed the complete execution path from controller press to motor output
+- Documented your trace using the CodeTrace format
+- Compared your chosen binding type to the ones traced in Units 2–3
+
+:::tip[Before You Start]
+Complete **Lesson 4.7: Constants, Subsystems & Commands Revisited** first. You should understand the three command types and subsystem requirements. Have <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> open in your IDE, along with the subsystem file for whichever button you choose.
+:::
+
+---
+
+## What's Already Been Traced
+
+In Units 2–3, you traced two button bindings:
+
+| Button | Binding Type | What It Does | Where You Traced It |
+|--------|-------------|-------------|-------------------|
+| **X button** | `toggleOnTrue` | Intake deploy + rollers | Activity 2.4 |
+| **Y button** | `toggleOnTrue` | Shoot sequence | Lesson 2.3 |
+
+That leaves two buttons you haven't traced:
+
+| Button | Binding Type | What It Does |
+|--------|-------------|-------------|
+| **A button** | `whileTrue` | Jostle the intake |
+| **B button** | `onTrue` | Elevator command |
+
+**Pick one** and trace it completely. Both are good choices — they use different binding types than X and Y, so you'll learn something new either way.
+
+---
+
+## Step 1: Find Your Button Binding
+
+Open <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.coreFiles.robotContainer}`} label="RobotContainer.java" /> and search for your chosen button:
+
+- For the **A button**: search for `controller.a()`
+- For the **B button**: search for `controller.b()`
+
+Read the binding carefully. Before you start tracing, answer these questions:
+
+1. What binding type does it use? (`whileTrue`, `onTrue`, `toggleOnTrue`, etc.)
+2. What command or command group does it trigger?
+3. Which subsystem(s) are involved?
+
+
+<AnswerReveal client:load label="Hint: A Button (Jostle)">
+The A button uses `whileTrue` — the command runs **only while the button is held down**. When you release A, the command stops immediately. This is different from `toggleOnTrue` (X and Y buttons), where you press once to start and again to stop.
+
+The jostle command likely calls a method on `IntakeSubsystem` that vibrates or shakes the intake to settle a game piece. Look for a `jostle()` method or similar.
+</AnswerReveal>
+
+<AnswerReveal client:load label="Hint: B Button (Elevator)">
+The B button uses `onTrue` — the command runs **once** when the button is pressed. It doesn't toggle, and holding the button doesn't matter. The command runs to completion (or until `isFinished()` returns true).
+
+The elevator command involves `ClimberSubsystem` and controls the elevator mechanism for endgame climbing.
+</AnswerReveal>
+
+---
+
+## Step 2: Trace the Execution Path
+
+Follow the same process you used in Activity 5.8:
+
+1. **Start at the binding** — What does the trigger do when the button state changes?
+2. **Follow the command** — What methods does the command call? Is it inline or a standalone class?
+3. **Enter the subsystem** — What do those methods actually do to the hardware?
+4. **Identify the motors** — What CAN IDs are involved? What speed/direction are they set to?
+
+Open the relevant subsystem file alongside RobotContainer:
+
+- For A button: <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[0].file}`} label="IntakeSubsystem.java" />
+- For B button: <GitHubLink client:load path={`${robotConfig.projectRoot}/${robotConfig.subsystems[3].file}`} label="ClimberSubsystem.java" />
+
+### Write Down Each Step
+
+As you trace, document each step in this format:
+
+| Step | File | Location | What Happens |
+|------|------|----------|-------------|
+| 1 | RobotContainer.java | `controller.a()` or `controller.b()` | Button trigger fires |
+| 2 | RobotContainer.java | Command creation | What command is created? |
+| 3 | SubsystemFile.java | Method call | What method runs? |
+| 4 | SubsystemFile.java | Motor control | What motors move? At what speed? |
+
+---
+
+## Step 3: Understand the Binding Type Difference
+
+This is the key learning moment. You've now seen three different binding types:
+
+| Binding Type | Behavior | Buttons That Use It |
+|-------------|----------|-------------------|
+| `toggleOnTrue` | Press once → start. Press again → stop. | X (intake), Y (shoot) |
+| `whileTrue` | Runs only while button is held. Stops on release. | A (jostle) |
+| `onTrue` | Runs once when pressed. Runs to completion. | B (elevator) |
+
+Think about *why* each button uses its specific binding type:
+
+- **Intake (toggleOnTrue)**: The driver wants to start the intake and focus on driving. They don't want to hold a button the whole time. Press X to start, press X again when the game piece is collected.
+- **Jostle (whileTrue)**: Jostling is a quick adjustment — shake the game piece into position. The driver holds A for a moment, then releases. It shouldn't keep running.
+- **Elevator (onTrue)**: The elevator moves to a position and stops. It's a one-shot action — press B, the elevator moves, done.
+
+<Checkpoint client:load
+  title="Checkpoint: Binding Type Analysis"
+  prompt="Explain in your own words: (1) What would go wrong if the jostle command used toggleOnTrue instead of whileTrue? (2) What would go wrong if the elevator command used whileTrue instead of onTrue?"
+>
+1. **Jostle with toggleOnTrue:** The intake would keep jostling after the driver releases the A button. The driver would have to remember to press A again to stop it. During a match, they might forget — the intake would vibrate continuously, wasting power and potentially damaging the mechanism.
+
+2. **Elevator with whileTrue:** The driver would have to hold B the entire time the elevator is moving. If they release too early, the elevator stops mid-travel. During the endgame rush, holding a button while also trying to drive and align is difficult. `onTrue` lets the elevator complete its motion automatically.
+</Checkpoint>
+
+---
+
+## Step 4: Create Your CodeTrace
+
+Now build a complete CodeTrace for your chosen button. Here's an example structure for the A button — adapt it for whichever button you traced:
+
+<CodeTrace client:load
+  title="Jostle Button Trace: A Button → IntakeSubsystem"
+  startAction="Driver presses and holds the A button on the controller"
+  steps={[
+    {
+      file: "RobotContainer.java",
+      location: "controller.a().whileTrue(...)",
+      description: "A button trigger fires. whileTrue starts the command and keeps it running as long as the button is held."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "RunCommand or method call",
+      description: "The command calls a jostle method on IntakeSubsystem. This runs every 20ms while the button is held."
+    },
+    {
+      file: "IntakeSubsystem.java",
+      location: "jostle() method",
+      description: "The jostle method sets the intake rollers to alternate directions or a specific vibration pattern to settle the game piece."
+    },
+    {
+      file: "RobotContainer.java",
+      location: "whileTrue — button released",
+      description: "When the driver releases A, whileTrue cancels the command. The command's end() or finallyDo() cleanup runs, stopping the motors."
+    }
+  ]}
+  endResult="Intake jostles while A is held, stops immediately on release"
+/>
+
+:::note[Your Trace Will Be Different]
+The trace above is a template. Your actual trace should include the real method names, line numbers, CAN IDs, and motor speeds from your team's code. Open the files and fill in the specifics!
+:::
+
+---
+
+## Step 5: Compare All Four Buttons
+
+Now that you've traced a third button, fill in this comparison table:
+
+| Aspect | X (Intake) | Y (Shoot) | Your Button |
+|--------|-----------|-----------|-------------|
+| Binding type | `toggleOnTrue` | `toggleOnTrue` | ? |
+| Command type | SequentialCommandGroup | ? | ? |
+| Subsystem(s) | IntakeSubsystem | ShooterSubsystem, TurretSubsystem | ? |
+| Has cleanup? | Yes (finallyDo) | ? | ? |
+| Motor count | 4 (2 rollers + 2 deploy) | ? | ? |
+
+
+---
+
+## Bonus: Trace the Other Button Too
+
+If you traced the A button, try the B button next (or vice versa). Having all four buttons traced gives you a complete picture of how your team's driver controls work. Save your traces — they'll be useful reference material for the rest of the season.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[Trigger](/reference-sheets/glossary)** — a condition (usually a button press) that causes a command to start, stop, or toggle
+- **[Default Command](/reference-sheets/glossary)** — a command that runs on a subsystem whenever no other command is using it
+- **Command Composition** — combining multiple commands into sequences, parallel groups, or decorated commands to build complex behaviors
+:::
+
+## What's Next?
+
+You've now traced three of the four driver button bindings and understand how different binding types (`toggleOnTrue`, `whileTrue`, `onTrue`) change the driver experience. This is a core skill — every time your team adds a new button binding, you'll be able to read and understand it immediately.
+
+In **Lesson 4.9: NetworkTables Basics**, you'll learn about the data layer that connects your robot code to the Driver Station, dashboards, and vision cameras. NetworkTables is how your robot communicates with the outside world.
+
+
+
+In **Lesson 4.9: NetworkTables Basics**, you'll learn about the data layer that connects your robot code to the Driver Station, dashboards, and vision cameras. NetworkTables is how your robot communicates with the outside world.

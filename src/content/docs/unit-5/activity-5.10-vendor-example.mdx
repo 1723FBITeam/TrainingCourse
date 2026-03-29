@@ -1,0 +1,165 @@
+---
+title: "Activity 5.10: Use a Vendor Example"
+description: "Find a vendor example project, study its implementation, and adapt a pattern for your team's mechanism"
+sidebar:
+  order: 10
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Found a relevant vendor example project on GitHub
+- Read and understood the example's motor configuration and control approach
+- Compared the example's pattern to your team's current implementation
+- Identified one improvement you could adapt from the example
+
+:::tip[Before You Start]
+Complete **Lesson 5.9: Vendor Documentation Deep Dive**. Have your team's code open in your IDE and a browser open to the CTRE Phoenix 6 examples repository: [github.com/CrossTheRoadElec/Phoenix6-Examples](https://github.com/CrossTheRoadElec/Phoenix6-Examples).
+:::
+
+---
+
+## Step 1: Choose a Mechanism to Improve
+
+Pick one mechanism from your team's robot to focus on:
+
+| Mechanism | Your Team's File | What to Look For in Examples |
+|-----------|-----------------|------------------------------|
+| Shooter flywheels | <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ShooterSubsystem.java`} label="ShooterSubsystem.java" /> | Velocity closed-loop, feedforward, spin-up optimization |
+| Intake rollers | <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/IntakeSubsystem.java`} label="IntakeSubsystem.java" /> | Current limiting, beam break detection, jam handling |
+| Turret aiming | <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/TurretSubsystem.java`} label="TurretSubsystem.java" /> | Position closed-loop, Motion Magic, soft limits |
+| Climber | <GitHubLink client:load path={`${robotConfig.projectRoot}/subsystems/ClimberSubsystem.java`} label="ClimberSubsystem.java" /> | Position control, current limiting, brake mode |
+
+**Mechanism I'm focusing on:** _______________
+
+---
+
+## Step 2: Find the Right Vendor Example
+
+Navigate to the Phoenix 6 examples repository and find an example that matches your mechanism's control needs.
+
+### Phoenix 6 Examples to Look For
+
+| Your Need | Example to Find | Folder Name (approx.) |
+|-----------|----------------|----------------------|
+| Flywheel speed control | Velocity closed-loop | `VelocityClosedLoop` |
+| Position control (turret, elevator) | Position closed-loop | `PositionClosedLoop` |
+| Smooth position moves | Motion Magic | `MotionMagic` |
+| Following another motor | Follower mode | `Follower` |
+| Current limiting | Current limits config | Check within any example's configuration |
+
+1. Open the Phoenix 6 examples repo: [github.com/CrossTheRoadElec/Phoenix6-Examples](https://github.com/CrossTheRoadElec/Phoenix6-Examples)
+2. Navigate to the `java/` directory
+3. Find the example that matches your mechanism
+4. Open the main robot file (usually `Robot.java` or the subsystem file)
+
+**Example I found:** _______________
+**Example URL:** _______________
+
+---
+
+## Step 3: Study the Example
+
+Read through the example code and document what you find:
+
+### Configuration
+
+What motor configuration does the example use? Fill in what you find:
+
+| Setting | Example's Value | Your Team's Value | Different? |
+|---------|----------------|-------------------|-----------|
+| PID kP | | | |
+| PID kI | | | |
+| PID kD | | | |
+| Feedforward kV | | | |
+| Current limit | | | |
+| Neutral mode (brake/coast) | | | |
+
+### Control Approach
+
+How does the example command the motor?
+
+1. **What control request does it use?** (e.g., `VelocityVoltage`, `PositionVoltage`, `MotionMagicVoltage`)
+2. **How does it set the target?** (Direct value? Calculated from sensor input?)
+3. **Does it use feedforward?** (kS, kV, kA values?)
+4. **How does it read feedback?** (Which status signals does it check?)
+
+<AnswerReveal client:load label="Hint: Key Things to Note">
+Pay special attention to:
+
+- **How they initialize the motor** — what configuration is applied in the constructor?
+- **How they handle units** — Phoenix 6 uses rotations and rotations-per-second, not raw encoder ticks
+- **How they handle errors** — do they check if configuration was applied successfully?
+- **What they log** — what values do they publish for debugging?
+</AnswerReveal>
+
+---
+
+## Step 4: Compare to Your Team's Code
+
+Open your team's subsystem file and compare it to the example:
+
+1. **Configuration differences:** Does your team configure the motor the same way? Are there settings in the example that your team doesn't use?
+
+2. **Control approach differences:** Does your team use the same control request type? If your team uses simple percent output (`motor.set(0.5)`) and the example uses closed-loop control (`VelocityVoltage`), that's a significant difference.
+
+3. **Missing features:** Does the example implement something your team's code doesn't have? (Current limits, feedforward, status signal logging, etc.)
+
+---
+
+## Step 5: Identify One Improvement
+
+Based on your comparison, identify one specific improvement you could make to your team's code:
+
+| Question | Your Answer |
+|----------|------------|
+| What improvement would you make? | |
+| Which file would you modify? | |
+| What would you add or change? | |
+| What benefit would this provide? | |
+| What risk does this change carry? | |
+
+<Checkpoint client:load
+  title="Checkpoint: Vendor Example Adaptation"
+  prompt="Describe the vendor example you studied and the one improvement you identified. Explain: (1) What does the example do differently from your team's code? (2) What specific change would you make? (3) How would you test this change safely before using it in competition?"
+>
+A strong answer includes:
+
+1. **A specific difference** — e.g., "The Phoenix 6 VelocityClosedLoop example uses feedforward (kV = 0.12) in addition to PID. Our shooter only uses PID with no feedforward, which means the PID has to do all the work to maintain speed."
+
+2. **A specific change** — e.g., "I would add a kV feedforward term to our shooter's TalonFXConfiguration. Based on the example, I'd start with kV = 0.12 and tune from there."
+
+3. **A safe testing approach** — e.g., "I'd make the change on a Git branch, deploy to the robot during practice, and use AdvantageScope to compare the spin-up time and steady-state accuracy before and after the change. I wouldn't merge to main until the data shows improvement."
+</Checkpoint>
+
+---
+
+## Bonus: Document Your Findings for the Team
+
+Create a short write-up (3-5 bullet points) summarizing what you learned from the vendor example. Share it with your team so everyone benefits from your research.
+
+Include:
+- Which example you studied and why
+- The key pattern or technique it demonstrates
+- How it compares to your team's current approach
+- Your recommended improvement and how to test it
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **Vendor Library** — a third-party library (like CTRE Phoenix or REV) that provides APIs for controlling specific hardware
+- **Control Request** — a CTRE Phoenix 6 object that specifies how a motor should be controlled (e.g., velocity, position, duty cycle)
+- **Current Limit** — a configuration that caps the electrical current a motor can draw, protecting hardware from damage
+:::
+
+## What's Next?
+
+You've learned to find and adapt vendor examples for your team's mechanisms. In **Lesson 5.1: Deploying and Testing on the Robot**, you'll learn the full deploy-test-debug cycle — from `gradlew deploy` to Driver Station operation to diagnosing issues under competition pressure.

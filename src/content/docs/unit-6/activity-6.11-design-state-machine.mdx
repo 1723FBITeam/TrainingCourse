@@ -1,0 +1,272 @@
+---
+title: "Activity 6.11: Design a State Machine"
+description: "Refactor a command sequence into an explicit state machine or design a new one for a mechanism that needs better coordination"
+sidebar:
+  order: 11
+prev: true
+next: true
+---
+
+import { Checkpoint } from '../../../components/Checkpoint';
+import { AnswerReveal } from '../../../components/AnswerReveal';
+import { GitHubLink } from '../../../components/GitHubLink';
+import { robotConfig } from '../../../config/robot-references';
+
+## 🎯 Goal
+
+By the end of this activity you will have:
+
+- Identified a command or sequence in your team's code that would benefit from an explicit state machine
+- Drawn a state diagram showing all states, transitions, and guard conditions
+- Implemented the state machine using the enum + switch pattern
+- Added state logging for debugging visibility
+
+:::tip[Before You Start]
+Complete **Lesson 6.10: State Machines**. Have your team's code open in your IDE. You'll be working with real commands from your team's repository.
+:::
+
+---
+
+## Step 1: Choose a Command to Refactor
+
+Look through your team's commands for one that manages a multi-step sequence. Good candidates:
+
+| Command | Why It's a Good Candidate |
+|---------|--------------------------|
+| <GitHubLink client:load path={`${robotConfig.projectRoot}/commands/AutoShootCommand.java`} label="AutoShootCommand.java" /> | Coordinates turret, flywheel, and feeder — classic multi-step sequence |
+| Intake sequence commands | Deploy → run rollers → detect note → retract |
+| Climbing commands | Extend → grab → retract → lock |
+| Any `SequentialCommandGroup` with conditional logic | Complex sequences with timeouts or branching |
+
+**Command I'm refactoring:** _______________
+
+---
+
+## Step 2: Identify the Implicit States
+
+Read through the command and identify the distinct phases of operation. For each phase, answer:
+
+1. **What is the mechanism doing?** (motors running, waiting for a sensor, etc.)
+2. **What condition ends this phase?** (sensor triggered, timeout, target reached)
+3. **What happens next?** (which phase follows)
+
+### Document the States
+
+| State Name | What Happens | Exit Condition | Next State |
+|-----------|-------------|----------------|------------|
+| | | | |
+| | | | |
+| | | | |
+| | | | |
+| | | | |
+
+<AnswerReveal client:load label="Example: AutoShootCommand States">
+For the AutoShootCommand:
+
+| State Name | What Happens | Exit Condition | Next State |
+|-----------|-------------|----------------|------------|
+| IDLE | Nothing — waiting to start | Command initialized | PREPARING |
+| PREPARING | Turret aims, flywheel spins up | Both on target | READY |
+| READY | Hold aim, hold speed | Brief stabilization delay | FEEDING |
+| FEEDING | Feed note to shooter | Note leaves (beam break) | FINISHING |
+| FINISHING | Stop feeder, coast flywheel | Brief delay for note to clear | DONE |
+| DONE | Stop all motors | — | Command ends |
+| ERROR | Stop everything safely | — | Command ends |
+</AnswerReveal>
+
+---
+
+## Step 3: Draw the State Diagram
+
+Before writing code, draw the state diagram. You can use text, a whiteboard, or a diagramming tool.
+
+For each state, show:
+- The state name (in a box or circle)
+- Arrows to other states (transitions)
+- Labels on arrows (guard conditions)
+- Any timeout transitions
+
+### Template
+
+```
+┌───────┐         ┌────────────┐         ┌───────┐
+│ STATE │ ──────► │   STATE    │ ──────► │ STATE │
+│   A   │ guard1  │     B      │ guard2  │   C   │
+└───────┘         └────────────┘         └───────┘
+                        │
+                        │ timeout
+                        ▼
+                  ┌───────────┐
+                  │   ERROR   │
+                  └───────────┘
+```
+
+**My state diagram:** (draw or describe it here)
+
+---
+
+## Step 4: Define the Enum
+
+Create the state enum based on your diagram:
+
+```java
+public enum MyCommandState {
+  IDLE,
+  // Add your states here
+  DONE,
+  ERROR
+}
+```
+
+Include an ERROR state for timeout and unexpected condition handling.
+
+---
+
+## Step 5: Implement the Switch Statement
+
+Write the `execute()` method with a switch on the current state:
+
+```java
+private MyCommandState state = MyCommandState.IDLE;
+private Timer stateTimer = new Timer();
+
+@Override
+public void initialize() {
+  state = MyCommandState.IDLE;
+  stateTimer.restart();
+}
+
+@Override
+public void execute() {
+  // Log current state for debugging
+  SmartDashboard.putString("MyCommand/State", state.toString());
+
+  switch (state) {
+    case IDLE:
+      // Set up initial actions
+      // Transition to first active state
+      transitionTo(MyCommandState.NEXT_STATE);
+      break;
+
+    // Add cases for each state...
+
+    case DONE:
+      // Clean up
+      break;
+
+    case ERROR:
+      // Safe shutdown
+      stopEverything();
+      break;
+  }
+}
+
+private void transitionTo(MyCommandState newState) {
+  state = newState;
+  stateTimer.restart();  // Reset timer for timeout tracking
+}
+
+@Override
+public boolean isFinished() {
+  return state == MyCommandState.DONE || state == MyCommandState.ERROR;
+}
+```
+
+### Implementation Tips
+
+- **Always log the state** — `SmartDashboard.putString()` or `Logger.recordOutput()` so you can see state transitions in AdvantageScope
+- **Use a timer for timeouts** — reset the timer on each state transition
+- **Keep each case short** — if a case is more than 10-15 lines, consider extracting a helper method
+- **Handle the default case** — add a `default:` that transitions to ERROR for unexpected states
+
+---
+
+## Step 6: Add Timeout Guards
+
+Every state that waits for a condition should have a timeout:
+
+```java
+case PREPARING:
+  turret.aimAtTarget();
+  shooter.spinUp(targetRPM);
+
+  if (turret.isOnTarget() && shooter.isAtSpeed()) {
+    transitionTo(MyCommandState.READY);
+  } else if (stateTimer.hasElapsed(3.0)) {
+    // Timeout — something is wrong
+    transitionTo(MyCommandState.ERROR);
+  }
+  break;
+```
+
+Without timeouts, a stuck sensor or jammed mechanism could leave the state machine frozen in one state forever.
+
+---
+
+## Step 7: Test Your State Machine
+
+### In Simulation
+1. Run `./gradlew simulateJava`
+2. Trigger the command
+3. Watch the state transitions in SmartDashboard or AdvantageScope
+4. Verify each state transitions correctly
+
+### On the Robot
+1. Deploy the code
+2. Run the command
+3. Monitor the state output in AdvantageScope
+4. Verify the mechanism behaves correctly in each state
+
+### Things to Verify
+
+| Check | Expected Behavior |
+|-------|------------------|
+| Normal sequence | States transition in order: IDLE → ... → DONE |
+| Timeout handling | If a condition isn't met, transitions to ERROR after timeout |
+| Interruption | If the command is cancelled, `end()` cleans up safely |
+| State logging | Current state is visible in dashboard/logs |
+
+---
+
+<Checkpoint client:load
+  title="Checkpoint: State Machine Design"
+  prompt="After implementing your state machine, answer: (1) How many states did your state machine have? List them. (2) What was the trickiest transition to get right and why? (3) How does the explicit state machine compare to the original command in terms of readability and debuggability?"
+>
+Strong answers include:
+
+1. **Specific states** — e.g., "My shooting state machine has 6 states: IDLE, PREPARING (turret + flywheel), STABILIZING (brief hold), FEEDING, CLEARING (note leaving), and DONE. Plus an ERROR state for timeouts."
+
+2. **A specific challenge** — e.g., "The PREPARING → STABILIZING transition was tricky. I needed to wait for both the turret AND flywheel to be ready simultaneously, but they reach their targets at different times. I had to make sure the guard checked both conditions in the same cycle, not sequentially."
+
+3. **Honest comparison** — e.g., "The explicit state machine is longer (more lines of code) but much easier to debug. I can see 'State: PREPARING' in the logs and immediately know what the robot is doing. With the original command, I had to check three boolean flags to figure out the same thing. The enum also makes it impossible to be in an undefined state."
+</Checkpoint>
+
+---
+
+## Bonus: Add State Transition Logging
+
+For even better debugging, log not just the current state but also state transitions:
+
+```java
+private void transitionTo(MyCommandState newState) {
+  SmartDashboard.putString("MyCommand/Transition",
+    state.toString() + " → " + newState.toString());
+  state = newState;
+  stateTimer.restart();
+}
+```
+
+This creates a log of every transition, making it easy to trace the exact sequence of events in AdvantageScope after a match.
+
+---
+
+:::tip[📖 Key Vocab Used in This Activity]
+- **[State Machine](/reference-sheets/glossary)** — a design pattern where a system is modeled as discrete states with defined transitions between them
+- **State** — a distinct mode or condition the system can be in (e.g., IDLE, INTAKING, SHOOTING)
+- **Transition** — the movement from one state to another, triggered by an event or condition
+- **Guard Condition** — a boolean check that must be true before a state transition is allowed to occur
+:::
+
+## What's Next?
+
+You've designed and implemented an explicit state machine. In **Activity 6.12: Compare State Machine Implementations**, you'll examine how a top FRC team implements state machines in their code and compare their approach to your team's command structure.
