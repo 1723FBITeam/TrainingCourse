@@ -18,12 +18,14 @@ export default defineConfig({
         { label: 'Welcome', link: '/' },
         {
           label: 'Unit 0: Prerequisites',
+          collapsed: true,
           items: [
             { label: 'Lesson 0.1: Git & GitHub', link: '/unit-0/lesson-01-git-github' },
           ],
         },
         {
           label: 'Unit 1: Orientation',
+          collapsed: true,
           items: [
             { label: 'Lesson 1.1: Project Structure', link: '/unit-1/lesson-11-project-structure' },
             { label: 'Lesson 1.2: Robot Lifecycle', link: '/unit-1/lesson-12-robot-lifecycle' },
@@ -32,6 +34,7 @@ export default defineConfig({
         },
         {
           label: 'Unit 2: Core Flow',
+          collapsed: true,
           items: [
             { label: 'Lesson 2.1: Subsystems', link: '/unit-2/lesson-21-subsystems' },
             { label: 'Lesson 2.2: Commands', link: '/unit-2/lesson-22-commands' },
@@ -43,6 +46,7 @@ export default defineConfig({
         },
         {
           label: 'Unit 3: Safe Contribution',
+          collapsed: true,
           items: [
             { label: 'Lesson 3.1: Constants & Safe Edits', link: '/unit-3/lesson-31-constants-safe-edits' },
             { label: 'Activity 3.2: Small Change', link: '/unit-3/activity-32-small-change' },
@@ -51,6 +55,7 @@ export default defineConfig({
         },
         {
           label: 'Unit 4: Going Deeper',
+          collapsed: true,
           items: [
             { label: 'Lesson 4.1: WPILib Deep Dive', link: '/unit-4/lesson-41-wpilib-deep-dive' },
             { label: 'Lesson 4.2: Git Workflow', link: '/unit-4/lesson-42-git-workflow' },
@@ -69,6 +74,7 @@ export default defineConfig({
         },
         {
           label: 'Unit 5: Community & Tools',
+          collapsed: true,
           items: [
             { label: 'Lesson 5.1: Deploy, Test, Debug', link: '/unit-5/lesson-51-deploy-test-debug' },
             { label: 'Activity 5.2: Deploy-Test-Fix Cycle', link: '/unit-5/activity-52-deploy-test-fix' },
@@ -89,6 +95,7 @@ export default defineConfig({
         },
         {
           label: 'Unit 6: Advanced Engineering',
+          collapsed: true,
           items: [
             { label: 'Lesson 6.1: AdvantageKit', link: '/unit-6/lesson-61-advantagekit' },
             { label: 'Activity 6.2: Replay a Match', link: '/unit-6/activity-62-replay-a-match' },
@@ -119,6 +126,7 @@ export default defineConfig({
         },
         {
           label: 'Reference Sheets',
+          collapsed: true,
           items: [
             { label: 'Code Map', link: '/reference-sheets/code-map' },
             { label: 'Trace Worksheet', link: '/reference-sheets/trace-worksheet' },
