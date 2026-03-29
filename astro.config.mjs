@@ -50,10 +50,6 @@ export default defineConfig({
           ],
         },
         {
-          label: '📅 Weekly Roadmap',
-          link: '/roadmap',
-        },
-        {
           label: 'Unit 4: Going Deeper',
           items: [
             { label: 'Lesson 4.1: WPILib Deep Dive', link: '/unit-4/lesson-41-wpilib-deep-dive' },
@@ -116,6 +112,10 @@ export default defineConfig({
             { label: 'Activity 6.20: Competition Debug Sim', link: '/unit-6/activity-620-competition-debug-sim' },
             { label: 'Activity 6.21: Compare Drivetrains', link: '/unit-6/activity-621-compare-drivetrain' },
           ],
+        },
+        {
+          label: '📅 Roadmap',
+          link: '/roadmap',
         },
         {
           label: 'Reference Sheets',

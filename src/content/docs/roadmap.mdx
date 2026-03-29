@@ -1,6 +1,6 @@
 ---
-title: "📅 Weekly Roadmap"
-description: "Suggested pacing guide for the FRC season"
+title: "Roadmap"
+description: "Week-by-week pacing guide for the FRC build season"
 sidebar:
   order: 0
 prev: true
@@ -9,76 +9,196 @@ next: true
 
 ## How to Use This Roadmap
 
-This roadmap is a suggestion, not a requirement. Every team's schedule is different — some start programming in the off-season, others don't begin until kickoff. Adapt this guide to fit your team's timeline, meeting frequency, and competition schedule.
+This is a week-by-week plan for getting your programming team competition-ready in 8–10 weeks. It's built around the FRC build season timeline — kickoff in early January, first competition 6–8 weeks later.
 
-The key idea: work through the units in order, but don't rush. It's better to deeply understand Unit 4 than to skim through all three advanced units.
+Adapt it to your team's schedule. If you meet twice a week, you can move faster. If you meet once a week, double the timelines. The milestones are what matter, not the exact week numbers.
 
----
-
-## Pre-Season (Weeks 1–4)
-
-**Focus:** Build your foundation.
-
-- **Weeks 1–2:** Complete the Core Curriculum (Units 0–3). Every programmer on the team should be able to read and trace code in your robot project.
-- **Weeks 3–4:** Start Unit 4 lessons. Focus on WPILib deep dive, Java patterns, and understanding constants/subsystems/commands at a deeper level.
-
-:::tip[Team Goal]
-By the end of Week 4, every programmer should be able to open any file in the robot project and explain what it does using the Code Reading Framework.
+:::caution[The Rule]
+Don't move to the next week until the milestone is met. It's better to spend an extra week on Unit 2 than to rush through and have programmers who can't trace a button press.
 :::
 
 ---
 
-## Build Season (Weeks 5–10)
+## Week 1: Setup and Orientation
 
-**Focus:** Apply skills to the new robot.
+**Do:** Units 0–1 (Git setup, project structure, robot lifecycle, open & build)
 
-- **Weeks 5–6:** Complete Unit 4 (NetworkTables, Git workflow, reading auto routines). Start contributing safe edits to the new season's code.
-- **Weeks 7–8:** Begin Unit 5 (deploy/test cycle, CAN bus debugging, Chief Delphi research, reading top team code, debugging with data). Use these skills as you encounter real problems on the new robot.
-- **Weeks 9–10:** Continue Unit 5 (vendor docs, swerve concepts, PathPlanner). These become critical as the robot comes together.
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 0.1: Install Git, clone the repo, make a test commit | 45 min |
+| Meeting 2 | Lesson 1.1: Navigate the project structure, find key files | 30 min |
+| Meeting 2 | Lesson 1.2: Robot lifecycle + Activity 1.3: Open & build the project | 30 min |
 
-:::tip[Team Goal]
-By Week 10, programmers should be able to deploy code, debug hardware issues, and contribute to autonomous routines.
+**✅ Week 1 Milestone:** Every programmer has the project cloned, building, and can navigate to any file in `src/main/java/frc/robot/`.
+
+---
+
+## Week 2: Core Flow — Subsystems, Commands, Tracing
+
+**Do:** Unit 2 (Subsystems, commands, RobotContainer, trace a button, trace a sensor, autonomous intro)
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 2.1: Subsystems + Lesson 2.2: Commands | 45 min |
+| Meeting 1 | Lesson 2.3: RobotContainer & Bindings | 30 min |
+| Meeting 2 | Activity 2.4: Trace the X button (intake) from press to motor | 45 min |
+| Meeting 2 | Activity 2.5: Trace a sensor reading | 30 min |
+| Homework | Activity 2.6: Read through the autonomous intro | 20 min |
+
+**✅ Week 2 Milestone:** Every programmer can trace a button press from controller → RobotContainer → command → subsystem → motor and explain each step in plain English.
+
+---
+
+## Week 3: Safe Contribution + Git Workflow
+
+**Do:** Unit 3 (Constants, safe edits, add a feature) + Unit 4 Lessons 4.1–4.3 (WPILib docs, Git workflow, PR exercise)
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 3.1: Constants & safe edits | 30 min |
+| Meeting 1 | Activity 3.2: Change a constant, build, verify | 20 min |
+| Meeting 1 | Activity 3.3: Create a SpinUpCommand | 30 min |
+| Meeting 2 | Lesson 4.1: WPILib docs deep dive | 30 min |
+| Meeting 2 | Lesson 4.2: Git team workflow (branches, PRs, code review) | 30 min |
+| Homework | Activity 4.3: Create your first pull request | 20 min |
+
+**✅ Week 3 Milestone:** Every programmer has made a real code change, opened a pull request, and had it reviewed by a teammate. They know how to look things up in WPILib docs.
+
+---
+
+## Week 4: Deeper Understanding
+
+**Do:** Unit 4 Lessons 4.4–4.13 (Explore code, Java patterns, NetworkTables, game manual, auto reading)
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Activity 4.4: Explore 3 files you haven't opened + Lesson 4.5: Java patterns | 60 min |
+| Meeting 2 | Activity 4.6: Find Java patterns + Lesson 4.7: Constants/subsystems revisited | 45 min |
+| Meeting 2 | Activity 4.8: Trace a new button (A or B) | 30 min |
+| Meeting 3 | Lesson 4.9: NetworkTables + Activity 4.10: Explore live NetworkTables | 45 min |
+| Homework | Lesson 4.11: Game manual + Lesson 4.12: Reading auto routines + Activity 4.13: Read an auto | 45 min |
+
+**✅ Week 4 Milestone:** Every programmer can open any file in the project and explain what it does. They understand Java patterns (lambdas, enums, inheritance), NetworkTables, and can read a PathPlanner auto routine.
+
+---
+
+## Week 5: Deploy, Test, Debug on the Real Robot
+
+**Do:** Unit 5 Lessons 5.1–5.4 (Deploy/test cycle, CAN bus debugging, inspect devices)
+
+This is where programming meets the physical robot. Coordinate with the build team — you need robot access.
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 5.1: Deploy, test, debug cycle (gradlew deploy, Driver Station) | 45 min |
+| Meeting 1 | Activity 5.2: Deploy-test-fix cycle (intentional bug exercise) | 30 min |
+| Meeting 2 | Lesson 5.3: CAN bus and hardware debugging | 30 min |
+| Meeting 2 | Activity 5.4: Inspect every CAN device on the robot with Phoenix Tuner X | 45 min |
+
+**✅ Week 5 Milestone:** Every programmer can deploy code to the robot, read Driver Station errors, diagnose a CAN bus issue, and complete a deploy-test-fix cycle in under 5 minutes.
+
+---
+
+## Week 6: Community Resources + Debugging with Data
+
+**Do:** Unit 5 Lessons 5.5–5.10 (Chief Delphi, top team code, debugging with data, vendor docs)
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 5.5: Chief Delphi + Lesson 5.6: Reading top team code | 45 min |
+| Meeting 1 | Activity 5.7: Compare a subsystem to a top team's | 30 min |
+| Meeting 2 | Lesson 5.8: Debugging with Shuffleboard & AdvantageScope | 45 min |
+| Meeting 2 | Lesson 5.9: Vendor docs deep dive + Activity 5.10: Use a vendor example | 30 min |
+
+**✅ Week 6 Milestone:** Programmers can search Chief Delphi for solutions, read top team code, debug with AdvantageScope graphs, and navigate vendor documentation. They've compared their code to a top team's.
+
+---
+
+## Week 7: Swerve + Autonomous Creation
+
+**Do:** Unit 5 Lessons 5.11–5.15 (Swerve concepts, PathPlanner creation, auto comparison)
+
+This is the critical week for autonomous. Your auto routines need to be working before competition.
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 5.11: Swerve drive concepts | 45 min |
+| Meeting 1 | Activity 5.12: Trace a joystick through swerve math | 30 min |
+| Meeting 2 | Lesson 5.13: Creating paths and Named Commands in PathPlanner | 45 min |
+| Meeting 2 | Activity 5.14: Build an auto routine (create path, register command, test) | 45 min |
+| Homework | Activity 5.15: Compare your auto routines to a top team's | 30 min |
+
+**✅ Week 7 Milestone:** The team has at least 2 working autonomous routines tested on the robot. Programmers understand swerve drive concepts and can create new PathPlanner paths.
+
+---
+
+## Week 8: Competition Prep
+
+**Do:** Unit 6 Lesson 6.19 (Competition readiness) + selective Unit 6 content based on team needs
+
+This week is about being ready for your first event. Don't try to learn everything in Unit 6 — pick what matters most.
+
+| Day | What to Do | Time |
+|-----|-----------|------|
+| Meeting 1 | Lesson 6.19: Competition readiness (pre-match checklist, debugging flowchart, hotfix branches) | 45 min |
+| Meeting 1 | Activity 6.20: Simulated competition debugging (timed scenarios) | 30 min |
+| Meeting 2 | Practice match simulation — run all autos, test all buttons, verify everything works | 60 min |
+| Meeting 2 | Print the pre-match checklist. Assign pit roles. Pack the programming laptop. | 30 min |
+
+**✅ Week 8 Milestone:** The team has a printed pre-match checklist, every programmer knows the 5-minute debugging flowchart, hotfix branch workflow is practiced, and all auto routines are tested and reliable.
+
+---
+
+## At Competition
+
+**Between matches:**
+1. Run the pre-match checklist (60 seconds)
+2. Review match logs in AdvantageScope (2 minutes)
+3. If something broke: follow the debugging flowchart, hotfix branch if needed
+4. If everything worked: verify auto chooser selection for next match
+
+**After each match:**
+1. What worked?
+2. What didn't?
+3. What does the data say?
+4. Fix or move on?
+
+:::caution[The Golden Rule at Competition]
+A working robot with old code is better than a broken robot with new code. If you can't fix it in 5 minutes, revert with `git stash` and fix it after the match.
 :::
 
 ---
 
-## Competition Prep (Weeks 11–14)
+## Post-Competition / Off-Season
 
-**Focus:** Polish and prepare.
+**Do:** Remaining Unit 6 content at your own pace
 
-- **Weeks 11–12:** Complete Unit 5 (PathPlanner path creation, auto routine building, comparison exercises). Your autonomous routines should be tested and reliable.
-- **Weeks 13–14:** Start Unit 6 selectively — focus on competition readiness (Lesson 6.19) and pose estimation (Lesson 6.8) if your team uses vision-based localization.
+| Priority | Lessons | Why |
+|----------|---------|-----|
+| **High** | Lesson 6.1: AdvantageKit + Activity 6.2: Replay a Match | Replay debugging transforms your next season |
+| **High** | Lesson 6.3: Simulation + Activity 6.4: Simulate an Auto | Test code without the robot |
+| **Medium** | Lesson 6.5: Control Theory + Activity 6.6: Tune a PID | Better mechanism control |
+| **Medium** | Lesson 6.7: Vision + Lesson 6.8: Pose Estimation | Improve auto accuracy |
+| **Medium** | Lesson 6.10: State Machines + Activity 6.11: Design a SM | Cleaner complex behaviors |
+| **Lower** | Lesson 6.13: Unit Testing + Lesson 6.15: Architecture Patterns | Long-term code quality |
+| **Lower** | Lesson 6.16: Advanced PathPlanner | On-the-fly paths, advanced constraints |
 
-:::tip[Team Goal]
-By your first competition, the programming team should have a pre-match checklist, know how to read match logs, and have a plan for pit debugging.
-:::
-
----
-
-## Competition Season (Weeks 15+)
-
-**Focus:** Debug, iterate, improve.
-
-- Use Unit 6 content as needed based on what problems you encounter at competition.
-- **Match log analysis** (Activity 6.9) — review every match and identify what went wrong.
-- **Competition debugging** (Activity 6.20) — practice diagnosing issues under time pressure.
-- **Hotfix branches** (Lesson 6.19) — make targeted fixes between matches without breaking stable code.
-
-:::caution[Competition Priority]
-At competition, reliability beats performance. Don't deploy untested changes. Use the deploy-test-fix cycle from Unit 5.
-:::
+**✅ Off-Season Goal:** Adopt at least one advanced practice (AdvantageKit logging, simulation testing, or PID tuning) before next season starts.
 
 ---
 
-## Off-Season
+## Quick Reference: What to Do When
 
-**Focus:** Level up for next year.
-
-- Complete remaining Unit 6 content: AdvantageKit, simulation, control theory, architecture patterns.
-- Work through comparison exercises — study how top teams solved this year's game challenges.
-- Experiment with advanced PathPlanner features, PID tuning, and state machines in a low-pressure environment.
-- Consider adopting AdvantageKit or other logging frameworks for next season.
-
-:::tip[Off-Season is Where Great Teams Are Made]
-The teams that improve the most between seasons are the ones that use the off-season to learn, not just build. Use this time to work through the advanced content without competition pressure.
-:::
+| Situation | Go To |
+|-----------|-------|
+| "I just joined the team" | Unit 0, then Unit 1 |
+| "I can't find a file" | Unit 1 Lesson 1.1 |
+| "I don't understand what this code does" | Unit 2 (trace it) |
+| "I want to make a change" | Unit 3 (safe edits) |
+| "I see a Java pattern I don't recognize" | Unit 4 Lesson 4.5 |
+| "The robot won't deploy" | Unit 5 Lesson 5.1 |
+| "A motor isn't responding" | Unit 5 Lesson 5.3 (CAN bus) |
+| "I need to build an auto" | Unit 5 Lesson 5.13 |
+| "Something broke at competition" | Unit 6 Lesson 6.19 (competition readiness) |
+| "I want to debug with data" | Unit 5 Lesson 5.8 |
+| "I want to learn PID tuning" | Unit 6 Lesson 6.5 |
