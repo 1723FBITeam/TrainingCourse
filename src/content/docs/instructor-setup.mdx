@@ -25,7 +25,7 @@ The config has **no build-time dependency** on the robot project directory. It s
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `repoUrl` | `string` | Full GitHub URL to the robot repo (e.g., `https://github.com/your-org/Drive2026FBI`). Used by the `GitHubLink` component to build clickable links to source files. |
+| `repoUrl` | `string` | Full GitHub URL to the robot repo (e.g., `https://github.com/1723FBITeam/Drive2026FBI`). Used by the `GitHubLink` component to build clickable links to source files. |
 | `defaultBranch` | `string` | Branch name for GitHub links (usually `main`). |
 | `projectRoot` | `string` | Path from repo root to the robot package (e.g., `src/main/java/frc/robot`). |
 | `coreFiles` | `object` | Maps logical names (`main`, `robot`, `robotContainer`, `constants`) to filenames. |
@@ -103,13 +103,13 @@ If you deploy to a different repository name, update the `base` path in `astro.c
 ```javascript
 // training-course/astro.config.mjs
 export default defineConfig({
-  site: 'https://your-org.github.io',
+  site: 'https://1723FBITeam.github.io',
   base: '/training-course',  // ← Change this to match your GitHub repo name
   // ...
 });
 ```
 
-The `site` field should be your GitHub organization's Pages domain (e.g., `https://your-org.github.io`). The `base` field should match the repository name where the course is hosted. If the course lives in a repo called `frc-training`, set `base: '/frc-training'`.
+The `site` field should be your GitHub organization's Pages domain (e.g., `https://1723FBITeam.github.io`). The `base` field should match the repository name where the course is hosted. If the course lives in a repo called `frc-training`, set `base: '/frc-training'`.
 
 ### Step 6: Build and Verify
 
